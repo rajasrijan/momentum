@@ -106,7 +106,7 @@ isr_common_stub:
    mov ax, 0x10  ; load the kernel data segment descriptor
    mov ds, ax
    mov es, ax
-   mov fs, ax
+   ;mov fs, ax fs must remain unchanged.
    mov gs, ax
 
    call isr_handler
@@ -114,7 +114,7 @@ isr_common_stub:
    pop eax        ; reload the original data segment descriptor
    mov ds, ax
    mov es, ax
-   mov fs, ax
+   ;mov fs, ax fs must remain unchanged.
    mov gs, ax
 
    popa                     ; Pops edi,esi,ebp...
