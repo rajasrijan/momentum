@@ -42,7 +42,9 @@ typedef struct thread
 } thread_t;
 
 void init_multitask(void);
+void* CreateStack(void);
 int CreateThread(thread_t *thread, const uint32_t attr, void *((*start_routine)(void*)), void *arg);
+void init_kernel_stack(void);
 
 #ifdef	__cplusplus
 }

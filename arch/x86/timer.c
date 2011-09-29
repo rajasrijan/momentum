@@ -1,31 +1,108 @@
 #include <stdint.h>
+#include "string.h"
+#include "stddef.h"
 #include "timer.h"
 #include "global.h"
 #include "multitask.h"
+#include "apic.h"
+
+static inline void push(uint32_t** ptr, uint32_t value)
+{
+    (*ptr)--;
+    *ptr[0] = value;
+}
 
 void apic_timer_callback(registers_t* reg)
 {
     static uint32_t tick = 0;
     tick++;
     thread_info_t *thread = 0;
+    task_info_t *task = 0;
     /*
      * Save context.
      */
-    __asm__ volatile("mov %%fs:(0x0),%0;" : "=r"(thread));
+    __asm__ volatile("xchg %%bx,%%bx;"::);
+    __asm__ volatile("mov %%fs:(0x0),%0;"
+            : "=r"(thread)
+            );
+    __asm__ volatile("mov %%fs:(0x4),%0;"
+            : "=r"(task)
+            );
+    printf("\nNext thread (%x)", thread);
     thread->context = *reg;
     /*
      * Get next thread.
      */
-    printf("\nNext thread (%x)", thread);
+
     if (thread->next_thread)
+    {
         thread = thread->next_thread;
+    }
+    else
+    {
+        task = task->next_task;
+        thread = task->threads;
+    }
+    printf("\nNext thread (%x)", thread->thread_id);
+    __asm__ volatile("mov %0,%%fs:(0x0);" ::"r"(thread));
+    __asm__ volatile("mov %0,%%fs:(0x4);" ::"r"(task));
 
     /*
-     * Load context.
+     * Setup proper stack.
+     * current privilege level is ring 0.
      */
+    switch ((reg->cs) & 0x3)
+    {
+    case 0:
+    {
+        /*
+         * Interrupt to same privilege.
+         * 'ESP' is not saved. We have to change it manually.
+         */
 
-    *reg = thread->context;
-    __asm__ volatile("mov %0,%%fs:(0x0);" ::"r"(thread));
+        thread->context.eflags |= 0x200;
+        uint32_t *esp = (uint32_t*) thread->context.esp;
+        esp -= 9;
+        memcpy((void*) esp, (void*) &(thread->context), offsetof(registers_t, useresp));
+        __asm__("xchg %%bx,%%bx;"
+                "mov %0,%%esp;"
+                "pop %%eax;"
+                "mov %%ax,%%ds;"
+                "mov %%ax,%%es;"
+                "mov %%ax,%%gs;"
+                "movl $0x0,(%1);"// Send EOI to Local APIC eoi register
+                "popa;"
+                "add $8,%%esp;"
+                "sti;" //Not executed till iret.
+                "iret;"
+                :
+                : "r"(esp), "r"(&(lapic->eoi))
+                );
+        /*
+        
+                push(&esp, thread->context.eflags);
+                push(&esp, thread->context.cs);
+                push(&esp, thread->context.eip);
+
+        
+                push(&esp, thread->context.eax);
+                push(&esp, thread->context.ecx);
+                push(&esp, thread->context.edx);
+                push(&esp, thread->context.ebx);
+                push(&esp, thread->context.esp);
+                push(&esp, thread->context.ebp);
+                push(&esp, thread->context.esi);
+                push(&esp, thread->context.edi);
+                __asm__ volatile("xchg %%bx,%%bx;"
+                        "mov %0,%%esp;"
+                        "popa;"
+                        "iret;"
+                        : "=r"(esp)
+                        );
+         */
+        break;
+    }
+    }
 }
 
 void init_timer(uint32_t frequency)

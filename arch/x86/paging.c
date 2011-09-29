@@ -57,3 +57,16 @@ void identity_map_4mb(uint32_t address)
         memory_slab += 0x1000;
     }
 }
+
+void force_map(uint32_t physical, uint32_t virtual, uint32_t pages)
+{
+    uint32_t boundry_4mb = (virtual / 0x400000);
+    uint32_t boundry_4kb = boundry_4mb * 0x400;
+    uint32_t memory_slab = physical & 0xFFC00000;
+    pst->page_directory[boundry_4mb] |= 3;
+    for (uint32_t i = 0; i < pages; i++)
+    {
+        pst->page_table[boundry_4kb + i] = memory_slab | 3;
+        memory_slab += 0x1000;
+    }
+}

@@ -1,5 +1,6 @@
 [BITS 32]
 [global start]
+[global stack]
 [extern stage1_5]
 
 ; setting up the Multiboot header - see GRUB docs for details
@@ -17,9 +18,8 @@ MultiBootHeader:
    dd MAGIC
    dd FLAGS
    dd CHECKSUM
-STACKSIZE equ 0x4000                  ; that's 16k.
+STACKSIZE equ 0x1000                  ; that's 4k.
 start:
-    xchg bx,bx
     mov esp,stack +STACKSIZE- 0xc0000000
     pusha
     mov eax,gdt_ptr
@@ -39,6 +39,9 @@ start:
     cli
     call stage1_5
 hang:
+    jmp hang
+t1:
+    xchg bx,bx
     jmp hang
 gdt_ptr:
     dw gdt_entry.end - gdt_entry-1
@@ -63,6 +66,6 @@ gdt_entry:
     db 0x00
 .end:
 section .bss
-stack:
 align 4096
-	resb 0x4000
+stack:
+	resb STACKSIZE

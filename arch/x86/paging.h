@@ -20,6 +20,7 @@ typedef struct paging_structure paging_structure_t;
 void new_paging_structure(paging_structure_t* ps);
 void init_paging(void);
 void identity_map_4mb(uint32_t address);
+void force_map(uint32_t physical, uint32_t virtual, uint32_t pages);
 
 #endif	/* PAGING_H */
 

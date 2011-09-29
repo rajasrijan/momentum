@@ -17,4 +17,5 @@ void putcharacter(const char ch, uint32_t x, uint32_t y)
 void scroll()
 {
     memcpy((char*) videomemory, (char*) (videomemory + 80), 80 * 24 * 2);
+    memset((char*) (videomemory + (80 * 24)), 0, 80 * 2);
 }
