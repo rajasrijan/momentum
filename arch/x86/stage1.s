@@ -1,4 +1,6 @@
 ;
+; Copyright 2009-2011 Srijan Kumar Sharma
+;
 ; This file is part of Momentum.
 ; 
 ; Momentum is free software: you can redistribute it and/or modify
