@@ -83,8 +83,8 @@ typedef struct idt_struct idt_t;
 #define IRQ(x) (38+((uint32_t)(x)))
 
 
-extern gdt_t *gt;
-extern idt_t *it;
+void init_idt(void);
+void idt_set_gate(idt_entry_t *idt_entries, uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
 
 // These extern directives let us access the addresses of our ASM ISR handlers.
 /*

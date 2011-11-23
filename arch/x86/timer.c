@@ -31,6 +31,27 @@ static inline void push(uint32_t** ptr, uint32_t value)
     *ptr[0] = value;
 }
 
+static void print_gdt(void)
+{
+    gdt_ptr_t gptr;
+    __asm__("sgdt (%0)"::"r"(&gptr));
+    printf("\nGDT Base:     %x", gptr.base);
+    printf("\nGDT Limit:    %x", gptr.limit);
+    printf("\nGDT pointer %x", sys_info.gdt_ptr->gp.base);
+    uint16_t no = (uint16_t) (gptr.limit + 1);
+    no /= sizeof (gdt_entry_t);
+    printf("\n*****************************************************************");
+    for (uint16_t i = 0; i < no; i++)
+    {
+        gdt_entry_t* gent = (void*) gptr.base;
+        printf("\nGDT base:%x", (uint32_t) (gent[i].base_high << 16) + (uint32_t) (gent[i].base_middle << 8) + (uint32_t) (gent[i].base_low));
+        printf("\nGDT limit:%x", (uint32_t) (gent[i].limit_low));
+        printf("\nGDT gran:%x", (uint32_t) (gent[i].granularity));
+        printf("\nGDT accessed:%x", (uint32_t) (gent[i].access));
+        printf("\n*****************************************************************");
+    }
+}
+
 void apic_timer_callback(registers_t* reg)
 {
     static uint32_t tick = 0;
@@ -47,13 +68,16 @@ void apic_timer_callback(registers_t* reg)
     __asm__ volatile("mov %%fs:(0x4),%0;"
             : "=r"(task)
             );
-    printf("\nNext thread (%x)", thread);
+    //print_gdt();
+    printf("\nThread address(%x)", thread);
+    printf("\nNext thread (%x)", thread->thread_id);
+    printf("\nNext thread (%x)", thread->next_thread);
     thread->context = *reg;
     /*
      * Get next thread.
      */
 
-    if (thread->next_thread)
+    if (thread->next_thread != 0)
     {
         thread = thread->next_thread;
     }
@@ -62,14 +86,19 @@ void apic_timer_callback(registers_t* reg)
         task = task->next_task;
         thread = task->threads;
     }
+    printf("\nThread address(%x)", thread);
     printf("\nNext thread (%x)", thread->thread_id);
+    printf("\nNext thread (%x)", thread->next_thread);
+    DBG_OUTPUT
     __asm__ volatile("mov %0,%%fs:(0x0);" ::"r"(thread));
+    DBG_OUTPUT
     __asm__ volatile("mov %0,%%fs:(0x4);" ::"r"(task));
+    DBG_OUTPUT
 
-    /*
-     * Setup proper stack.
-     * current privilege level is ring 0.
-     */
+            /*
+             * Setup proper stack.
+             * current privilege level is ring 0.
+             */
     switch ((reg->cs) & 0x3)
     {
     case 0:
@@ -78,11 +107,15 @@ void apic_timer_callback(registers_t* reg)
          * Interrupt to same privilege.
          * 'ESP' is not saved. We have to change it manually.
          */
-
+        DBG_OUTPUT
         thread->context.eflags |= 0x200;
+        DBG_OUTPUT
         uint32_t *esp = (uint32_t*) thread->context.esp;
+        DBG_OUTPUT
         esp -= 9;
+        DBG_OUTPUT
         memcpy((void*) esp, (void*) &(thread->context), offsetof(registers_t, useresp));
+        DBG_OUTPUT
         __asm__("xchg %%bx,%%bx;"
                 "mov %0,%%esp;"
                 "pop %%eax;"
@@ -95,7 +128,7 @@ void apic_timer_callback(registers_t* reg)
                 "sti;" //Not executed till iret.
                 "iret;"
                 :
-                : "r"(esp), "r"(&(lapic->eoi))
+                : "r"(esp), "r"(&(sys_info.local_apic->eoi))
                 );
         /*
         
@@ -122,6 +155,7 @@ void apic_timer_callback(registers_t* reg)
         break;
     }
     }
+    DBG_OUTPUT
 }
 
 void init_timer(uint32_t frequency)

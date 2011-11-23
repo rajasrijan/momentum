@@ -49,5 +49,5 @@ void register_interrupt_handler(uint8_t n, isr_t handler)
 
 static void eoi()
 {
-    lapic->eoi = 0;
+    sys_info.local_apic->eoi = 0;
 }

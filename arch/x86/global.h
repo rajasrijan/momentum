@@ -20,10 +20,6 @@
 #ifndef _GLOBAL_H_
 #define _GLOBAL_H_
 
-#if __STDC_HOSTED__ != 0
-#error "Hosted environment"
-#endif
-
 
 #define KERNEL_CODE_PTR ((void*)0xC0000000)
 #define KERNEL_STACK_PTR ((void*)0xCC000000)
@@ -35,10 +31,28 @@
 
 #include <stdint.h>
 #include "descriptor_tables.h"
+#include "paging.h"
+#include "acpi.h"
+#include "apic.h"
 #include "../../libc/stdio.h"
 extern void* _kalloc(uint32_t size, uint32_t align);
 extern void* memory_map;
 extern uint32_t memory_map_len;
+
+typedef struct system_info
+{
+    uint32_t no_of_cpus;
+    gdt_t* gdt_ptr;
+    paging_structure_t* pst;
+    void* memory_map;
+    uint32_t memory_map_len;
+    uint32_t kernel_end;
+    lapic_t *local_apic;
+    idt_t *idt_ptr;
+    acpi_rsdp_t* rsdp;
+} __attribute__((packed)) system_info_t;
+
+system_info_t sys_info;
 
 static inline void outb(unsigned short port, unsigned char val)
 {
@@ -69,5 +83,7 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
         res = (uint8_t) (res + ptr[i]);
     return (uint8_t) (-res);
 }
+
+void* __attribute__((stdcall)) alined_alloc(uint32_t size, uint32_t alignment);
 
 #endif

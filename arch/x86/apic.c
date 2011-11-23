@@ -21,10 +21,16 @@
 #include "acpi.h"
 #include "timer.h"
 #include "interrupts.h"
-lapic_t* lapic;
 ioapic_t* ioapic;
 static void* find_rspd(void);
-extern uint8_t kmemcmp(const char* src, const char* dst, uint32_t size);
+
+static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
+{
+    for (int i = 0; i < size; i++)
+        if ((src[i] - dst[i]) != 0)
+            return (uint8_t) (src[i] - dst[i]);
+    return 0;
+}
 
 void init_ioapic()
 {
@@ -53,9 +59,9 @@ void init_apic_timer(uint32_t frequency)
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
     register_interrupt_handler(32, apic_timer_callback);
-    lapic->lvt_timer = 0x00020020;
-    lapic->div_conf = 0x02;
-    lapic->init_count = frequency;
+    sys_info.local_apic->lvt_timer = 0x00020020;
+    sys_info.local_apic->div_conf = 0x02;
+    sys_info.local_apic->init_count = frequency;
 }
 
 static void* find_rspd()

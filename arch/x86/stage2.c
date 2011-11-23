@@ -36,16 +36,12 @@ extern uint32_t stack;
 
 void stage2(void)
 {
-    /*
-     * Fix allocation address to higher half.
-     */
-    _kalloc(0xC0000000, 1);
+    init_idt();
     init_paging();
     initilize_memorymanager();
-
     create_kernel_heap();
-
     fix_refferances();
+
     if (!get_acpi_tables())
         __asm__("cli;hlt;");
     init_apic_timer(0x0FFFFFF);
@@ -53,14 +49,16 @@ void stage2(void)
     printf("\n%x", (& stack));
     uint32_t *esp = 0;
     __asm__("mov %%esp,%0" : "=r"(esp) : :);
-    esp = (void*) ((uint32_t) CreateStack()+(uint32_t) esp - ((uint32_t) & stack) + 0xC0000000);
-    __asm__("mov %0,%%esp" : : "r"(esp) :);
+    esp = (void*) ((uint32_t) CreateStack()+(uint32_t) esp - ((uint32_t) & stack));
+    __asm__("xchg %%bx,%%bx;"
+            "mov %0,%%esp" : : "r"(esp) :);
     init_multitask();
 
     // clrscr();
-    __asm__("sti");
+
     thread_t tid;
     CreateThread(&tid, 0, &t1, (void*) 0xBADA55);
+    __asm__("sti");
     printf("some string");
     while (1)
     {

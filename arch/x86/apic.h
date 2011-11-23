@@ -19,7 +19,8 @@
 
 #ifndef APIC_H
 #define	APIC_H
-#include "global.h"
+#include <stdint.h>
+
 #ifdef	__cplusplus
 extern "C"
 {
@@ -51,7 +52,6 @@ struct io_apic_structure
     volatile uint32_t version;
 } __attribute__((packed));
 typedef struct io_apic_structure ioapic_t;
-extern lapic_t* lapic;
 extern ioapic_t* ioapic;
 void init_apic_timer(uint32_t frequency);
 void init_ioapic(void);

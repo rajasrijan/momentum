@@ -1,18 +1,18 @@
 /*
  * Copyright 2009-2011 Srijan Kumar Sharma
- * 
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -36,10 +36,16 @@ typedef struct reserved_memory
 } reserved_memory_t;
 static reserved_memory_t *resv_mem;
 
+static void* kalloc(uint32_t size, uint32_t align)
+{
+    sys_info.kernel_end = (((sys_info.kernel_end) / align) * align) + size;
+    return (void*) (sys_info.kernel_end - size);
+}
+
 void initilize_memorymanager()
 {
-    multiboot_memory_map_t *mmap = memory_map;
-    uint32_t entries = memory_map_len / (mmap->size + 4);
+    multiboot_memory_map_t *mmap = sys_info.memory_map;
+    uint32_t entries = sys_info.memory_map_len / (mmap->size + 4);
     total_ram = 0;
     reserved_mem_entries = 0;
     for (int i = 0; i < entries; i++)
@@ -53,8 +59,8 @@ void initilize_memorymanager()
             reserved_mem_entries++;
         }
     }
-    resv_mem = (void*) _kalloc(reserved_mem_entries * sizeof (reserved_memory_t), 1);
-    pm_stack = (void*) _kalloc((uint32_t) (total_ram / 0x400000) * sizeof (uint16_t), 4);
+    resv_mem = (void*) kalloc(reserved_mem_entries * sizeof (reserved_memory_t), 1);
+    pm_stack = (void*) kalloc((uint32_t) (total_ram / 0x400000) * sizeof (uint16_t), 4);
     pm_esp = ((uint32_t) (total_ram / 0x400000) - 1);
     for (int i = 0; i < entries; i++)
     {
@@ -66,7 +72,7 @@ void initilize_memorymanager()
                 for (uint32_t j = 0; j < mmap[i].len; j += 0x100000)
                 {
                     paddress = (uint32_t) (mmap[i].addr) + j;
-                    if (paddress >= 0x800000)
+                    if (paddress >= sys_info.kernel_end - 0xc0000000)
                     {
                         if ((paddress % 0x400000) == 0)
                         {

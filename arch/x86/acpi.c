@@ -25,101 +25,35 @@
 #include <string.h>
 #include <ctype.h>
 
-extern uint8_t kmemcmp(const char* src, const char* dst, uint32_t size);
 void* find_rspd(void);
 void * ioapic_base;
-__attribute__((section(".sdata"))) uint32_t _cpu_count;
-__attribute__((section(".sdata"))) uint32_t _ioapic_count;
-__attribute__((section(".sdata"))) uint32_t tmp;
-__attribute__((section(".sdata"))) void* _apic_base;
-__attribute__((section(".sdata"))) acpi_rsdp_t *_rsdp;
-acpi_rsdp_t *rsdp;
-
-__attribute__((section(".stext"))) void parse_acpi()
-{
-    _cpu_count = 0;
-    _rsdp = find_rspd();
-    if (_rsdp == 0)
-        __asm__("cli;hlt;");
-    acpi_rsdt_t *rsdt = (void*) (_rsdp->RsdtAddress);
-    uint32_t no_of_descriptors = ((rsdt->header.Length
-            - sizeof (acpi_description_header_t)) / 4);
-    acpi_description_header_t **adht = (void*) ((_rsdp->RsdtAddress)
-            + sizeof (acpi_description_header_t));
-
-    for (uint32_t i = 0; i < no_of_descriptors; i++)
-    {
-        if (adht[i]->Signature == ACPI_DESCRIPTION_HEADER_MADT)
-        {
-            adht += i;
-            break;
-        }
-    }
-    madt_structure_t *madt = (void*) *adht;
-    madt_entry_structure_t *madt_entry = &(madt->apic_entries);
-    uint32_t len = (madt->header.Length - offsetof(madt_structure_t, apic_entries));
-    _apic_base = madt->lapic;
-    while (len > 0)
-    {
-        if (madt_entry->length == 0)
-            __asm__("cli;hlt;");
-        switch (madt_entry->type)
-        {
-        case LOCAL_APIC:
-        {
-            _cpu_count++;
-        }
-        }
-        len -= madt_entry->length;
-        madt_entry = (void*) ((char*) madt_entry + (uint32_t) (madt_entry->length));
-    }
-    _cpu_count = 1;
-    _ioapic_count = 1;
-}
-
-__attribute__((section(".stext"))) void* find_rspd()
-{
-    uint8_t* ptr;
-    ptr = (void*) 0x40E;
-    ptr = (void*) ((uint32_t*) (ptr));
-    for (uint32_t i = 0; i < 1024; i += 2)
-    {
-        if (!kmemcmp((char*) (&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-        {
-            return (void*) (&ptr[i]);
-        }
-    }
-    ptr = (void*) 0xE0000;
-    for (uint32_t i = 0; i < 0x20000; i += 2)
-    {
-        if (!kmemcmp((char*) (&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-        {
-            return (void*) (&ptr[i]);
-        }
-    }
-    return 0;
-}
 
 void fix_refferances()
 {
-    identity_map_4mb((uint32_t) _apic_base);
-    lapic = _apic_base;
-    rsdp = _rsdp;
+    identity_map_4mb((uint32_t) sys_info.local_apic);
+    //lapic = _apic_base;
+    //rsdp = _rsdp;
 }
 
 static void default_apic_mapping(void)
 {
-    lapic->lvt_timer = LVT_MASKED | 32;
-    lapic->lvt_thermal = LVT_MASKED | 33;
-    lapic->lvt_perf = LVT_MASKED | 34;
-    lapic->lvt_lint0 = LVT_MASKED | 35;
-    lapic->lvt_lint1 = LVT_MASKED | 36;
-    lapic->lvt_err = LVT_MASKED | 37;
 
-    lapic->svr |= 0x100;
-    printf("\n svr=%x", lapic->tpr);
-    lapic->tpr = 0;
-    printf("\n svr=%x", lapic->tpr);
+    printf("\n local apic:%x", sys_info.local_apic);
+    sys_info.local_apic->lvt_timer = LVT_MASKED | 32;
+    sys_info.local_apic->lvt_thermal = LVT_MASKED | 33;
+    sys_info.local_apic->lvt_perf = LVT_MASKED | 34;
+    sys_info.local_apic->lvt_lint0 = LVT_MASKED | 35;
+    sys_info.local_apic->lvt_lint1 = LVT_MASKED | 36;
+    sys_info.local_apic->lvt_err = LVT_MASKED | 37;
+
+    sys_info.local_apic->svr |= 0x100;
+
+    printf("\n svr=%x", sys_info.local_apic->tpr);
+
+    sys_info.local_apic->tpr = 0;
+
+    printf("\n svr=%x", sys_info.local_apic->tpr);
+
     outb(0x21, 0xFF);
     outb(0xA1, 0xFF);
     outb(0x20, 0x11);
@@ -261,14 +195,21 @@ static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
 
 uint8_t get_acpi_tables()
 {
+
     default_apic_mapping();
+
     default_ioapic_mapping();
 
-    acpi_rsdt_t *rsdt = (void*) (rsdp->RsdtAddress);
+
+    acpi_rsdt_t *rsdt = (void*) (sys_info.rsdp->RsdtAddress);
+
     if (checksum((void*) rsdt, rsdt->header.Length))
         __asm__("cli;hlt;");
+
     uint32_t no_of_descriptors = ((rsdt->header.Length - sizeof (acpi_description_header_t)) / 4);
-    acpi_description_header_t **adht = (void*) ((rsdp->RsdtAddress) + sizeof (acpi_description_header_t));
+
+    acpi_description_header_t **adht = (void*) ((sys_info.rsdp->RsdtAddress) + sizeof (acpi_description_header_t));
+
     for (uint32_t i = 0; i < no_of_descriptors; i++)
     {
         if (adht[i]->Signature == ACPI_DESCRIPTION_HEADER_MADT)
@@ -277,9 +218,13 @@ uint8_t get_acpi_tables()
             break;
         }
     }
+
     madt_structure_t *madt = (void*) *adht;
+
     madt_entry_structure_t *madt_entry = &(madt->apic_entries);
+
     uint32_t len = (madt->header.Length - offsetof(madt_structure_t, apic_entries));
+
 
     while (len > 0)
     {

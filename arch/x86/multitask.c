@@ -40,21 +40,33 @@ static uint32_t getrandom(void)
 
 void init_multitask()
 {
+
     printf("\nCreating kernel process..");
+
     p_task = calloc(1, sizeof (task_info_t));
+
     p_task->task_id = getrandom();
+
     p_task->threads = calloc(1, sizeof (thread_info_t));
+
     p_task->threads->thread_id = getrandom();
+
     p_task->next_task = p_task;
+
     /*
      * main thread stack.
      */
-    stack_map |= 1;
-    core_info_t *cinfo = calloc(1, sizeof (core_info_t));
+    stack_map = 1;
+
+    core_info_t *cinfo = calloc(4, sizeof (core_info_t));
+
     cinfo->threads = p_task->threads;
+
     cinfo->task = p_task;
+
     /* Thread information block */
-    set_gdt_gate(&gt[0].ge[5], (uint32_t) (cinfo), (sizeof (core_info_t) + 4095) / 4096, 0xF2, 0xCF);
+    set_gdt_gate(&(sys_info.gdt_ptr->ge[5]), (uint32_t) (cinfo), (sizeof (core_info_t) + 4095) / 4096, 0xF2, 0xCF);
+
     __asm__("mov $0x28,%%ax;"
             "mov %%ax, %%fs;"
             :
@@ -99,20 +111,30 @@ int CreateThread(thread_t *thread, const uint32_t attr, void *((*start_routine)(
 
 void* CreateStack()
 {
+
     uint32_t* esp = 0;
+
     for (uint32_t i = 1; i < 16; i++)
     {
+
         if ((stack_map & (1 << i)) == 0)
         {
+
             stack_map = (uint16_t) (stack_map | (1 << i));
+
             break;
         }
         else
         {
+
             esp += 0x100000;
+
         }
     }
+
     esp = (uint32_t*) ((uint32_t) esp + (uint32_t) KERNEL_STACK_PTR);
+
     map_4mb((uint32_t) esp);
+
     return esp;
 }

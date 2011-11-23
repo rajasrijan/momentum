@@ -21,7 +21,6 @@
 #include "mm.h"
 #include "interrupts.h"
 #include "global.h"
-static paging_structure_t *pst;
 
 void new_paging_structure(paging_structure_t* ps)
 {
@@ -33,10 +32,13 @@ void map_4mb(uint32_t virtual_address)
     uint32_t boundry_4mb = (virtual_address / 0x400000);
     uint32_t boundry_4kb = boundry_4mb * 0x400;
     uint32_t memory_slab = get_4mb_block();
-    pst->page_directory[boundry_4mb] |= 3;
+    if (memory_slab == 0)
+        __asm__("cli;hlt;");
+    __asm__("xchg %bx,%bx;");
+    sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
     for (uint32_t i = 0; i < 0x400; i++)
     {
-        pst->page_table[boundry_4kb + i] = memory_slab | 3;
+        sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
     }
 }
@@ -60,7 +62,10 @@ extern paging_structure_t *ps;
 
 void init_paging()
 {
-    pst = (void*) ((uint32_t) ps + 0xC0000000);
+    /*
+     * stage 1 old.
+     */
+    //pst = (void*) ((uint32_t) ps + 0xC0000000);
     register_interrupt_handler(0x0E, page_fault_handler_4kpages);
 }
 
@@ -69,10 +74,10 @@ void identity_map_4mb(uint32_t address)
     uint32_t boundry_4mb = (address / 0x400000);
     uint32_t boundry_4kb = boundry_4mb * 0x400;
     uint32_t memory_slab = address & 0xFFC00000;
-    pst->page_directory[boundry_4mb] |= 3;
+    sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
     for (uint32_t i = 0; i < 0x400; i++)
     {
-        pst->page_table[boundry_4kb + i] = memory_slab | 3;
+        sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
     }
 }
@@ -82,10 +87,15 @@ void force_map(uint32_t physical, uint32_t virtual, uint32_t pages)
     uint32_t boundry_4mb = (virtual / 0x400000);
     uint32_t boundry_4kb = boundry_4mb * 0x400;
     uint32_t memory_slab = physical & 0xFFC00000;
-    pst->page_directory[boundry_4mb] |= 3;
+    sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
     for (uint32_t i = 0; i < pages; i++)
     {
-        pst->page_table[boundry_4kb + i] = memory_slab | 3;
+        sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
     }
+}
+
+uint32_t get_physical_address(uint32_t virtual)
+{
+    return ((sys_info.pst->page_table[(virtual / 0x1000)] & 0xFFFFF000) + (virtual & 0x00000FFF));
 }

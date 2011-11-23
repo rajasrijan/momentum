@@ -125,7 +125,6 @@ typedef struct interrupt_source_override_structure interrupt_source_override_str
 typedef struct madt_structure madt_structure_t;
 typedef struct madt_entry_structure madt_entry_structure_t;
 
-
 extern void* apic_base;
 void parse_acpi(void);
 void fix_refferances(void);
