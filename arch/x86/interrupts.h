@@ -22,16 +22,32 @@
 
 #include <stdint.h>
 
+typedef struct general_registers
+{
+    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; // Pushed by pusha.
+} __attribute__((packed)) general_registers_t;
+
+typedef struct iret_stack_different
+{
+    uint32_t eip, cs, eflags, useresp, ss; // Pushed by the processor automatically.
+} __attribute__((packed)) iret_stack_different_t;
+
+typedef struct iret_stack_same
+{
+    uint32_t eip, cs, eflags; // Pushed by the processor automatically.
+} __attribute__((packed)) iret_stack_same_t;
+
 typedef struct registers
 {
     uint32_t ds; // Data segment selector
-    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; // Pushed by pusha.
-    uint32_t int_no, err_code; // Interrupt number and error code (if applicable)
+    general_registers_t greg; // Pushed by pusha.
+    uint32_t int_no, err_esp; // Interrupt number and error code (if applicable)
 
-    /*
-     * Stack structure differs depending on difference in privilege level.
-     */
-    uint32_t eip, cs, eflags, useresp, ss; // Pushed by the processor automatically.
+    union
+    {
+        iret_stack_same_t same;
+        iret_stack_different_t different;
+    } __attribute__((packed)) iret_stack;
 } __attribute__((packed)) registers_t;
 
 typedef void (*isr_t)(registers_t*);

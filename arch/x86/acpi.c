@@ -25,8 +25,14 @@
 #include <string.h>
 #include <ctype.h>
 
+/*
 void* find_rspd(void);
 void * ioapic_base;
+ */
+
+/*
+ * Fix memory referances.kernel is located in 2gb+ space. unreff lower mem stuff.
+ */
 
 void fix_refferances()
 {
@@ -35,6 +41,9 @@ void fix_refferances()
     //rsdp = _rsdp;
 }
 
+/*
+ * Configure APIC to the default settings. Initial settings are OS specific.
+ */
 static void default_apic_mapping(void)
 {
 
@@ -70,6 +79,10 @@ static void default_apic_mapping(void)
     outb(0xA1, 0xFF);
 }
 
+/*
+ * Configure IO-APIC to the default settings.
+ * Default settings are taken from MultiProcessor(MP) spec.
+ */
 static void default_ioapic_mapping(void)
 {
     init_ioapic();
@@ -157,6 +170,9 @@ static void default_ioapic_mapping(void)
     outb(0x23, 0x1);
 }
 
+/*
+ * Override the default interrupt pin.Configure a IO-APIC pin to a IRQ number.
+ */
 static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
 {
     uint32_t hi_pin, lo_pin;
@@ -193,6 +209,12 @@ static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
     write_ioapic(lo_pin, 0x00010000 | IRQ(source) | flags_lo);
 }
 
+/*
+ * Initilizes APIC to dafault value.
+ * Finds ACPI rsdp pointer.
+ * Very basic ACPI phrasing of ACPI tables.
+ * Initilizes IO-APIC.
+ */
 uint8_t get_acpi_tables()
 {
 

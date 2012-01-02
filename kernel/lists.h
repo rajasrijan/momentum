@@ -17,45 +17,23 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MULTITASK_H
-#define	MULTITASK_H
+#ifndef LISTS_H
+#define	LISTS_H
 
 #ifdef	__cplusplus
 extern "C"
 {
 #endif
 
-#include "multitask.h"
-#include "interrupts.h"
-#include "../kernel/lists.h"
-
-typedef struct thread_info
+typedef struct linked_list
 {
-    uint32_t task_id;
-    uint32_t thread_id;
-    uint32_t isactive;
-    registers_t context;
-} thread_info_t;
+    void* pointer;
+    struct linked_list *next, *prev;
+} linked_list_t;
 
-typedef struct core_info
-{
-    thread_info_t *threads;
-} __attribute__((packed)) core_info_t;
-
-typedef struct thread
-{
-    uint32_t id;
-} thread_t;
-
-void init_multitask(void);
-void* CreateStack(void);
-int CreateThread(uint32_t *thread, const uint32_t attr, void *((*start_routine)(void*)), void *arg);
-void init_kernel_stack(void);
-void change_thread(registers_t *reg);
-void thread_end(void);
 #ifdef	__cplusplus
 }
 #endif
 
-#endif	/* MULTITASK_H */
+#endif	/* LISTS_H */
 

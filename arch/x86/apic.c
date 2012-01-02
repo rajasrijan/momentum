@@ -24,6 +24,9 @@
 ioapic_t* ioapic;
 static void* find_rspd(void);
 
+/*
+ * Very basic and file private memory compare(memcmp).
+ */
 static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
 {
     for (int i = 0; i < size; i++)
@@ -32,28 +35,46 @@ static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
     return 0;
 }
 
+/*
+ * Initilize IO-APIC.
+ */
 void init_ioapic()
 {
+    /*
+     * If there is a better way let me know.
+     */
     ioapic = (void*) 0xFEC00000;
 }
 
+/*
+ * Write to IO-APIC
+ */
 void write_ioapic(uint32_t offset, uint32_t value)
 {
     ioapic->ioregsel = offset;
     ioapic->iowin = value;
 }
 
+/*
+ * Read from IO-APIC.
+ */
 uint32_t read_ioapic(uint32_t offset)
 {
     ioapic->ioregsel = offset;
     return ioapic->iowin;
 }
 
+/*
+ * Enable an IO-APIC pin.
+ */
 void apic_pin_enable(uint32_t pin)
 {
     write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
 }
 
+/*
+ * Initilize APIC timer.
+ */
 void init_apic_timer(uint32_t frequency)
 {
     outb(0x21, 0xFF);
@@ -64,6 +85,9 @@ void init_apic_timer(uint32_t frequency)
     sys_info.local_apic->init_count = frequency;
 }
 
+/*
+ * Find ACPI rsdp.
+ */
 static void* find_rspd()
 {
     uint8_t* ptr;
@@ -85,4 +109,12 @@ static void* find_rspd()
         }
     }
     return 0;
+}
+
+/*
+ * Send End of interrupt to APIC. INCOMPLETE.
+ */
+void send_eoi()
+{
+    sys_info.local_apic->eoi = 0;
 }

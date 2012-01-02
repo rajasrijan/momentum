@@ -31,7 +31,6 @@
 
 void stage2(void);
 void* t1(void* arg);
-static void state_c0(void);
 extern uint32_t stack;
 
 void stage2(void)
@@ -46,40 +45,28 @@ void stage2(void)
         __asm__("cli;hlt;");
     init_apic_timer(0x0FFFFFF);
     //init_keyboard();
-    printf("\n%x", (& stack));
-    uint32_t *esp = 0;
-    __asm__("mov %%esp,%0" : "=r"(esp) : :);
-    esp = (void*) ((uint32_t) CreateStack()+(uint32_t) esp - ((uint32_t) & stack));
-    __asm__("xchg %%bx,%%bx;"
-            "mov %0,%%esp" : : "r"(esp) :);
     init_multitask();
 
     // clrscr();
 
-    thread_t tid;
-    CreateThread(&tid, 0, &t1, (void*) 0xBADA55);
-    __asm__("sti");
-    printf("some string");
-    while (1)
-    {
-        __asm__("pause");
-    }
+    //thread_t tid;
+    change_thread(&(((thread_info_t*) (sys_info.thread_list->pointer))->context));
 }
 
 void* t1(void* arg)
 {
-    __asm__ volatile("xchg %%bx,%%bx;" :);
-    printf("some string.");
+    __asm__("xchg %%bx,%%bx"::);
+    printf("\nArgument is %x", arg);
+}
+
+void state_c0()
+{
+    printf("some string");
+    uint32_t tid;
+    CreateThread(&tid, 0, &t1, (void*) 0xBADA55);
     while (1)
     {
         __asm__("pause");
     }
 }
 
-static void state_c0()
-{
-    while (1)
-    {
-        __asm__("pause");
-    }
-}

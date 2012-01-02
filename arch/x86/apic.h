@@ -58,6 +58,7 @@ void init_ioapic(void);
 void write_ioapic(uint32_t offset, uint32_t value);
 uint32_t read_ioapic(uint32_t offset);
 void apic_pin_enable(uint32_t pin);
+void send_eoi(void);
 #ifdef	__cplusplus
 }
 #endif

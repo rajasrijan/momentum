@@ -45,7 +45,7 @@ void map_4mb(uint32_t virtual_address)
 
 static void page_fault_handler_4kpages(registers_t* regs)
 {
-    printf("\nError code: 0x%x", regs->err_code);
+    printf("\nError code: 0x%x", regs->err_esp);
     uint32_t cr2;
     __asm__ volatile("mov %%cr2, %0" : "=b"(cr2));
     printf("\npage fault at address: 0x%x", cr2);
@@ -57,8 +57,6 @@ static void page_fault_handler_4kpages(registers_t* regs)
     }
     map_4mb(cr2);
 }
-
-extern paging_structure_t *ps;
 
 void init_paging()
 {

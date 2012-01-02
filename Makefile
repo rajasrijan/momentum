@@ -21,6 +21,7 @@ OBJECT := arch/x86/loader.o arch/x86/arch_hal.o arch/x86/interrupts.o \
 	arch/x86/video.o arch/x86/timer.o arch/x86/apic.o arch/x86/multitask.o \
 	arch/x86/keyboard.o \
 	libc/stdio.o libc/string.o libc/stdlib.o \
+	kernel/vfs.o \
 	main.o
 
 CC := i686-elf-gcc

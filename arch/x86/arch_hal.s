@@ -19,33 +19,29 @@
 
 [EXTERN isr_handler]
 [EXTERN irq_handler]
-[global irq_common_stub]
+[GLOBAL irq_common_stub]
+[GLOBAL get_eflags]
+[GLOBAL get_cpl]
+[GLOBAL switch_context]
+[GLOBAL get_spin_lock]
+[GLOBAL release_spin_lock]
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
-  [GLOBAL isr%1]        ; %1 accesses the first parameter.
-  isr%1:
-    cli
-    push byte 0
-    push byte %1
-    jmp isr_common_stub
+	[GLOBAL isr%1]        ; %1 accesses the first parameter.
+isr%1:
+    CLI
+    PUSH ESP
+    PUSH BYTE %1
+    JMP isr_common_stub
 %endmacro
 
 %macro ISR_ERRCODE 1
-  [GLOBAL isr%1]
-  isr%1:
-    cli
-    push byte %1
-    jmp isr_common_stub
+	[GLOBAL isr%1]
+isr%1:
+    CLI
+    PUSH BYTE %1
+    JMP isr_common_stub
 %endmacro 
-
-%macro IRQ 2
-  global irq%1
-  irq%1:
-    cli
-    push byte 0
-    push byte %2
-    jmp irq_common_stub
-%endmacro
-
+	
 ISR_NOERRCODE 0
 ISR_NOERRCODE 1
 ISR_NOERRCODE 2
@@ -117,26 +113,72 @@ ISR_NOERRCODE 64
 ; up for kernel mode segments, calls the C-level fault handler,
 ; and finally restores the stack frame.
 isr_common_stub:
-   pusha                    ; Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax
-
-   mov ax, ds               ; Lower 16-bits of eax = ds.
-   push eax                 ; save the data segment descriptor
-
-   mov ax, 0x10  ; load the kernel data segment descriptor
-   mov ds, ax
-   mov es, ax
-   ;mov fs, ax fs must remain unchanged.
-   mov gs, ax
-
-   call isr_handler
-
-   pop eax        ; reload the original data segment descriptor
-   mov ds, ax
-   mov es, ax
-   ;mov fs, ax fs must remain unchanged.
-   mov gs, ax
-
-   popa                     ; Pops edi,esi,ebp...
-   add esp, 8     ; Cleans up the pushed error code and pushed ISR number
-   sti
-   iretd           ; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
+	PUSHA                    ; PUSHES EDI,ESI,EBP,ESP,EBX,EDX,ECX,EAX
+	
+	MOV AX, DS               ; LOWER 16-BITS OF EAX = DS.
+	PUSH EAX                 ; SAVE THE DATA SEGMENT DESCRIPTOR
+	
+	MOV AX, 0X10  ; LOAD THE KERNEL DATA SEGMENT DESCRIPTOR
+	MOV DS, AX
+	MOV ES, AX
+	;MOV FS, AX FS MUST REMAIN UNCHANGED.
+	MOV GS, AX
+	
+	CALL isr_handler
+	
+	POP EAX        ; RELOAD THE ORIGINAL DATA SEGMENT DESCRIPTOR
+	MOV DS, AX
+	MOV ES, AX
+	;MOV FS, AX FS MUST REMAIN UNCHANGED.
+	MOV GS, AX
+	
+	POPA                     ; POPS EDI,ESI,EBP...
+	ADD ESP, 8     ; CLEANS UP THE PUSHED ERROR CODE AND PUSHED ISR NUMBER
+	STI
+	IRETD           ; POPS 5 THINGS AT ONCE: CS, EIP, EFLAGS, SS, AND ESP
+	
+get_eflags:
+	pushfd
+	POP EAX
+	RET
+	
+switch_context:
+	XCHG BX,BX
+	MOV ESP,[ESP+4]
+	POP DS
+	POPA
+	IRETD
+	
+get_cpl:
+	XOR EAX,EAX
+	PUSH CS
+	POP AX
+	AND EAX,0X3
+	RET
+	
+atomic_exchange:
+	MOV EBX,[ESP+4]
+	MOV EAX,[ESP+8]
+	MOV [EBX],EAX
+	RET
+	
+get_spin_lock:
+	MOV EBX, [ESP+4]
+	CMP DWORD [EBX], 0 ;CHECK IF LOCK IS FREE
+	JE Get_Lock
+	PAUSE ;Short delay
+	JMP get_spin_lock
+Get_Lock:
+	MOV EAX, 1
+	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
+	CMP EAX, 0 ;TEST IF SUCCESSFUL
+	JNE get_spin_lock
+	RET
+	
+release_spin_lock:
+	MOV EBX,DWORD [ESP+4]
+	MOV DWORD [EBX],0
+	RET
+	
+        
+        

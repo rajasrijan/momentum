@@ -24,6 +24,7 @@
 #include "global.h"
 #include "multitask.h"
 #include "apic.h"
+#include "../kernel/lists.h"
 
 static inline void push(uint32_t** ptr, uint32_t value)
 {
@@ -55,107 +56,13 @@ static void print_gdt(void)
 void apic_timer_callback(registers_t* reg)
 {
     static uint32_t tick = 0;
-    tick++;
-    thread_info_t *thread = 0;
-    task_info_t *task = 0;
-    /*
-     * Save context.
-     */
-    __asm__ volatile("xchg %%bx,%%bx;"::);
-    __asm__ volatile("mov %%fs:(0x0),%0;"
-            : "=r"(thread)
-            );
-    __asm__ volatile("mov %%fs:(0x4),%0;"
-            : "=r"(task)
-            );
-    //print_gdt();
-    printf("\nThread address(%x)", thread);
-    printf("\nNext thread (%x)", thread->thread_id);
-    printf("\nNext thread (%x)", thread->next_thread);
-    thread->context = *reg;
-    /*
-     * Get next thread.
-     */
-
-    if (thread->next_thread != 0)
-    {
-        thread = thread->next_thread;
-    }
-    else
-    {
-        task = task->next_task;
-        thread = task->threads;
-    }
-    printf("\nThread address(%x)", thread);
-    printf("\nNext thread (%x)", thread->thread_id);
-    printf("\nNext thread (%x)", thread->next_thread);
-    DBG_OUTPUT
-    __asm__ volatile("mov %0,%%fs:(0x0);" ::"r"(thread));
-    DBG_OUTPUT
-    __asm__ volatile("mov %0,%%fs:(0x4);" ::"r"(task));
-    DBG_OUTPUT
-
-            /*
-             * Setup proper stack.
-             * current privilege level is ring 0.
-             */
-    switch ((reg->cs) & 0x3)
-    {
-    case 0:
-    {
-        /*
-         * Interrupt to same privilege.
-         * 'ESP' is not saved. We have to change it manually.
-         */
-        DBG_OUTPUT
-        thread->context.eflags |= 0x200;
-        DBG_OUTPUT
-        uint32_t *esp = (uint32_t*) thread->context.esp;
-        DBG_OUTPUT
-        esp -= 9;
-        DBG_OUTPUT
-        memcpy((void*) esp, (void*) &(thread->context), offsetof(registers_t, useresp));
-        DBG_OUTPUT
-        __asm__("xchg %%bx,%%bx;"
-                "mov %0,%%esp;"
-                "pop %%eax;"
-                "mov %%ax,%%ds;"
-                "mov %%ax,%%es;"
-                "mov %%ax,%%gs;"
-                "movl $0x0,(%1);"// Send EOI to Local APIC eoi register
-                "popa;"
-                "add $8,%%esp;"
-                "sti;" //Not executed till iret.
-                "iret;"
-                :
-                : "r"(esp), "r"(&(sys_info.local_apic->eoi))
-                );
-        /*
-        
-                push(&esp, thread->context.eflags);
-                push(&esp, thread->context.cs);
-                push(&esp, thread->context.eip);
-
-        
-                push(&esp, thread->context.eax);
-                push(&esp, thread->context.ecx);
-                push(&esp, thread->context.edx);
-                push(&esp, thread->context.ebx);
-                push(&esp, thread->context.esp);
-                push(&esp, thread->context.ebp);
-                push(&esp, thread->context.esi);
-                push(&esp, thread->context.edi);
-                __asm__ volatile("xchg %%bx,%%bx;"
-                        "mov %0,%%esp;"
-                        "popa;"
-                        "iret;"
-                        : "=r"(esp)
-                        );
-         */
-        break;
-    }
-    }
-    DBG_OUTPUT
+    printf("\nTick:%x esp:%x", tick++, reg->err_esp);
+    get_spin_lock(&(sys_info.task_list_mutex));
+    ((thread_info_t*) (sys_info.thread_list->pointer))->context = *reg;
+    sys_info.thread_list = sys_info.thread_list->next;
+    release_spin_lock(&(sys_info.task_list_mutex));
+    send_eoi();
+    change_thread(&(((thread_info_t*) (sys_info.thread_list->pointer))->context));
 }
 
 void init_timer(uint32_t frequency)

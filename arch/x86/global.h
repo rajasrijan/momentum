@@ -35,6 +35,8 @@
 #include "acpi.h"
 #include "apic.h"
 #include "../../libc/stdio.h"
+#include "../../kernel/lists.h"
+
 extern void* _kalloc(uint32_t size, uint32_t align);
 extern void* memory_map;
 extern uint32_t memory_map_len;
@@ -50,6 +52,8 @@ typedef struct system_info
     lapic_t *local_apic;
     idt_t *idt_ptr;
     acpi_rsdp_t* rsdp;
+    linked_list_t *thread_list;
+    uint32_t task_list_mutex;
 } __attribute__((packed)) system_info_t;
 
 system_info_t sys_info;
@@ -85,5 +89,13 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
 }
 
 void* __attribute__((stdcall)) alined_alloc(uint32_t size, uint32_t alignment);
-
+uint32_t get_eflags(void);
+/*
+ * gets the current previlage leval.
+ */
+uint32_t get_cpl(void);
+void switch_context(uint32_t esp);
+void get_spin_lock(void* lock_ptr);
+void release_spin_lock(void* lock_ptr);
+void state_c0(void);
 #endif
