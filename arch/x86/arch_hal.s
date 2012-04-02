@@ -1,5 +1,5 @@
 ;
-; Copyright 2009-2011 Srijan Kumar Sharma
+; Copyright 2009-2012 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ; 
@@ -25,6 +25,7 @@
 [GLOBAL switch_context]
 [GLOBAL get_spin_lock]
 [GLOBAL release_spin_lock]
+[GLOBAL get_cr3]
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
 	[GLOBAL isr%1]        ; %1 accesses the first parameter.
 isr%1:
@@ -180,5 +181,6 @@ release_spin_lock:
 	MOV DWORD [EBX],0
 	RET
 	
-        
-        
+get_cr3:
+        MOV EAX,CR3
+        RET

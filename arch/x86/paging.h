@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,6 +20,7 @@
 #ifndef PAGING_H
 #define	PAGING_H
 #include <stdint.h>
+#include "../../kernel/lists.h"
 
 struct paging_structure
 {
@@ -27,8 +28,15 @@ struct paging_structure
     uint32_t page_table[1024 * 1024];
 };
 
+typedef struct _pt_cache_unit
+{
+    uint32_t paddress_flags;
+    uint32_t start_page, no_of_pages;
+} pt_cache_unit_t;
+
+
 void map_4mb(uint32_t virtual_address);
-typedef struct paging_structure paging_structure_t;
+typedef volatile struct paging_structure paging_structure_t;
 void new_paging_structure(paging_structure_t* ps);
 void init_paging(void);
 void identity_map_4mb(uint32_t address);
@@ -36,4 +44,3 @@ void force_map(uint32_t physical, uint32_t virtual, uint32_t pages);
 uint32_t get_physical_address(uint32_t virtual);
 
 #endif	/* PAGING_H */
-

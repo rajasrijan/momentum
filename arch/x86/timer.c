@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -56,13 +56,13 @@ static void print_gdt(void)
 void apic_timer_callback(registers_t* reg)
 {
     static uint32_t tick = 0;
-    printf("\nTick:%x esp:%x", tick++, reg->err_esp);
     get_spin_lock(&(sys_info.task_list_mutex));
     ((thread_info_t*) (sys_info.thread_list->pointer))->context = *reg;
     sys_info.thread_list = sys_info.thread_list->next;
     release_spin_lock(&(sys_info.task_list_mutex));
     send_eoi();
-    change_thread(&(((thread_info_t*) (sys_info.thread_list->pointer))->context));
+
+    change_thread((thread_info_t*) (sys_info.thread_list->pointer));
 }
 
 void init_timer(uint32_t frequency)

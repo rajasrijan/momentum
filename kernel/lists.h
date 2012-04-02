@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -25,12 +25,31 @@ extern "C"
 {
 #endif
 
+#include <stdint.h>
+
 typedef struct linked_list
 {
     void* pointer;
     struct linked_list *next, *prev;
 } linked_list_t;
 
+struct _vector_list;
+
+void vector_init_fn(struct _vector_list* list, uint32_t data_size);
+typedef void (vector_push) (struct _vector_list* list, void* data);
+typedef void* (vector_at) (struct _vector_list* list, uint32_t index);
+typedef uint32_t(vector_size)(struct _vector_list* list);
+
+typedef struct _vector_list
+{
+    void* data;
+    uint32_t data_size;
+    uint32_t buffer_size;
+    uint32_t current_buffer_ptr;
+    vector_push *push;
+    vector_at *at;
+    vector_size *size;
+} vector_list_t;
 #ifdef	__cplusplus
 }
 #endif

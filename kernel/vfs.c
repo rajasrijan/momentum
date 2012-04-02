@@ -1,4 +1,6 @@
 /*
+ * Copyright 2009-2012 Srijan Kumar Sharma
+ * 
  * This file is part of Momentum.
  * 
  * Momentum is free software: you can redistribute it and/or modify
@@ -14,6 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
- #include "vfs.h"
+
+#include "vfs.h"
 #include "../libc/stdlib.h"
+
+/*
+ * Fill up some basic structures.
+ */
+void init_vfs()
+{
+    vfsRoot=calloc(1,sizeof(inode));
+}

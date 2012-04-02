@@ -18,10 +18,11 @@ PATH:=$(PATH):/usr/local/bin:/usr/local/lib
 OBJECT := arch/x86/loader.o arch/x86/arch_hal.o arch/x86/interrupts.o \
 	arch/x86/stage2.o arch/x86/descriptor_tables.o \
 	arch/x86/paging.o arch/x86/global.o arch/x86/acpi.o arch/x86/mm.o \
-	arch/x86/video.o arch/x86/timer.o arch/x86/apic.o arch/x86/multitask.o \
+	arch/x86/video.o arch/x86/timer.o arch/x86/apic.o arch/x86/pci.o \
+	arch/x86/multitask.o \
 	arch/x86/keyboard.o \
 	libc/stdio.o libc/string.o libc/stdlib.o \
-	kernel/vfs.o \
+	kernel/vfs.o kernel/lists.o\
 	main.o
 
 CC := i686-elf-gcc

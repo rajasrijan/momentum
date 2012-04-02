@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -21,6 +21,8 @@
 #include "mm.h"
 #include "interrupts.h"
 #include "global.h"
+#include "../../libc/string.h"
+#include "../../libc/stdlib.h"
 
 void new_paging_structure(paging_structure_t* ps)
 {
@@ -77,6 +79,7 @@ void identity_map_4mb(uint32_t address)
     {
         sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
+        __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
     }
 }
 
@@ -90,6 +93,7 @@ void force_map(uint32_t physical, uint32_t virtual, uint32_t pages)
     {
         sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
+        __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
     }
 }
 

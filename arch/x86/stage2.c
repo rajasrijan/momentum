@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -27,7 +27,9 @@
 #include "cpu.h"
 #include "keyboard.h"
 #include "multitask.h"
-#include <stdio.h>
+#include "stdio.h"
+#include "../../kernel/vfs.h"
+#include "pci.h"
 
 void stage2(void);
 void* t1(void* arg);
@@ -43,14 +45,16 @@ void stage2(void)
 
     if (!get_acpi_tables())
         __asm__("cli;hlt;");
+
     init_apic_timer(0x0FFFFFF);
     //init_keyboard();
     init_multitask();
-
+    init_vfs();
+    init_pci_devices();
     // clrscr();
 
     //thread_t tid;
-    change_thread(&(((thread_info_t*) (sys_info.thread_list->pointer))->context));
+    change_thread((thread_info_t*) (sys_info.thread_list->pointer));
 }
 
 void* t1(void* arg)

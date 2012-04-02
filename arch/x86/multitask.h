@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -27,14 +27,16 @@ extern "C"
 
 #include "multitask.h"
 #include "interrupts.h"
+#include "paging.h"
 #include "../kernel/lists.h"
 
 typedef struct thread_info
 {
-    uint32_t task_id;
-    uint32_t thread_id;
+    uint32_t ProcessID;
+    uint32_t ThreadID;
     uint32_t isactive;
     registers_t context;
+    vector_list_t *page_table;
 } thread_info_t;
 
 typedef struct core_info
@@ -49,9 +51,10 @@ typedef struct thread
 
 void init_multitask(void);
 void* CreateStack(void);
+void DestroyStack(uint32_t esp);
 int CreateThread(uint32_t *thread, const uint32_t attr, void *((*start_routine)(void*)), void *arg);
 void init_kernel_stack(void);
-void change_thread(registers_t *reg);
+void change_thread(thread_info_t* thread);
 void thread_end(void);
 #ifdef	__cplusplus
 }

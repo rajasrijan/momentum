@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -64,10 +64,24 @@ static inline void outb(unsigned short port, unsigned char val)
             : : "a"(val), "Nd"(port));
 }
 
+static inline void outl(unsigned short port, uint32_t val)
+{
+    __asm__ volatile( "outl %0, %1"
+            : : "a"(val), "Nd"(port));
+}
+
 static inline uint8_t inb(uint16_t port)
 {
     uint8_t ret;
     __asm__ volatile( "inb %1, %0"
+            : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+static inline uint32_t inl(uint16_t port)
+{
+    uint32_t ret;
+    __asm__ volatile( "inl %1, %0"
             : "=a"(ret) : "Nd"(port));
     return ret;
 }
@@ -94,6 +108,7 @@ uint32_t get_eflags(void);
  * gets the current previlage leval.
  */
 uint32_t get_cpl(void);
+uint32_t* get_cr3(void);
 void switch_context(uint32_t esp);
 void get_spin_lock(void* lock_ptr);
 void release_spin_lock(void* lock_ptr);

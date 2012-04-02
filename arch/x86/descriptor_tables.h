@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -47,8 +47,8 @@ struct gdt_struct
     struct gdt_entry_struct ge[GDT_COUNT]; // The address of the first gdt_entry_t struct.
 } __attribute__((packed));
 
-typedef struct gdt_ptr_struct gdt_ptr_t;
-typedef struct gdt_entry_struct gdt_entry_t;
+typedef volatile struct gdt_ptr_struct gdt_ptr_t;
+typedef volatile struct gdt_entry_struct gdt_entry_t;
 typedef struct gdt_struct gdt_t;
 
 // A struct describing an interrupt gate.
@@ -61,7 +61,7 @@ struct idt_entry_struct
     uint8_t flags; // More flags. See documentation.
     uint16_t base_hi; // The upper 16 bits of the address to jump to.
 } __attribute__((packed));
-typedef struct idt_entry_struct idt_entry_t;
+typedef volatile struct idt_entry_struct idt_entry_t;
 
 // A struct describing a pointer to an array of interrupt handlers.
 // This is in a format suitable for giving to 'lidt'.
@@ -71,7 +71,7 @@ struct idt_ptr_struct
     uint16_t limit;
     uint32_t base; // The address of the first element in our idt_entry_t array.
 } __attribute__((packed));
-typedef struct idt_ptr_struct idt_ptr_t;
+typedef volatile struct idt_ptr_struct idt_ptr_t;
 
 struct idt_struct
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2011 Srijan Kumar Sharma
+ * Copyright 2009-2012 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -33,7 +33,7 @@ static void keyboard_handler(registers_t *regs)
     if (index > 1024)
         return;
     if (scan_code <= max_key)
-        printf("keycode %d",key_grid[scan_code - 1]);
+        printf("keycode %d", key_grid[scan_code - 1]);
 }
 
 void init_keyboard()
