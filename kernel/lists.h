@@ -36,9 +36,9 @@ typedef struct linked_list
 struct _vector_list;
 
 void vector_init_fn(struct _vector_list* list, uint32_t data_size);
-typedef void (vector_push) (struct _vector_list* list, void* data);
-typedef void* (vector_at) (struct _vector_list* list, uint32_t index);
-typedef uint32_t(vector_size)(struct _vector_list* list);
+typedef int (vector_push) (struct _vector_list* list, void* data);
+typedef void* (vector_at) (const struct _vector_list* list, uint32_t index);
+typedef uint32_t(vector_size)(const struct _vector_list* list);
 
 typedef struct _vector_list
 {

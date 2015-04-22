@@ -37,40 +37,58 @@ extern uint32_t stack;
 
 void stage2(void)
 {
+    clrscr();
+    DBG_OUTPUT
     init_idt();
+    DBG_OUTPUT
     init_paging();
+    DBG_OUTPUT
     initilize_memorymanager();
+    DBG_OUTPUT
     create_kernel_heap();
+    DBG_OUTPUT
     fix_refferances();
-
+    DBG_OUTPUT
     if (!get_acpi_tables())
         __asm__("cli;hlt;");
-
-    init_apic_timer(0x0FFFFFF);
-    //init_keyboard();
+    DBG_OUTPUT
+    init_apic_timer(0x00FFFFF);
+    DBG_OUTPUT
+    init_keyboard();
+    DBG_OUTPUT
     init_multitask();
+    DBG_OUTPUT
     init_vfs();
+    DBG_OUTPUT
     init_pci_devices();
     // clrscr();
-
     //thread_t tid;
+    /*
+     * change_thread enables interrupts and changes execution to state_c0()
+     */
+    DBG_OUTPUT
     change_thread((thread_info_t*) (sys_info.thread_list->pointer));
 }
 
 void* t1(void* arg)
 {
-    __asm__("xchg %%bx,%%bx"::);
-    printf("\nArgument is %x", arg);
+    printf("\nWelcome to MomentumOS (c)\nBy Srijan Kumar Sharma.");
 }
 
+/*
+ * kernel thread
+ * wish there were naked functions in gcc.
+ */
 void state_c0()
 {
-    printf("some string");
+    printf("\nKernal thread started.");
+    //init_drivers();
     uint32_t tid;
-    CreateThread(&tid, 0, &t1, (void*) 0xBADA55);
+    CreateThread(&tid, 0, &t1, (void*) 0);
+    __asm__("sti");
     while (1)
     {
-        __asm__("pause");
+        __asm__("pause;"
+                "hlt;");
     }
 }
-

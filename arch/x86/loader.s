@@ -101,6 +101,7 @@ loader:
         lea ecx,[eax+6]
         mov dword [eax+2],ecx
         lgdt [eax]
+        xchg bx,bx
         jmp 0x08:(.reload_cs - 0xC0000000)
 .reload_cs:
         MOV   AX, 0x10 ; 0x10 points at the new data selector
@@ -150,8 +151,10 @@ loader:
         xor edx,edx
         mov ecx,0x400000
         div ecx
+        inc eax
         xor ecx,ecx
         xchg eax,ecx
+        xchg bx,bx
 .allocate_pages:
         push ecx
         push eax

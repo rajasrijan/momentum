@@ -24,6 +24,7 @@
 [GLOBAL get_cpl]
 [GLOBAL switch_context]
 [GLOBAL get_spin_lock]
+[GLOBAL get_async_spin_lock]
 [GLOBAL release_spin_lock]
 [GLOBAL get_cr3]
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
@@ -174,6 +175,14 @@ Get_Lock:
 	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
 	CMP EAX, 0 ;TEST IF SUCCESSFUL
 	JNE get_spin_lock
+	RET
+
+get_async_spin_lock:
+	MOV EBX, [ESP+4]
+	MOV EAX, DWORD [EBX]
+	OR EAX,1
+	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
+	AND EAX, 1
 	RET
 	
 release_spin_lock:

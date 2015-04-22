@@ -24,6 +24,7 @@
 
 void apic_timer_callback(registers_t* reg);
 void init_timer(uint32_t frequency);
+void sleep(uint32_t delay);
 
 #endif	/* TIMER_H */
 

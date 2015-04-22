@@ -42,6 +42,7 @@ void map_4mb(uint32_t virtual_address)
     {
         sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
+        __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
     }
 }
 
@@ -55,9 +56,9 @@ static void page_fault_handler_4kpages(registers_t* regs)
     {
         printf("\nMemmory is reserved.");
         identity_map_4mb(cr2);
-        return;
     }
-    map_4mb(cr2);
+    else
+        map_4mb(cr2);
 }
 
 void init_paging()
@@ -73,6 +74,11 @@ void identity_map_4mb(uint32_t address)
 {
     uint32_t boundry_4mb = (address / 0x400000);
     uint32_t boundry_4kb = boundry_4mb * 0x400;
+#warning "wtf is this"
+    /*
+     * wtf is this
+     * 'uint32_t memory_slab = address & 0xFFC00000;'
+     */
     uint32_t memory_slab = address & 0xFFC00000;
     sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
     for (uint32_t i = 0; i < 0x400; i++)
@@ -87,11 +93,11 @@ void force_map(uint32_t physical, uint32_t virtual, uint32_t pages)
 {
     uint32_t boundry_4mb = (virtual / 0x400000);
     uint32_t boundry_4kb = boundry_4mb * 0x400;
-    uint32_t memory_slab = physical & 0xFFC00000;
+    uint32_t memory_slab = physical & 0xFFFFF000;
     sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
     for (uint32_t i = 0; i < pages; i++)
     {
-        sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
+        sys_info.pst->page_table[(virtual / 0x1000) + i] = memory_slab | 3;
         memory_slab += 0x1000;
         __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
     }

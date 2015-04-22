@@ -22,6 +22,7 @@
 #include <ctype.h>
 
 uint64_t total_ram;
+uint32_t ram_end;
 static void mm_push(uint16_t val);
 static uint16_t mm_pop(void);
 static uint16_t *pm_stack;
@@ -47,6 +48,7 @@ void initilize_memorymanager()
     multiboot_memory_map_t *mmap = sys_info.memory_map;
     uint32_t entries = sys_info.memory_map_len / (mmap->size + 4);
     total_ram = 0;
+    ram_end = 0;
     reserved_mem_entries = 0;
     for (int i = 0; i < entries; i++)
     {
@@ -58,6 +60,8 @@ void initilize_memorymanager()
         {
             reserved_mem_entries++;
         }
+        if (ram_end <= ((uint32_t) (mmap[i].addr) + (uint32_t) (mmap[i].len)))
+            ram_end = ((uint32_t) (mmap[i].addr) + (uint32_t) (mmap[i].len));
     }
     resv_mem = (void*) kalloc(reserved_mem_entries * sizeof (reserved_memory_t), 1);
     pm_stack = (void*) kalloc((uint32_t) (total_ram / 0x400000) * sizeof (uint16_t), 4);
@@ -177,6 +181,7 @@ void* _malloc(uint32_t length)
 
 void _free(void *ptr)
 {
+#warning compact heap.
     heap_t *heap_ptr = (void*) ((char*) ptr - sizeof (heap_t));
     if (checksum((uint8_t*) heap_ptr, sizeof (heap_t)) != 0)
     {

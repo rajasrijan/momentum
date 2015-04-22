@@ -1,18 +1,18 @@
 /*
  * Copyright 2009-2012 Srijan Kumar Sharma
- * 
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -25,6 +25,8 @@
 #include "multitask.h"
 #include "apic.h"
 #include "../kernel/lists.h"
+
+static volatile uint32_t tick = 0;
 
 static inline void push(uint32_t** ptr, uint32_t value)
 {
@@ -55,11 +57,9 @@ static void print_gdt(void)
 
 void apic_timer_callback(registers_t* reg)
 {
-    static uint32_t tick = 0;
-    get_spin_lock(&(sys_info.task_list_mutex));
+    tick++;
     ((thread_info_t*) (sys_info.thread_list->pointer))->context = *reg;
-    sys_info.thread_list = sys_info.thread_list->next;
-    release_spin_lock(&(sys_info.task_list_mutex));
+    sys_info.thread_list = getNextThreadListInQueue();
     send_eoi();
 
     change_thread((thread_info_t*) (sys_info.thread_list->pointer));
@@ -86,4 +86,9 @@ void init_timer(uint32_t frequency)
     outb(0x40, l);
     outb(0x40, h);
      */
+}
+
+void sleep(uint32_t delay)
+{
+    for (uint32_t start_tick = tick; (tick - start_tick) < delay;);
 }

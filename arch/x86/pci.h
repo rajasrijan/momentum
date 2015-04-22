@@ -124,14 +124,41 @@ typedef struct _PCI_COMMON_CONFIG
             uint8_t Diagnostic;
         } type2;
 
-    } u;
-
+    };
     uint8_t DeviceSpecific[108];
 
 } PCI_COMMON_CONFIG;
 
-unsigned short pciConfigReadWord(unsigned short bus, unsigned short slot,
-                                 unsigned short func, unsigned short offset);
-void init_pci_devices(void);
-#endif	/* PCI_H */
+typedef union
+{
 
+    struct
+    {
+        uint8_t resv1;
+        uint8_t func : 3;
+        uint8_t slot : 5;
+        uint8_t bus;
+        uint8_t resv0 : 7;
+        uint8_t enable : 1;
+    } __attribute__((packed));
+    uint32_t address;
+} pci_device_t;
+
+typedef struct
+{
+    uint16_t VendorID;
+    uint16_t DeviceID;
+    uint8_t ProgIf;
+    uint8_t SubClass;
+    uint8_t BaseClass;
+} __attribute__((packed)) pci_device_id;
+
+uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar);
+uint32_t pci_resource_end(pci_device_t *dev, uint32_t bar);
+uint32_t pci_resource_flags(pci_device_t *dev, uint32_t bar);
+uint32_t readPciRegister(const pci_device_t *device, uint32_t offset);
+void writePciRegister(const pci_device_t *device, uint32_t offset, uint32_t value);
+const vector_list_t* getPciDevices(void);
+void init_pci_devices(void);
+void getDeviceId(const pci_device_t *dev, pci_device_id *devID);
+#endif	/* PCI_H */

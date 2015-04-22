@@ -31,6 +31,7 @@ typedef struct _heap_
     uint8_t checksum;
 } heap_t;
 extern uint64_t total_ram;
+extern uint32_t ram_end;
 void coax_multiboot(void *mbd);
 void initilize_memorymanager(void);
 void create_kernel_heap(void);

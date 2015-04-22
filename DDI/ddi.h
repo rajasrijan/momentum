@@ -17,32 +17,19 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "keyboard.h"
-#include "apic.h"
-#include "interrupts.h"
-#include "global.h"
+#ifndef DDI_H
+#define	DDI_H
 
-#define  max_key (110)
-uint8_t key_grid[max_key] = {SC_ESC, SC_1, SC_2, SC_3, SC_4, 0};
-uint8_t key_buffer[1024];
-uint32_t index = 0;
+#include <stdint.h>
 
-static void keyboard_handler(registers_t *regs)
+typedef struct _driver_info
 {
-    uint8_t scan_code = inb(0x60);
-    if (index > 1024)
-        return;
-/*
-    if (scan_code <= max_key)
-        printf("keycode %d", key_grid[scan_code - 1]);
-*/
-}
+    int (*drv_start) (void);
+    void (*drv_end) (void);
+    const char *drv_name;
+} driver_info;
 
-void init_keyboard()
-{
-    register_interrupt_handler(IRQ(1), keyboard_handler);
-    apic_pin_enable(1);
-    uint8_t temp = inb(0x61);
-    outb(0x61, temp | 0x80); /* Disable */
-    outb(0x61, temp & 0x7F); /* Re-enable */
-}
+void allocate_page(uint32_t phyAddar, uint32_t virtAddar, uint32_t noPages);
+
+#endif	/* DDI_H */
+

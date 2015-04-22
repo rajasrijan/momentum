@@ -2,7 +2,7 @@ ENTRY(loader)
 OUTPUT_FORMAT(elf32-i386)
 SECTIONS
 {
-	. += 0xC0000000;
+	. += 0xC0400000;
 	kernel_start = .;
 	.text : AT(ADDR(.text) - 0xC0000000)
 	{

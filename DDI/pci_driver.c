@@ -17,32 +17,29 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "keyboard.h"
-#include "apic.h"
-#include "interrupts.h"
-#include "global.h"
+#include "pci_driver.h"
+#include "../kernel/lists.h"
+#include "../libc/stdlib.h"
 
-#define  max_key (110)
-uint8_t key_grid[max_key] = {SC_ESC, SC_1, SC_2, SC_3, SC_4, 0};
-uint8_t key_buffer[1024];
-uint32_t index = 0;
-
-static void keyboard_handler(registers_t *regs)
+int pci_register_driver(pci_driver_t *dev)
 {
-    uint8_t scan_code = inb(0x60);
-    if (index > 1024)
-        return;
-/*
-    if (scan_code <= max_key)
-        printf("keycode %d", key_grid[scan_code - 1]);
-*/
+    if (pci_driver_tables != 0)
+    {
+        if (pci_driver_tables->push(pci_driver_tables, dev) == -1)
+            return -1;
+    }
+    else
+    {
+        pci_driver_tables = calloc(sizeof (vector_list_t), 1);
+        vector_init_fn(pci_driver_tables, sizeof (pci_driver_t *));
+        if (pci_driver_tables->push(pci_driver_tables, &dev) == -1)
+            return -1;
+    }
+    printf("\nRegistered %s", dev->name);
+    return 0;
 }
 
-void init_keyboard()
+void pci_unregister_driver(pci_driver_t *dev)
 {
-    register_interrupt_handler(IRQ(1), keyboard_handler);
-    apic_pin_enable(1);
-    uint8_t temp = inb(0x61);
-    outb(0x61, temp | 0x80); /* Disable */
-    outb(0x61, temp & 0x7F); /* Re-enable */
+
 }
