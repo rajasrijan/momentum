@@ -24,7 +24,7 @@
 #include "../arch/x86/pci.h"
 #include "pci_ids.h"
 
-#define PCI_ANY_ID (~0)
+#define PCI_ANY_ID ((uint32_t)(~0))
 #define PCI_VDEVICE(vendor, device) PCI_VENDOR_ID_##vendor, (device),PCI_ANY_ID, PCI_ANY_ID, 0, 0
 
 typedef int (*pci_probe_t)(pci_device_t *dev, pci_device_id table);
@@ -42,7 +42,7 @@ typedef struct pci_driver
     pci_resume_t resume;
 } pci_driver_t;
 
-vector_list_t *pci_driver_tables;
+extern vector_list_t *pci_driver_tables;
 
 int pci_register_driver(pci_driver_t *dev);
 void pci_unregister_driver(pci_driver_t *dev);

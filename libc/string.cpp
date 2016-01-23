@@ -34,7 +34,7 @@ void * memset(void * ptr, int value, size_t num)
 
 char *strdup(const char *s1)
 {
-    char* ret = (char*) malloc(strlen(s1));
+    char* ret = (char*) malloc(strlen(s1)+1);
     memcpy(ret, s1, strlen(s1) + 1);
     return ret;
 }
@@ -64,4 +64,14 @@ int memcmp(const void * ptr1, const void * ptr2, size_t num)
         }
     }
     return true;
+}
+
+void strcpy(char *dst, const char *src)
+{
+    int i = 0;
+    for (i = 0; src[i] != 0; i++)
+    {
+        dst[i] = src[i];
+    }
+    dst[i]=0;
 }

@@ -36,7 +36,7 @@ void isr_handler(registers_t regs)
     }
     else
     {
-        printf("regs.int_no=%x", regs.int_no);
+        printf("\nregs.int_no=%x", regs.int_no);
         __asm__("cli");
         __asm__("hlt");
     }

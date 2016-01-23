@@ -29,20 +29,26 @@ uint32_t index = 0;
 
 static void keyboard_handler(registers_t *regs)
 {
+    DBG_OUTPUT
     uint8_t scan_code = inb(0x60);
     if (index > 1024)
         return;
-/*
-    if (scan_code <= max_key)
-        printf("keycode %d", key_grid[scan_code - 1]);
-*/
+    /*
+        if (scan_code <= max_key)
+            printf("keycode %d", key_grid[scan_code - 1]);
+     */
 }
 
 void init_keyboard()
 {
+    DBG_OUTPUT
     register_interrupt_handler(IRQ(1), keyboard_handler);
+    DBG_OUTPUT
     apic_pin_enable(1);
+    DBG_OUTPUT
     uint8_t temp = inb(0x61);
+    DBG_OUTPUT
     outb(0x61, temp | 0x80); /* Disable */
+    DBG_OUTPUT
     outb(0x61, temp & 0x7F); /* Re-enable */
 }

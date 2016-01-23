@@ -24,9 +24,11 @@
 void scroll(void);
 
 
-static uint16_t* videomemory = (void*) 0xb8000;
+static uint16_t* videomemory = (uint16_t*) 0xb8000;
 static uint16_t color = 0x0F00;
 void putcharacter(const char ch, uint32_t x, uint32_t y);
+void setColor(uint8_t c);
+
 
 void putcharacter(const char ch, uint32_t x, uint32_t y)
 {
@@ -37,4 +39,9 @@ void scroll()
 {
     memcpy((char*) videomemory, (char*) (videomemory + 80), 80 * 24 * 2);
     memset((char*) (videomemory + (80 * 24)), 0, 80 * 2);
+}
+
+void setColor(uint8_t c)
+{
+    color=(uint16_t)(((uint32_t)c)<<8);
 }

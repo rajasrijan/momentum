@@ -18,7 +18,7 @@
  */
 
 #ifndef INTERRUPTS_H
-#define	INTERRUPTS_H
+#define INTERRUPTS_H
 
 #include <stdint.h>
 
@@ -52,7 +52,12 @@ typedef struct registers
 
 typedef void (*isr_t)(registers_t*);
 void register_interrupt_handler(uint8_t n, isr_t handler);
+/*This thing is called from asm code.so extern is needed*/
+extern "C"
+{
+/*called for every interrupt*/
 void isr_handler(registers_t regs);
+}
 
-#endif	/* INTERRUPTS_H */
+#endif /* INTERRUPTS_H */
 

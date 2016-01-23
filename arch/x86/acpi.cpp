@@ -223,14 +223,14 @@ uint8_t get_acpi_tables()
     default_ioapic_mapping();
 
 
-    acpi_rsdt_t *rsdt = (void*) (sys_info.rsdp->RsdtAddress);
+    acpi_rsdt_t *rsdt = (acpi_rsdt_t*) (sys_info.rsdp->RsdtAddress);
 
-    if (checksum((void*) rsdt, rsdt->header.Length))
+    if (checksum((uint8_t*) rsdt, rsdt->header.Length))
         __asm__("cli;hlt;");
 
     uint32_t no_of_descriptors = ((rsdt->header.Length - sizeof (acpi_description_header_t)) / 4);
 
-    acpi_description_header_t **adht = (void*) ((sys_info.rsdp->RsdtAddress) + sizeof (acpi_description_header_t));
+    acpi_description_header_t **adht = (acpi_description_header_t**) ((sys_info.rsdp->RsdtAddress) + sizeof (acpi_description_header_t));
 
     for (uint32_t i = 0; i < no_of_descriptors; i++)
     {
@@ -241,7 +241,7 @@ uint8_t get_acpi_tables()
         }
     }
 
-    madt_structure_t *madt = (void*) *adht;
+    madt_structure_t *madt = (madt_structure_t*) *adht;
 
     madt_entry_structure_t *madt_entry = &(madt->apic_entries);
 
@@ -256,13 +256,13 @@ uint8_t get_acpi_tables()
         {
         case INTERRUPT_OVERRIDE:
         {
-            interrupt_override_t * intovr = (void*) madt_entry;
+            interrupt_override_t * intovr = (interrupt_override_t*) madt_entry;
             override_interrupt(intovr->source, intovr->global_system_interrupt, intovr->flags);
             break;
         }
         }
         len -= madt_entry->length;
-        madt_entry = (void*) ((char*) madt_entry + (uint32_t) (madt_entry->length));
+        madt_entry = (madt_entry_structure_t*) ((char*) madt_entry + (uint32_t) (madt_entry->length));
     }
-    return true;
+    return 1;
 }

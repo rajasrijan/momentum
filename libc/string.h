@@ -18,33 +18,35 @@
  */
 
 #ifndef STRING_H
-#define	STRING_H
+#define STRING_H
 
-#ifdef	__cplusplus
-extern "C"
-{
-#endif
+//#ifdef	__cplusplus
+//extern "C"
+//{
+//#endif
 
 #include <stddef.h>
 
 void * memset(void * ptr, int value, size_t num);
 char *strdup(const char *s1);
 size_t strlen(const char* str);
+void strcpy(char *dst, const char *src);
 
-static inline void* memcpy(char *dst, const char *src, size_t len)
+static inline void* memcpy(void *dst, const void *src, size_t len)
 {
 
     for (size_t i = 0; i < len; i++)
     {
-        dst[i] = src[i];
+        ((char*)dst)[i] = ((char*)src)[i];
     }
+    return dst;
 }
 int memcmp(const void * ptr1, const void * ptr2, size_t num);
 char strcmp(char* s1, char *s2);
 
-#ifdef	__cplusplus
-}
-#endif
+//#ifdef	__cplusplus
+//}
+//#endif
 
-#endif	/* STRING_H */
+#endif /* STRING_H */
 

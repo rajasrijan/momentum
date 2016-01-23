@@ -165,29 +165,37 @@ atomic_exchange:
 	RET
 	
 get_spin_lock:
+        ;cli
+        ;hlt
 	MOV EBX, [ESP+4]
-	CMP DWORD [EBX], 0 ;CHECK IF LOCK IS FREE
-	JE Get_Lock
+        MOV EAX,DWORD [EBX]
+	TEST EAX, 1 ;CHECK IF LOCK IS FREE
+	JZ Get_Lock
 	PAUSE ;Short delay
 	JMP get_spin_lock
 Get_Lock:
-	MOV EAX, 1
+	OR EAX, 1
 	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
-	CMP EAX, 0 ;TEST IF SUCCESSFUL
-	JNE get_spin_lock
+	TEST EAX, 1 ;TEST IF SUCCESSFUL
+	JNZ get_spin_lock
 	RET
 
 get_async_spin_lock:
-	MOV EBX, [ESP+4]
+        MOV EAX, ESP
+        ADD EAX, 4
+	MOV EBX, [EAX]
 	MOV EAX, DWORD [EBX]
-	OR EAX,1
+        OR EAX,1
 	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
 	AND EAX, 1
 	RET
 	
 release_spin_lock:
 	MOV EBX,DWORD [ESP+4]
-	MOV DWORD [EBX],0
+        MOV EAX,DWORD [EBX]
+	AND EAX,0xFFFFFFFE
+        XCHG EAX, DWORD [EBX]
+        AND EAX,0x1
 	RET
 	
 get_cr3:

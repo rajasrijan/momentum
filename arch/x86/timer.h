@@ -23,8 +23,12 @@
 #include "interrupts.h"
 
 void apic_timer_callback(registers_t* reg);
-void init_timer(uint32_t frequency);
+void init_timer(void);
 void sleep(uint32_t delay);
+uint32_t getSystemTime(void);
+void disableThreadSwitching(void);
+void enableThreadSwitching(void);
+void print_thread_list(void);
 
 #endif	/* TIMER_H */
 

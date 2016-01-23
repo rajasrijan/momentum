@@ -28,12 +28,13 @@
 /*
  *	Thread flags.
  */
-#define THREAD_BUSY (1>>0)
+#define THREAD_BUSY (1<<0)
+#define THREAD_STOP (1<<1)
 
 /*
  *	Thread info structure.
  */
- 
+
 typedef struct thread_info
 {
     uint32_t ProcessID;
@@ -41,7 +42,7 @@ typedef struct thread_info
     uint32_t isactive;
     registers_t context;
     vector_list_t *page_table;
-	uint32_t flags;
+    uint32_t flags;
 } thread_info_t;
 
 typedef struct core_info
@@ -63,5 +64,5 @@ void change_thread(thread_info_t* thread);
 void thread_end(void);
 int CreateNullProcess(void);
 thread_info_t* getNextThreadInQueue(void);
-linked_list_t* getNextThreadListInQueue(void);
+llnode* getNextThreadListInQueue(void);
 #endif	/* MULTITASK_H */

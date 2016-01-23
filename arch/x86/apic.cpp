@@ -43,7 +43,7 @@ void init_ioapic()
     /*
      * If there is a better way let me know.
      */
-    ioapic = (void*) 0xFEC00000;
+    ioapic = (ioapic_t*) 0xFEC00000;
 }
 
 /*
@@ -91,8 +91,8 @@ void init_apic_timer(uint32_t frequency)
 static void* find_rspd()
 {
     uint8_t* ptr;
-    ptr = (void*) 0x40E;
-    ptr = (void*) ((uint32_t*) (ptr));
+    ptr = (uint8_t*) 0x40E;
+    ptr = (uint8_t*) ((uint32_t*) (ptr));
     for (uint32_t i = 0; i < 1024; i += 2)
     {
         if (!kmemcmp((char*) (&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
@@ -100,7 +100,7 @@ static void* find_rspd()
             return (void*) (&ptr[i]);
         }
     }
-    ptr = (void*) 0xE0000;
+    ptr = (uint8_t*) 0xE0000;
     for (uint32_t i = 0; i < 0x20000; i += 2)
     {
         if (!kmemcmp((char*) (&ptr[i]), ACPI_RSDP_SIGNATURE, 8))

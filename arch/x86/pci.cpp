@@ -24,7 +24,7 @@
 
 vector_list_t pci_devices;
 
-static void print_pci_info(PCI_COMMON_CONFIG *config)
+static void pci_print_info(PCI_COMMON_CONFIG *config)
 {
     const char* info_str[] = {"Unknown",
         "SCSI Bus Controller",
@@ -37,7 +37,12 @@ static void print_pci_info(PCI_COMMON_CONFIG *config)
         "Serial ATA (Vendor Specific Interface)",
         "Serial ATA (AHCI 1.0)",
         "Serial Attached SCSI (SAS)",
-        "Other Mass Storage Controller"};
+        "Other Mass Storage Controller",
+        "Ethernet Controller",
+        "VGA Controller",
+        "Host Bridge",
+        "ISA Bridge",
+        "Other Bridge"};
 
     uint32_t info_id[] = {0,
         0x00010000,
@@ -50,44 +55,49 @@ static void print_pci_info(PCI_COMMON_CONFIG *config)
         0x00010600,
         0x00010601,
         0x00010700,
-        0x00018000};
+        0x00018000,
+        0x00020000,
+        0x00030000,
+        0x00060000,
+        0x00060100,
+        0x00068000};
     uint32_t id = 0;
-    id = (uint32_t)((config->BaseClass << 16) | (config->SubClass << 8) | (config->ProgIf));
-    printf("%x\\",id);
-    unsigned int index=0;
-    for(uint32_t i=0;i<(sizeof(info_id)/sizeof(uint32_t));i++)
+    id = (uint32_t) ((config->BaseClass << 16) | (config->SubClass << 8) | (config->ProgIf));
+    printf("%x\\", id);
+    unsigned int index = 0;
+    for (uint32_t i = 0; i < (sizeof (info_id) / sizeof (uint32_t)); i++)
     {
-        if(id==info_id[i])
+        if (id == info_id[i])
         {
-            index=i;
+            index = i;
             break;
         }
     }
     printf(info_str[index]);
 }
 
-void init_pci_devices()
+void pci_init_devices()
 {
     pci_device_t device;
     vector_init_fn(&pci_devices, sizeof (pci_device_t));
     printf("\nSearching for PCI devices....");
     for (device.address = 0; device.address < 0x00FFFF00; device.address += 0x100)
     {
-        uint32_t vendor = readPciRegister(&device, 0)&0xffff;
+        uint32_t vendor = pci_readRegister(&device, 0)&0xffff;
         if (vendor != 0xffff)
         {
             PCI_COMMON_CONFIG config;
             for (uint32_t index = 0; index<sizeof (PCI_COMMON_CONFIG); index += 4)
-                ((uint32_t*) & config)[(index / 4)] = readPciRegister(&device, index);
+                ((uint32_t*) & config)[(index / 4)] = pci_readRegister(&device, index);
             printf("\nPCI:%x\\", device.address);
-            print_pci_info(&config);
+            pci_print_info(&config);
             pci_devices.push(&pci_devices, &device);
         }
     }
     printf("\nSearch completed.");
 }
 
-uint32_t readPciRegister(const pci_device_t *device, uint32_t offset)
+uint32_t pci_readRegister(const pci_device_t *device, uint32_t offset)
 {
     uint32_t address = device->address;
 
@@ -101,7 +111,7 @@ uint32_t readPciRegister(const pci_device_t *device, uint32_t offset)
     return ((uint32_t) ((inl(0xCFC) >> ((offset & 2) * 8))));
 }
 
-void writePciRegister(const pci_device_t *device, uint32_t offset, uint32_t value)
+void pci_writeRegister(const pci_device_t *device, uint32_t offset, uint32_t value)
 {
     uint32_t address = device->address;
 
@@ -114,17 +124,17 @@ void writePciRegister(const pci_device_t *device, uint32_t offset, uint32_t valu
     outl(0xCFC, value);
 }
 
-const vector_list_t* getPciDevices(void)
+const vector_list_t* pci_getDevices(void)
 {
     return &pci_devices;
 }
 
-void getDeviceId(const pci_device_t *dev, pci_device_id *devID)
+void pci_getDeviceId(const pci_device_t *dev, pci_device_id *devID)
 {
-    uint32_t tmp = readPciRegister(dev, 0);
+    uint32_t tmp = pci_readRegister(dev, 0);
     devID->VendorID = (uint16_t) (tmp & 0xFFFF);
     devID->DeviceID = (uint16_t) ((tmp >> 16) & 0xFFFF);
-    tmp = readPciRegister(dev, 0x08);
+    tmp = pci_readRegister(dev, 0x08);
     devID->BaseClass = (uint8_t) ((tmp >> 24)&0xFF);
     devID->SubClass = (uint8_t) ((tmp >> 16)&0xFF);
     devID->ProgIf = (uint8_t) ((tmp >> 8)&0xFF);
@@ -132,12 +142,16 @@ void getDeviceId(const pci_device_t *dev, pci_device_id *devID)
 
 uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar)
 {
-    uint32_t addr = readPciRegister(dev, 0x10 + (bar * 4));
-    writePciRegister(dev, 0x10 + (bar * 4), 0xFFFFFFFF);
-    uint32_t size = (readPciRegister(dev, 0x10 + (bar * 4))&0xFFFFFFF0);
-    writePciRegister(dev, 0x10 + (bar * 4), addr);
+    uint32_t addr = pci_readRegister(dev, 0x10 + (bar * 4));
+    pci_writeRegister(dev, 0x10 + (bar * 4), 0xFFFFFFFF);
+    uint32_t size = (pci_readRegister(dev, 0x10 + (bar * 4))&0xFFFFFFF0);
+    pci_writeRegister(dev, 0x10 + (bar * 4), addr);
     size = ((~size) + 1);
-    printf("\nMapping %x size %x", addr, size);
-    force_map(addr, addr, (size + 4096 - 1) / 4096);
-    return (addr & 0xFFFFFFF0);
+    /*if ((addr % 2) == 0)
+    {
+        DBG_OUTPUT
+        printf("\nMapping %x size %x", addr, size);
+        force_map(addr, addr, (size + 4096 - 1) / 4096);
+    }*/
+    return addr;
 }

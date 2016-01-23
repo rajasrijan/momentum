@@ -91,6 +91,8 @@ void idt_set_gate(idt_entry_t *idt_entries, uint8_t num, uint32_t base, uint16_t
  * Intel reserved interrupts.
  * start
  */
+extern "C"
+{
 extern void isr0(void);
 extern void isr1(void);
 extern void isr2(void);
@@ -161,6 +163,6 @@ extern void isr62(void);
 extern void isr63(void);
 extern void isr64(void);
 extern void isr65(void);
-
+}
 void set_gdt_gate(gdt_entry_t *gdt_entries, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran);
 #endif

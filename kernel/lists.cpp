@@ -18,8 +18,11 @@
  */
 
 #include "lists.h"
-#include "../libc/string.h"
-#include "../libc/stdlib.h"
+#include "string.h"
+#include "stdlib.h"
+#include "stdio.h"
+#include "../arch/x86/timer.h"
+//#include "../arch/x86/paging.h"
 
 int vector_push_fn(struct _vector_list* list, void* data);
 void* vector_at_fn(const struct _vector_list* list, uint32_t index);
@@ -44,12 +47,12 @@ int vector_push_fn(struct _vector_list* list, void* data)
         void* tmp = calloc(list->buffer_size, list->data_size);
         if (tmp == 0)
             return -1;
-        memcpy(tmp, list->data, list->current_buffer_ptr * list->data_size);
+        memcpy((char*) tmp, (char*) list->data, list->current_buffer_ptr * list->data_size);
         free(list->data);
         list->data = tmp;
     }
     void* dest = (void*) ((char*) list->data + (list->data_size * list->current_buffer_ptr));
-    memcpy(dest, data, list->data_size);
+    memcpy((char*) dest, (char*) data, list->data_size);
     list->current_buffer_ptr++;
     return (int) (list->current_buffer_ptr);
 }
@@ -64,4 +67,61 @@ void* vector_at_fn(const struct _vector_list* list, uint32_t index)
 uint32_t vector_size_fn(const struct _vector_list* list)
 {
     return list->current_buffer_ptr;
+}
+
+void create_linked_list(linked_list_t** ll, uint32_t size)
+{
+    ll[0] = (linked_list_t*) calloc(1, sizeof (linked_list_t));
+    ll[0]->size = size;
+    ll[0]->first_node = 0;
+    ll[0]->last_node = 0;
+}
+
+void addto_linked_list(linked_list_t* ll, void* ptr)
+{
+    llnode* node = (llnode*) calloc(1, sizeof (llnode));
+    if (ll->last_node != 0)
+        ll->last_node->next = node;
+    else
+        ll->first_node = node;
+    ll->last_node = node;
+
+    node->ptr = calloc(1, ll->size);
+    memcpy((char*) node->ptr, (char*) ptr, ll->size);
+}
+
+void removefrm_linked_list(linked_list_t *ll, void *ptr)
+{
+    print_thread_list();
+    for (llnode *i = ll->first_node, *prev_node = 0; i != NULL; prev_node = i, i = (llnode*)i->next)
+    {
+        if (i->ptr == ptr)
+        {
+            printf("\nFound *ptr.");
+
+            if (i == ll->last_node)
+                ll->last_node = prev_node;
+            if (i == ll->first_node)
+                ll->first_node = (llnode*)i->next;
+
+            if (prev_node)
+                prev_node->next = i->next;
+            free(i->ptr);
+            free(i);
+        }
+    }
+    print_thread_list();
+    /*setColor(0x14);
+    printf("\nUnimplimented function \"%s\".Halting...", __FUNCTION__);
+    __asm__("cli;hlt;");*/
+}
+
+void* getelement_linked_list(linked_list_t *ll, uint32_t index)
+{
+    for (llnode *i = ll->first_node; i != ll->last_node; i = (llnode*)i->next)
+    {
+        if (index-- == 0)
+            return i->ptr;
+    }
+    return ll->last_node;
 }

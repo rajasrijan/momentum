@@ -18,10 +18,30 @@
  */
 
 #ifndef BLOCK_DRIVER_H
-#define	BLOCK_DRIVER_H
-//
-//int register_blkdev(unsigned int major, const char *name);
-//int unregister_blkdev(unsigned int major, const char *name);
+#define BLOCK_DRIVER_H
 
-#endif	/* BLOCK_DRIVER_H */
+#include "../kernel/vfs.h"
+#include <string>
+#include <vector>
+
+class blockInterface
+{
+protected:
+    std::string name;
+public:
+    virtual int read(size_t offset, size_t count, void* data) = 0;
+    virtual int write(size_t offset, size_t count, void* data) = 0;
+
+    std::string getName()
+    {
+        return name;
+    }
+};
+
+extern std::vector<blockInterface*> blockDeviceList;
+
+int register_blkdev(blockInterface* blockDrive);
+int unregister_blkdev(const char *name);
+
+#endif /* BLOCK_DRIVER_H */
 

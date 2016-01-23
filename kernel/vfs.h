@@ -1,161 +1,127 @@
 /*
  * Copyright 2009-2012 Srijan Kumar Sharma
- * 
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef VFS_H
 #define VFS_H
-
+#define DBG_OUTPUT printf("\nLine %d, function %s(), file %s",__LINE__,__FUNCTION__,__FILE__);
 #include <stdint.h>
+#include <vector>
+#include <string>
+#include <memory>
 
-struct information_node;
-struct open_file;
-struct file_metadata;
+using namespace std;
 
-/*
- * file_metadata members.
- */
-
-#define FILE_TYPE_FILE          (1<<0)
-#define FILE_TYPE_OPENFILE      (1<<1)
-#define FILE_TYPE_DIRECTORY     (1<<2)
-#define FILE_TYPE_SYMLINK       (1<<3)
-
-
-/*
- * Function types for inode structure.
- */
-
-typedef struct open_file* (*fileCreateFn)(char*);
-typedef struct file_metadata* (*fileStatusFn)(char*);
-typedef uint32_t(*fileAccessFn)(char*, uint32_t);
-typedef uint32_t(*fileChangeModeFn)(char*, uint32_t);
-typedef uint32_t(*fileChangeOwnerFn)(char*, uint32_t);
-
-/*
- * Function types for ofile structure.
- */
-
-/*
- * returns number  of bytes read.
- */
-typedef uint32_t(*fileReadFn)(struct open_file*, /*Pointer to open file.*/
-        uint32_t, /* numger of bytes to read */
-        uint32_t, /* size of buffer in bytes*/
-        void* /* pointer to buffer */
-        );
-/*
- * returns number  of bytes written.
- */
-typedef uint32_t(*fileWriteFn)(struct open_file*, /*Pointer to open file.*/
-        uint32_t, /* numger of bytes to write */
-        uint32_t, /* size of buffer in bytes*/
-        void* /* pointer to buffer */
-        );
-
-/*
- * returns new position.
- */
-typedef uint32_t(*fileSeekFn)(struct open_file*, /*Pointer to open file.*/
-        uint32_t, /* numger of bytes to seek */
-        uint32_t /* seek flags */
-        );
-
-/*
- * returns new success/failure.
- */
-typedef uint32_t(*fileCloseFn)(struct open_file* /*Pointer to open file.*/
-        );
-
-/*
- * returns new status.
- */
-typedef uint32_t(*fileLockFn)(struct open_file*, /*Pointer to open file.*/
-        uint32_t/* lock flags. */
-        );
-
-/*
- * returns new Controles.
- */
-typedef uint32_t(*fileControleFn)(struct open_file*, /*Pointer to open file.*/
-        uint32_t/* Controle flags. */
-        );
-
-/*
- * returns Status.
- */
-typedef uint32_t(*fileOpenStatusFn)(struct open_file* /*Pointer to open file.*/
-        );
-
-/*
- * returns Status.
- */
-typedef uint32_t(*filePipeFn)(struct open_file*, /*Pointer to open file.*/
-        char* name /* Name of the pipe. */
-        );
-
-typedef struct super_node
+enum vtype
 {
-} snode;
+    VNON = 0,
+    VREG = 1,
+    VDIR = 2,
+    VBLK = 3,
+    VCHR = 4,
+    VLNK = 5,
+    VSOCK = 6,
+    VBAD = 7
+};
 
-typedef struct file_metadata
+class vnode
 {
-    char Name[40];
-    uint32_t Owner;
-    uint32_t Protection;
-    uint32_t type;
-} fmetadata;
+public:
+    uint16_t v_flag; /* vnode flags */
+    uint16_t v_count; /* reference count */
+    uint16_t v_shlockc; /* # of shared locks */
+    uint16_t v_exlockc; /* # of exclusive locks */
+    uint32_t v_type; /* vnode type */
+    class vfs *v_vfsmountedhere; /* covering vfs */
+    //struct vnodeops *v_op; /* vnode operations */
+    class vfs *v_vfsp; /* vfs we are in */
 
-typedef struct information_node
+    //protected:
+    string v_name;
+private:
+    std::shared_ptr<void> v_data; /* private data */
+public:
+    vnode(class vfs* vfsp);
+    virtual ~vnode();
+    int open(void);
+    int close(void);
+    int rdwr(void);
+    int ioctl(void);
+    int select(void);
+    int getattr(void);
+    int setattr(void);
+    int access(void);
+    virtual int lookup(const char* const path);
+    int create(void);
+    int remove(void);
+    int link(void);
+    int rename(string name);
+    int mkdir(std::string name, vnode *pDir);
+    int rmdir(void);
+    int readdir(void);
+    int symlink(void);
+    int readlink(void);
+    int fsync(void);
+    int inactive(void);
+    int bmap(void);
+    int strategy(void);
+    virtual int bread(int position, int size, shared_ptr<char> data);
+    int bwrite(void);
+    int brelse(void);
+};
+
+class vfile
 {
-    fmetadata metaData;
+    vnode* _parent;
+public:
+    vfile(vnode* parent);
+    ~vfile();
+    int read(size_t position, shared_ptr<char*> data);
+};
 
-    fileCreateFn createFile;
-    fileStatusFn getStatus;
-    fileAccessFn getAccess;
-    fileChangeModeFn changeMode;
-    fileChangeOwnerFn changeOwner;
-} inode;
-
-typedef struct open_file
+class vfs
 {
-    fmetadata metaData;
-    inode* fileNode;
-
-    fileReadFn read;
-    fileWriteFn write;
-    fileSeekFn seek;
-    fileCloseFn close;
-    fileLockFn fileLock;
-    fileControleFn fileControle;
-    fileOpenStatusFn fileStatus;
-    filePipeFn pipe;
-} ofile;
-
-typedef struct directory_entry
-{
-} dentry;
-
-/*
- * vfs root.
- */
-
-inode* vfsRoot;
+public:
+    //class vfs *vfs_next; /* next vfs in list */
+    //struct vfsops *vfs_op; /* operations on vfs */
+    vnode *vfs_vnodecovered; /* vnode we cover */
+    int flag; /* flags */
+    int bsize; /* native block size */
+    //void* vfs_data; /* private data */
+public:
+    vfs();
+    ~vfs();
+    int mount(void);
+    int unmount(void);
+    int root(void);
+    int statfs(void);
+    int sync(void);
+    int fid(void);
+    int vget(void);
+};
 
 void init_vfs(void);
+
+extern std::vector<vfs> vfs_list;
+extern vnode *rnode; //	Pointer to root vnode.
+int mount_root(vnode* vn);
+void add_vfs(vfs _vfs);
+void add_dev(vnode *devNode);
+vnode* open_bdev(string dev_path);
 
 #endif

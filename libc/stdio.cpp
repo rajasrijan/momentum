@@ -17,12 +17,12 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
- #include "stdio.h"
+#include "stdio.h"
 #include <stdarg.h>
+#include <native_sync.h>
 uint32_t x = 0, y = 0;
 
-void clrscr()
-{
+void clrscr() {
     x = 0;
     y = 0;
     for (int i = 0; i < 80 * 25; i++)
@@ -31,251 +31,75 @@ void clrscr()
     y = 0;
 }
 
-static void print_hex(uint32_t arg)
-{
-    for (int j = 0; j < 8; j++)
-    {
-        uint32_t no = (arg >> ((7 - j)*4))&0x0F;
-        switch (no)
-        {
-        case 0:
-            putcharacter('0', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 1:
-            putcharacter('1', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 2:
-            putcharacter('2', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 3:
-            putcharacter('3', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 4:
-            putcharacter('4', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 5:
-            putcharacter('5', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 6:
-            putcharacter('6', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 7:
-            putcharacter('7', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 8:
-            putcharacter('8', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 9:
-            putcharacter('9', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 0xa:
-            putcharacter('a', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 0xb:
-            putcharacter('b', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 0xc:
-            putcharacter('c', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 0xd:
-            putcharacter('d', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 0xe:
-            putcharacter('e', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 0xf:
-            putcharacter('f', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
+static void print_num(uint32_t arg, uint32_t base) {
+    char str[12] = {0};
+    str[11] = '0';
+    char symbol[] = {"0123456789ABCDEFG"};
+    for (uint32_t i = arg, no = 11; (i > 0)&&(no >= 0); i /= base, no--) {
+        str[no] = symbol[(i % base)];
+    }
 
+    for (int i = 0; i < 12; ++i) {
+        if (str[i] != 0) {
+            putcharacter(str[i], x, y);
+            x++;
+            y += (x / 80);
+            x %= 80;
         }
     }
 }
 
-static void print_dec(uint32_t arg)
-{
-    uint32_t no, no1;
-    no = 0;
-    no1 = arg;
-    while (no1)
-    {
-        no += no1 % 10;
-        no1 /= 10;
-        no *= 10;
-    }
-    no1 = 0;
-    while (no)
-    {
-        no1 = no % 10;
-        no /= 10;
-        switch (no1)
-        {
-        case 0:
-            putcharacter('0', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 1:
-            putcharacter('1', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 2:
-            putcharacter('2', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 3:
-            putcharacter('3', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 4:
-            putcharacter('4', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 5:
-            putcharacter('5', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 6:
-            putcharacter('6', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 7:
-            putcharacter('7', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 8:
-            putcharacter('8', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        case 9:
-            putcharacter('9', x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
-        }
-    }
+mtx_t printf_mutex;
 
-}
-
-void printf(const char *format, ...)
-{
+void printf(const char *format, ...) {
+    sync atomic_printf(&printf_mutex);
     va_list ap;
     va_start(ap, format);
 
-    for (uint32_t i = 0; format[i] != 0; i++)
-    {
-        switch (format[i])
-        {
-        case '%':
-            i++;
-            switch (format[i])
-            {
-            case 'x':
-            {
-                uint32_t arg = va_arg(ap, uint32_t);
-                print_hex(arg);
-                break;
-            }
-            case 'd':
-            {
-                uint32_t arg = va_arg(ap, uint32_t);
-                print_dec(arg);
-                break;
-            }
-            case 's':
-            {
-                char* str = va_arg(ap, char*);
-                while (str[0] != 0)
-                {
-                    
-                    putcharacter(str++[0], x, y);
-                    x++;
-                    y += (x / 80);
-                    x %= 80;
+    for (uint32_t i = 0; format[i] != 0; i++) {
+        switch (format[i]) {
+            case '%':
+                i++;
+                switch (format[i]) {
+                    case 'x':
+                    {
+                        uint32_t arg = va_arg(ap, uint32_t);
+                        print_num(arg, 16);
+                        break;
+                    }
+                    case 'd':
+                    {
+                        uint32_t arg = va_arg(ap, uint32_t);
+                        print_num(arg, 10);
+                        break;
+                    }
+                    case 's':
+                    {
+                        char* str = va_arg(ap, char*);
+                        while (str[0] != 0) {
+
+                            putcharacter(str++[0], x, y);
+                            x++;
+                            y += (x / 80);
+                            x %= 80;
+                        }
+                        break;
+
+                    }
                 }
                 break;
-
-            }
-            }
-            break;
-        case '\n':
-            y += 1;
-            x = 0;
-            break;
-        default:
-            putcharacter(format[i], x, y);
-            x++;
-            y += (x / 80);
-            x %= 80;
-            break;
+            case '\n':
+                y += 1;
+                x = 0;
+                break;
+            default:
+                putcharacter(format[i], x, y);
+                x++;
+                y += (x / 80);
+                x %= 80;
+                break;
         }
-        if (y > 24)
-        {
+        if (y > 24) {
             y = 24;
             x = 0;
             scroll();

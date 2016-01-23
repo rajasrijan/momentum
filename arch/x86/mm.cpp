@@ -45,7 +45,7 @@ static void* kalloc(uint32_t size, uint32_t align)
 
 void initilize_memorymanager()
 {
-    multiboot_memory_map_t *mmap = sys_info.memory_map;
+    multiboot_memory_map_t *mmap = (multiboot_memory_map_t*) sys_info.memory_map;
     uint32_t entries = sys_info.memory_map_len / (mmap->size + 4);
     total_ram = 0;
     ram_end = 0;
@@ -63,8 +63,10 @@ void initilize_memorymanager()
         if (ram_end <= ((uint32_t) (mmap[i].addr) + (uint32_t) (mmap[i].len)))
             ram_end = ((uint32_t) (mmap[i].addr) + (uint32_t) (mmap[i].len));
     }
-    resv_mem = (void*) kalloc(reserved_mem_entries * sizeof (reserved_memory_t), 1);
-    pm_stack = (void*) kalloc((uint32_t) (total_ram / 0x400000) * sizeof (uint16_t), 4);
+    resv_mem = (reserved_memory_t*) kalloc(reserved_mem_entries * sizeof (reserved_memory_t),
+                                           1);
+    pm_stack = (uint16_t*) kalloc(
+                                  (uint32_t) (total_ram / 0x400000) * sizeof (uint16_t), 4);
     pm_esp = ((uint32_t) (total_ram / 0x400000) - 1);
     for (int i = 0; i < entries; i++)
     {
@@ -117,7 +119,7 @@ static uint16_t mm_pop(void)
  */
 void create_kernel_heap()
 {
-    pHeap = KERNEL_HEAP_PTR;
+    pHeap = (heap_t*) KERNEL_HEAP_PTR;
     pHeap->flags = HEAP_EMPTY;
     pHeap->size = 0x1000000;
     pHeap->checksum = 0;
@@ -126,14 +128,15 @@ void create_kernel_heap()
 
 uint32_t get_4mb_block()
 {
-    return ((uint32_t) mm_pop())*0x400000;
+    return ((uint32_t) mm_pop()) * 0x400000;
 }
 
 int IsMemoryReserved(uint32_t mem_addr)
 {
     for (uint32_t i = 0; i < reserved_mem_entries; i++)
     {
-        if ((mem_addr >= resv_mem[i].address) && (mem_addr <= (resv_mem[i].address + resv_mem[i].length)))
+        if ((mem_addr >= resv_mem[i].address)
+                && (mem_addr <= (resv_mem[i].address + resv_mem[i].length)))
         {
             return true;
         }
@@ -146,18 +149,20 @@ int IsMemoryReserved(uint32_t mem_addr)
  */
 void* _malloc(uint32_t length)
 {
+
     heap_t *heap_ptr = pHeap;
     volatile void* ptr = 0;
     while (true)
     {
         if (checksum((uint8_t*) heap_ptr, sizeof (heap_t)) == 0)
-            if ((heap_ptr->flags == HEAP_EMPTY) && (heap_ptr->size >= length + (2 * sizeof (heap_t))))
+            if ((heap_ptr->flags == HEAP_EMPTY)
+                    && (heap_ptr->size >= length + (2 * sizeof (heap_t))))
             {
                 uint32_t size = length + sizeof (heap_t);
                 heap_ptr->size -= size;
                 heap_ptr->checksum = 0;
                 heap_ptr->checksum = getsum((uint8_t*) heap_ptr, sizeof (heap_t));
-                heap_ptr = (void*) ((char*) heap_ptr + heap_ptr->size);
+                heap_ptr = (heap_t*) ((char*) heap_ptr + heap_ptr->size);
                 heap_ptr->flags = HEAP_FULL;
                 heap_ptr->checksum = 0;
                 heap_ptr->checksum = getsum((uint8_t*) heap_ptr, sizeof (heap_t));
@@ -166,7 +171,7 @@ void* _malloc(uint32_t length)
             }
             else
             {
-                heap_ptr = (void*) ((char*) heap_ptr + heap_ptr->size);
+                heap_ptr = (heap_t*) ((char*) heap_ptr + heap_ptr->size);
             }
         else
         {
@@ -182,7 +187,7 @@ void* _malloc(uint32_t length)
 void _free(void *ptr)
 {
 #warning compact heap.
-    heap_t *heap_ptr = (void*) ((char*) ptr - sizeof (heap_t));
+    heap_t *heap_ptr = (heap_t*) ((char*) ptr - sizeof (heap_t));
     if (checksum((uint8_t*) heap_ptr, sizeof (heap_t)) != 0)
     {
         printf("\nheap corruption");

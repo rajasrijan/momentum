@@ -31,19 +31,27 @@ void new_paging_structure(paging_structure_t* ps)
 
 void map_4mb(uint32_t virtual_address)
 {
+     
     uint32_t boundry_4mb = (virtual_address / 0x400000);
+     
     uint32_t boundry_4kb = boundry_4mb * 0x400;
+     
     uint32_t memory_slab = get_4mb_block();
+     
     if (memory_slab == 0)
         __asm__("cli;hlt;");
+     
     __asm__("xchg %bx,%bx;");
+     
     sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
+     
     for (uint32_t i = 0; i < 0x400; i++)
     {
         sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
         memory_slab += 0x1000;
         __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
     }
+     
 }
 
 static void page_fault_handler_4kpages(registers_t* regs)
@@ -89,21 +97,21 @@ void identity_map_4mb(uint32_t address)
     }
 }
 
-void force_map(uint32_t physical, uint32_t virtual, uint32_t pages)
+void force_map(uint32_t physical, uint32_t virtual_address, uint32_t pages)
 {
-    uint32_t boundry_4mb = (virtual / 0x400000);
+    uint32_t boundry_4mb = (virtual_address / 0x400000);
     uint32_t boundry_4kb = boundry_4mb * 0x400;
     uint32_t memory_slab = physical & 0xFFFFF000;
     sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
     for (uint32_t i = 0; i < pages; i++)
     {
-        sys_info.pst->page_table[(virtual / 0x1000) + i] = memory_slab | 3;
+        sys_info.pst->page_table[(virtual_address / 0x1000) + i] = memory_slab | 3;
         memory_slab += 0x1000;
         __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
     }
 }
 
-uint32_t get_physical_address(uint32_t virtual)
+uint32_t get_physical_address(uint32_t virtual_address)
 {
-    return ((sys_info.pst->page_table[(virtual / 0x1000)] & 0xFFFFF000) + (virtual & 0x00000FFF));
+    return ((sys_info.pst->page_table[(virtual_address / 0x1000)] & 0xFFFFF000) + (virtual_address & 0x00000FFF));
 }

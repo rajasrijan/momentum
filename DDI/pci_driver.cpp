@@ -21,6 +21,8 @@
 #include "../kernel/lists.h"
 #include "../libc/stdlib.h"
 
+vector_list_t *pci_driver_tables;
+
 int pci_register_driver(pci_driver_t *dev)
 {
     if (pci_driver_tables != 0)
@@ -30,12 +32,27 @@ int pci_register_driver(pci_driver_t *dev)
     }
     else
     {
-        pci_driver_tables = calloc(sizeof (vector_list_t), 1);
+        pci_driver_tables = (vector_list_t*) calloc(sizeof (vector_list_t), 1);
         vector_init_fn(pci_driver_tables, sizeof (pci_driver_t *));
         if (pci_driver_tables->push(pci_driver_tables, &dev) == -1)
             return -1;
     }
-    printf("\nRegistered %s", dev->name);
+    printf("\nRegistered \"%s\"", dev->name);
+    const vector_list_t* device_list = pci_getDevices();
+    pci_device_t* pci_device = (pci_device_t*) device_list->data;
+    uint32_t no_devices = device_list->size(device_list);
+
+    for (int i = 0; i < no_devices; i++)
+    {
+        pci_device_id devID;
+        pci_getDeviceId(&pci_device[i], &devID);
+        if (devID.BaseClass == dev->table.BaseClass)
+        {
+            printf("\nMatch found.");
+            dev->probe(&pci_device[i], devID);
+        }
+
+    }
     return 0;
 }
 

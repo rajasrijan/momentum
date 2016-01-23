@@ -27,12 +27,25 @@ extern "C"
 
 #include <stdint.h>
 
+/*Linked list*/
+typedef struct _llnode
+{
+	void *ptr;
+	void *next;
+} llnode;
+
 typedef struct linked_list
 {
-    void* pointer;
-    struct linked_list *next, *prev;
+    uint32_t size;
+    llnode* first_node;
+    llnode* last_node;
 } linked_list_t;
 
+void create_linked_list(linked_list_t** ll,uint32_t size);
+void addto_linked_list(linked_list_t* ll, void* ptr);
+void removefrm_linked_list(linked_list_t *ll,void *ptr);
+void* getelement_linked_list(linked_list_t *ll,uint32_t index);
+/*	Vector*/
 struct _vector_list;
 
 void vector_init_fn(struct _vector_list* list, uint32_t data_size);

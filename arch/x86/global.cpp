@@ -20,3 +20,4 @@
 #include "global.h"
 
 gdt_ptr_t gdt_ptr;
+volatile system_info_t sys_info;

@@ -18,11 +18,17 @@
  */
 
 #ifndef STDIO_H
-#define	STDIO_H
+#define STDIO_H
 #include <stdint.h>
+
 extern void putcharacter(const char ch, uint32_t x, uint32_t y);
 extern void scroll(void);
-void printf(const char *format, ...);
+extern void setColor(uint8_t c);
+extern "C" void printf(const char *format, ...);
 void clrscr(void);
-#endif	/* STDIO_H */
+
+#define assert(x) if(x!=0){printf("\nAssert at [%s],File [%s], Line [%d]",#x,__FILE__,__LINE__);__asm__("cli;hlt;");}
+#define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]",x);
+
+#endif /* STDIO_H */
 
