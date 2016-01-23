@@ -1,2 +1,2 @@
 # momentum
-Momentum is as x86 os written from scratch.
+Momentum is a x86 operating system written from scratch.
