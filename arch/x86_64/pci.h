@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -106,7 +106,7 @@ struct _PCI_HEADER_TYPE_2
     uint8_t Diagnostic;
 };
 
-typedef struct _PCI_COMMON_CONFIG
+struct PCI_COMMON_CONFIG
 {
     uint16_t VendorID;
     uint16_t DeviceID;
@@ -129,38 +129,48 @@ typedef struct _PCI_COMMON_CONFIG
     };
     uint8_t DeviceSpecific[108];
 
-} PCI_COMMON_CONFIG;
+};
 
-typedef union
-{
-
-    struct
-    {
-        uint8_t resv1;
-        uint8_t func : 3;
-        uint8_t slot : 5;
-        uint8_t bus;
-        uint8_t resv0 : 7;
-        uint8_t enable : 1;
-    } __attribute__((packed));
-    uint32_t address;
-} pci_device_t;
-
-typedef struct
+struct pci_device_id
 {
     uint16_t VendorID;
     uint16_t DeviceID;
-    uint8_t ProgIf;
+    uint16_t SubVendorID;
+    uint16_t SubSystemID;
+    uint8_t Class;
     uint8_t SubClass;
-    uint8_t BaseClass;
-} __attribute__((packed)) pci_device_id;
+    uint8_t ProgIf;
+    bool IsMatching(const pci_device_id& in) const;
+} __attribute__((packed));
+
+class pci_device_t
+{
+public:
+    union {
+        struct
+        {
+            uint8_t resv1;
+            uint8_t func : 3;
+            uint8_t slot : 5;
+            uint8_t bus;
+            uint8_t resv0 : 7;
+            uint8_t enable : 1;
+        } __attribute__((packed));
+        uint32_t address;
+    };
+    bool bIsProcessed;
+    struct pci_driver_t *pDriver;
+public:
+    pci_device_t();
+    ~pci_device_t();
+    void getDeviceId(pci_device_id *devID) const;
+};
 
 uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar);
 uint32_t pci_resource_end(pci_device_t *dev, uint32_t bar);
 uint32_t pci_resource_flags(pci_device_t *dev, uint32_t bar);
 uint32_t pci_readRegister(const pci_device_t *device, uint32_t offset);
 void pci_writeRegister(const pci_device_t *device, uint32_t offset, uint32_t value);
-const vector_list_t* pci_getDevices(void);
+std::vector<pci_device_t>& pci_getDevices(void);
 void pci_init_devices(void);
-void pci_getDeviceId(const pci_device_t *dev, pci_device_id *devID);
 #endif /* PCI_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -16,11 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "ddi.h"
-#include "../arch/x86/paging.h"
+#include "../arch/x86_64/paging.h"
 
 void allocate_page(uint32_t phyAddar, uint32_t virtAddar, uint32_t noPages)
 {
-    force_map(phyAddar, virtAddar, noPages);
+    //force_map(phyAddar, virtAddar, noPages);
 }

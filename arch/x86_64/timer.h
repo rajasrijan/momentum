@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -22,10 +22,10 @@
 #include "global.h"
 #include "interrupts.h"
 
-void apic_timer_callback(registers_t* reg);
+void apic_timer_callback(retStack_t* stack, general_registers_t* regs);
 void init_timer(void);
-void sleep(uint32_t delay);
-uint32_t getSystemTime(void);
+void sleep(int64_t delay);
+uint64_t getSystemTime(void);
 void disableThreadSwitching(void);
 void enableThreadSwitching(void);
 void print_thread_list(void);

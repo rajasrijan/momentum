@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,23 +20,7 @@
 #ifndef THREADS_H
 #define	THREADS_H
 
-#include <stdint.h>
-
-enum {
-    thrd_success,
-    thrd_nomem,
-    thrd_timedout,
-    thrd_busy,
-    thrd_error
-};
-
-typedef uint32_t mtx_t;
-int mtx_init( mtx_t* mutex, int type );
-int mtx_lock( mtx_t* mutex );
-int mtx_trylock( mtx_t *mutex );
-int mtx_unlock( mtx_t *mutex );
-void mtx_destroy( mtx_t *mutex );
-
+#include <native_sync.h>
 
 #endif	/* THREADS_H */
 

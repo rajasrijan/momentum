@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -41,7 +41,9 @@ enum keymap
     SC_B,
     SC_C,
     SC_D,
-    SC_E
+    SC_E,
+    SC_LSHIFT=0x2A,
+    SC_RSHIFT=0x36
 };
 void init_keyboard(void);
 

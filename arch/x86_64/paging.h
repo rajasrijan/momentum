@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,27 +20,42 @@
 #ifndef PAGING_H
 #define	PAGING_H
 #include <stdint.h>
+#include "interrupts.h"
 #include "../../kernel/lists.h"
+#include <vector>
 
-struct paging_structure
+extern "C" uint64_t PML4T[2];
+extern "C" uint64_t PDPT[512];
+extern "C" uint64_t PDT[512 * 512];
+
+class PageManager
 {
-    uint32_t page_directory[1024];
-    uint32_t page_table[1024 * 1024];
+private:
+	PageManager();
+	/*
+		handle page faults
+	*/
+	static void interruptHandler(retStack_t *stack, general_registers_t *regs);
+public:
+	const static uint64_t PAGESIZE = 0x200000;
+	const static uint64_t BIGPAGESIZE = 0x40000000;
+	const static uint64_t BIGBIGPAGESIZE = 0x8000000000;
+	static PageManager* getInstance();
+	static uint64_t roundToPageSize(uint64_t sz);
+	int setPageAllocation(uint64_t vaddr, uint64_t size);
+	int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size);
+	int freeVirtualMemory(uint64_t vaddr, uint64_t size);
+	int set2MBPage(uint64_t vaddr, uint64_t paddr);
+	int IdentityMap2MBPages(uint64_t paddr);
+	int initialize();
+	int findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset = 0);
+	~PageManager();
 };
 
-typedef struct _pt_cache_unit
-{
-    uint32_t paddress_flags;
-    uint32_t start_page, no_of_pages;
-} pt_cache_unit_t;
-
-
-void map_4mb(uint32_t virtual_address);
+void map_4mb(uint64_t virtual_address);
 typedef volatile struct paging_structure paging_structure_t;
 void new_paging_structure(paging_structure_t* ps);
 void init_paging(void);
-void identity_map_4mb(uint32_t address);
-void force_map(uint32_t physical, uint32_t virtual_address, uint32_t pages);
 uint32_t get_physical_address(uint32_t virtual_address);
 
 #endif	/* PAGING_H */

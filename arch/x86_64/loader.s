@@ -1,9 +1,9 @@
 ;
-; Copyright 2009-2012 Srijan Kumar Sharma
+; Copyright 2009-2017 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ;
-; Momentum is free software: you can redistribute it and/or modify
+; Momentum is free software: you can rRDIstribute it AND/or modify
 ; it under the terms of the GNU General Public License as published by
 ; the Free Software Foundation, either version 3 of the License, or
 ; (at your option) any later version.
@@ -21,11 +21,16 @@
 [global loader]
 [global stack]
 [global alined_alloc]
+[global g_qKernelEnd]
+[global PML4T]
+[global PDPT]
+[global PDT]
 [extern kernel_start]
 [extern kernel_end]
-[extern sys_info]
 [extern stage2]
+[extern readMultiBootInfo]
 
+section .text0
 ; setting up the Multiboot header - see GRUB docs for details
 MODULEALIGN equ  1<<0                   ; align loaded modules on page boundaries
 MEMINFO     equ  1<<1                   ; provide memory map
@@ -33,250 +38,182 @@ FLAGS       equ  MODULEALIGN | MEMINFO  ; this is the Multiboot 'flag' field
 MAGIC       equ    0x1BADB002           ; 'magic number' lets bootloader find the header
 CHECKSUM    equ -(MAGIC + FLAGS)        ; checksum required
 
-section .text
-align 4
-
+section .text0
+align 8
 
 MultiBootHeader:
    dd MAGIC
    dd FLAGS
    dd CHECKSUM
-STACKSIZE equ 0x1000                  ; that's 4k.
-
+STACKSIZE equ 0x1000
+align 8
+[BITS 32]
 loader:
-	call near .locator
-.locator:
-	pop ecx								;got the return address;
-	sub ecx,5							;address of loader.
-        xchg ebx,ecx    ;ebx has multiboot info structure.
-	lea esp,[ebx + (stack +STACKSIZE )]
-	sub esp,loader						;absolute location of stack.
-	mov eax,kernel_end
-        sub eax,loader
-        add eax,ebx
-	mov dword [ebx + kend - loader],eax
-.copy_memory_map_structure_from_multiboot_loader:
-        mov esi,[ecx+48]
-        mov ecx,[ecx+44]
-        push esi
-        push ecx
-        push dword 1
-        push dword ecx
-        call alined_alloc
-        mov dword [ebx + memory_map - loader],eax        
-        mov edi,eax
-        pop ecx
-        pop esi
-        mov dword [ebx + memory_map_len - loader],ecx
-        rep movsb
-        
-	call parse_acpi_tables
-        mov eax,dword [ebx + no_of_cpus - loader]
-        xor edx,edx
-        mov ecx,gdt_start.gdt_end - gdt_start
-        mul ecx
-        push dword 4096
-        push dword eax
-        call alined_alloc
-        mov dword [ebx + gdt_ptr - loader],eax
-        mov edi,eax
-        mov ecx,dword [ebx + no_of_cpus - loader]
-.copy_gdt:
-        push ecx
-        lea esi,[ebx + gdt_start - loader]
-        mov ecx,gdt_start.gdt_end - gdt_start
-        rep movsb
-        pop ecx
-        dec ecx
-        cmp ecx,0
-        jnz .copy_gdt
-        mov eax,[ebx + no_of_cpus - loader]
-        xor edx,edx
-        mov ecx,gdt_start.gdt_end - gdt_start
-        mul ecx
-        dec eax
-        xchg eax,ecx
-        mov eax,dword [ebx + gdt_ptr - loader]
-        mov dword [eax],ecx
-        lea ecx,[eax+6]
-        mov dword [eax+2],ecx
-        lgdt [eax]
-        xchg bx,bx
-        jmp 0x08:(.reload_cs - 0xC0000000)
+    ;EBX has multiboot info structure.
+	cli
+	MOV ESP,stack+STACKSIZE
+	MOV EAX,kernel_end-0xC0000000
+    MOV DWORD [kend_lo-0xC0000000],EAX
+;
+;	KILL PIC, its dead.
+;	
+	mov al, 0xff
+	out 0xa1, al
+	out 0x21, al
+;
+;	End any pending interrupt
+;
+	mov al, 0x20
+	out 0xa0, al
+	out 0x20, al
+.gdt:
+    MOV eax,gdt_start
+    lgdt [EAX]
+    jmp 0x08:.reload_cs
 .reload_cs:
-        MOV   AX, 0x10 ; 0x10 points at the new data selector
-        MOV   DS, AX
-        MOV   ES, AX
-        MOV   FS, AX
-        MOV   GS, AX
-        MOV   SS, AX
-.allocate_idt:
-        push dword 1
-        push dword (6 + (256*8))
-        call alined_alloc
-        mov dword [ebx + idt_ptr- loader],eax
-.start_paging:
-        mov ecx,5*1024*1024     ;5MB for page table.
-        mov eax,[ebx + no_of_cpus - loader]
-        mul ecx                 ;page table for each cpu.
-        push dword 4096
-        push dword eax
-        call alined_alloc
-        mov dword [ebx + paging_structure - loader],eax
-        mov ecx,1024
-        mov edi,eax
-        add eax,1024*1024
-.fill_pagedirectory:
-        stosd
-        add eax,0x1000
-        dec ecx
-        cmp ecx,0
-        jnz .fill_pagedirectory
-        mov eax,dword [ebx + paging_structure - loader]
-        mov ecx,1024*1024
-        add eax,1024*1024
-        mov edi,eax
-        xor eax,eax
-.fill_pagetable:
-        stosd
-        add eax,0x1000
-        dec ecx
-        cmp ecx,0
-        jnz .fill_pagetable
-        mov eax,[ebx + kend - loader]
-        sub eax,kernel_start
-		add eax,loader
-        sub eax,ebx
-        add eax,(0x400000 - 1)
-        xor edx,edx
-        mov ecx,0x400000
-        div ecx
-        inc eax
-        xor ecx,ecx
-        xchg eax,ecx
-        xchg bx,bx
-.allocate_pages:
-        push ecx
-        push eax
+    MOV   AX, 0x10 ; 0x10 points at the new data selector
+    MOV   DS, AX
+    MOV   ES, AX
+    MOV   FS, AX
+    MOV   GS, AX
+    MOV   SS, AX
 ;
-; create stack for both the processes.
+;	enable cr0.PM
 ;
-        push eax
-        push eax
-        push eax
-        push eax
-        add dword [esp + 4],0xC0000000
-        call map_4mb
-        call map_4mb
-        
+	mov eax, 000000011h
+	mov cr0, eax
+;
+;	load new page table. 1gb identity mapped
+;
+	MOV EAX,PML4T-0xC0000000
+	MOV cr3,EAX
+;
+;	enable PAE
+;
+	mov eax, cr4                 ; Set the A-register to control register 4.
+    or eax, 1 << 5               ; Set the PAE-bit, which is the 6th bit (bit 5).
+    mov cr4, eax                 ; Set control register 4 to the A-register.
+;
+;	The Switch from Protected Mode to long mode
+;
+	mov ecx, 0xC0000080          ; Set the C-register to 0xC0000080, which is the EFER MSR.
+    rdmsr                        ; Read from the model-specific register.
+    or eax, 1 << 8               ; Set the LM-bit which is the 9th bit (bit 8).
+    wrmsr                        ; Write to the model-specific register.
+;
+;	Enabling paging
+;
+	mov eax, cr0                 ; Set the A-register to control register 0.
+    or eax, 1 << 31              ; Set the PG-bit, which is the 32nd bit (bit 31).
+    mov cr0, eax                 ; Set control register 0 to the A-register.
+.gdt64:
+	lgdt [GDT64.Pointer]
+	jmp GDT64.Code:Realm64
+; Use 64-bit.
+[BITS 64]
+ 
+Realm64:
+    mov ax, GDT64.Data            ; Set the A-register to the data descriptor.
+    mov ds, ax                    ; Set the data segment to the A-register.
+    mov es, ax                    ; Set the extra segment to the A-register.
+    mov fs, ax                    ; Set the F-segment to the A-register.
+    mov gs, ax                    ; Set the G-segment to the A-register.
+    mov ss, ax                    ; Set the stack segment to the A-register.
+    mov edi, 0xB8000              ; Set the destination index to 0xB8000.
+    mov RAX, 0x1F201F201F201F20   ; Set the A-register to 0x1F201F201F201F20.
+    mov ecx, 500                  ; Set the C-register to 500.
+    rep stosq                     ; Clear the screen.
 
-        pop eax
-        pop ecx
-        add eax,0x400000
-        dec ecx
-        cmp ecx,0
-        jnz .allocate_pages
-        mov eax,dword [ebx + paging_structure - loader]
-        mov cr3,eax
-        mov eax,cr0
-        or eax,0x80000000
-        mov cr0,eax
-        push 1
-        push dword 0xC0000000
-        call alined_alloc
-.fill_system_info_table:
-        mov eax,dword [ebx + no_of_cpus - loader]
-        mov dword [sys_info+0],eax
-        mov eax,dword [ebx + gdt_ptr - loader]
-        mov dword [sys_info+4],eax
-        mov eax,dword [ebx + paging_structure - loader]
-        mov dword [sys_info+8],eax
-        mov eax,dword [ebx + memory_map - loader]
-        mov dword [sys_info+12],eax
-        mov eax,dword [ebx + memory_map_len - loader]
-        mov dword [sys_info+16],eax
-        mov eax,dword [ebx + kend - loader]
-        mov dword [sys_info+20],eax
-        mov eax,dword [ebx + local_apic_address - loader]
-        mov dword [sys_info+24],eax
-        mov eax,dword [ebx + idt_ptr - loader]
-        mov dword [sys_info+28],eax
-        mov eax,dword [ebx + rsdp - loader]
-        mov dword [sys_info+32],eax
-.fix_referances:
-        jmp 0x08:.jump_to_main_kernel
-.jump_to_main_kernel:
-        mov esp,STACKSIZE+stack
-        call stage2
+	MOV RAX,PML4T-0xC0000000
+	MOV cr3,RAX
+
+;	wait for debugger
+;	MOV RAX,1
+;debugger:
+;	test RAX,1
+;	pause
+;	jnz debugger
+	cli
+;
+;	push stack magic marker.
+;
+	MOV RBP,0xDEADBEEFDEADBEEF
+	PUSH RBP
+	PUSH RBP
+	MOV RBP,RSP
+	MOV rdi,rbx
+	MOV RAX, stage2
+	CALL RAX
 hang:
-        cli;
+    cli;
 	hlt;
+[BITS 32]
 find_acpi:
-	mov eax,0xE0000
+	MOV EAX,0xE0000
 .loop:
-        cmp dword [eax],'RSD '
+        cmp DWORD [EAX],'RSD '
         jne .continue
-        cmp dword [eax+4],'PTR '
+        cmp DWORD [EAX+4],'PTR '
         je .done
 .continue:
-        cmp eax,0xFFFFF
+        cmp EAX,0xFFFFF
         jge .failed
-        add eax,2
+        add EAX,2
         jmp .loop
 .failed:
-        xor eax,eax
+        xor EAX,EAX
 .done:
         ret
 
 
 parse_acpi_tables:
-        call find_acpi                  ;got rsdp.
-        cmp eax,0
+        CALL find_acpi                  ;got rsdp.
+        cmp EAX,0
         jz .failed
-        mov dword [ebx + rsdp - loader],eax
-        mov eax,[eax+16]                ;got rsdt.
-        cmp dword [eax],'RSDT'
+        MOV DWORD [EBX + rsdp - loader],EAX
+        MOV EAX,[EAX+16]                ;got rsdt.
+        cmp DWORD [EAX],'RSDT'
         jne .failed
-        mov ecx,[eax+4]
-        sub ecx,36                      ;length of descriptor tables.
-        shr ecx,2                       ;divide by 4.
-        add eax,36
+        MOV ECX,[EAX+4]
+        SUB ECX,36                      ;length of descriptor tables.
+        shr ECX,2                       ;divide by 4.
+        add EAX,36
 .test_table:
-        cmp ecx,0
+        cmp ECX,0
         jz .failed
-        mov edx,[eax]
-        cmp dword [edx],'APIC'
+        MOV EDX,[EAX]
+        cmp DWORD [EDX],'APIC'
         je .found_madt
-        add eax,4
-        dec ecx
+        add EAX,4
+        dec ECX
         jmp .test_table
 .found_madt:
-        mov eax,edx
-        mov ecx,[eax+4]
-        sub ecx,44                      ;length of entire apic structure.
-        mov edx,[eax+36]
-        mov dword [ebx + local_apic_address - loader],edx   ;store local apic address.
-        add eax,44
+        MOV EAX,EDX
+        MOV ECX,[EAX+4]
+        SUB ECX,44                      ;length of entire apic structure.
+        MOV EDX,[EAX+36]
+        MOV DWORD [EBX + local_apic_address - loader],EDX   ;store local apic address.
+        add EAX,44
 .test_apic_entries:
-        cmp ecx,0
+        cmp ECX,0
         jz .done
 .switch0:
-        cmp byte [eax],0
+        cmp byte [EAX],0
         jne .next_entry
-        inc dword [ebx + no_of_cpus - loader]
+        inc DWORD [EBX + no_of_cpus - loader]
 .next_entry:
-        xor edx,edx
-        mov dl,byte [eax+1]
-        cmp ecx,edx
+        xor EDX,EDX
+        MOV dl,byte [EAX+1]
+        cmp ECX,EDX
         jl .failed
-        add eax,edx
-        sub ecx,edx
+        add EAX,EDX
+        SUB ECX,EDX
         jmp .test_apic_entries
 .failed:
-        xor eax,eax
+        xor EAX,EAX
         ret
 .done:
-        mov eax,1
+        MOV EAX,1
         ret
 
 
@@ -284,22 +221,22 @@ parse_acpi_tables:
 ;   void* alined_alloc(size,alignment)
 ;
 alined_alloc:
-        push ebp
-        mov ebp,esp
-        mov eax,dword [ebx + kend - loader]
-        add eax,dword [esp + (4*(2+1))]
-        dec eax
-        xor edx,edx
-        div dword [esp + (4*(2+1))]
-        xor edx,edx
-        mul dword [esp + (4*(2+1))]
-        mov edx,eax
-        add edx,dword [esp + (4*(2+0))]
-        mov dword [ebx + kend - loader],edx
-        xor edx,edx
+        PUSH EBP
+        MOV EBP,ESP
+        ;MOV EAX,DWORD [EBX + kend_lo - loader]
+        add EAX,DWORD [ESP + (4*(2+1))]
+        dec EAX
+        xor EDX,EDX
+        div DWORD [ESP + (4*(2+1))]
+        xor EDX,EDX
+        mul DWORD [ESP + (4*(2+1))]
+        MOV EDX,EAX
+        add EDX,DWORD [ESP + (4*(2+0))]
+        ;MOV DWORD [EBX + kend_lo - loader],EDX
+        xor EDX,EDX
 .done:
-        mov esp,ebp
-        pop ebp
+        MOV ESP,EBP
+        POP EBP
         ret 8
 
 
@@ -307,30 +244,30 @@ alined_alloc:
 ;   void map_4mb(void* physical_address,void* virtual_address);
 ;
 map_4mb:
-        push ebp
-        mov ebp,esp
-        mov edi,dword [esp + (4*(2+1))]
-        shr edi,22  ;page table index
-        shl edi,2  ;page table offset
-        add edi,dword [ebx + paging_structure - loader]
-        or dword [edi],3
-        mov eax,[edi]
-        and eax,0xFFFFF000
-        mov edx,dword [esp + (4*(2+0))]
-        shr edx,22
-        shl edx,22
-        or edx,3
-        mov ecx,1024
+        PUSH EBP
+        MOV EBP,ESP
+        MOV EDI,DWORD [ESP + (4*(2+1))]
+        shr EDI,22  ;page table index
+        shl EDI,2  ;page table offset
+        add EDI,DWORD [EBX + paging_structure - loader]
+        or DWORD [EDI],3
+        MOV EAX,[EDI]
+        AND EAX,0xFFFFFFFFFFFFF000
+        MOV EDX,DWORD [ESP + (4*(2+0))]
+        shr EDX,22
+        shl EDX,22
+        or EDX,3
+        MOV ECX,1024
 .fill_page_table:
-        mov [eax],edx
-        add edx,0x1000
-        add eax,4
-        dec ecx
-        cmp ecx,0
+        MOV [EAX],EDX
+        add EDX,0x1000
+        add EAX,4
+        dec ECX
+        cmp ECX,0
         jnz .fill_page_table
 .done:
-        mov esp,ebp
-        pop ebp
+        MOV ESP,EBP
+        POP EBP
         ret 8
 
 data:
@@ -340,14 +277,15 @@ data:
         no_of_cpus dd 0
         memory_map dd 0
         memory_map_len dd 0
-	kend dd 0
         idt_ptr dd 0
         rsdp dd 0
+align 8
 gdt_start:
 .gdt_ptr_start:
-        .limit dw 0
-        .base dd 0
+        .limit dw gdt_start.gdt_end - gdt_start.gdt_entry_start-1
+        .base dd gdt_start.gdt_entry_start
 .gdt_ptr_end:
+.gdt_entry_start:
         .gdt_null dd 0,0
         .gdt_cs dd 0x0000FFFF,0x00CF9A00
         .gdt_ds dd 0x0000FFFF,0x00CF9200
@@ -356,6 +294,80 @@ gdt_start:
         .gdt_TIB dd 0x0000FFFF,0x00CFF200
 .gdt_end:
 
-section .bss
+;
+; Establish a temporary 32-bit GDT and IDT.
+;
+GDT64:                           ; Global Descriptor Table (64-bit).
+    .Null: equ $ - GDT64         ; The null descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 0                         ; Access.
+    db 0                         ; Granularity.
+    db 0                         ; Base (high).
+    .Code: equ $ - GDT64         ; The code descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 10011010b                 ; Access (exec/read).
+    db 00100000b                 ; Granularity.
+    db 0                         ; Base (high).
+    .Data: equ $ - GDT64         ; The data descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 10010010b                 ; Access (read/write).
+    db 00000000b                 ; Granularity.
+    db 0                         ; Base (high).
+    .Pointer:                    ; The GDT-pointer.
+    dw $ - GDT64 - 1             ; Limit.
+    dq GDT64                     ; Base.
+
+pIDE64: ; Used by LGDT.
+	dw IDT64.end-IDT64 ; GDT limit ...
+	dd IDT64 ; and 32-bit GDT base
+IDT64:
+	dd 0,0
+	dd 0x0000FFFF,0x00CF9A00
+	dd 0x0000FFFF,0x00CF9200
+.end:
+
+
 stack:
 	resb STACKSIZE
+section .data
+;
+; Pointer to end of kernel.
+;
+g_qKernelEnd:
+	kend_lo dd 0
+	kend_hi dd 0
+
+;
+; long mode temporary page table.
+; 1GB of identity mapped memory
+;
+align 0x1000
+PML4T:
+	dq PDPT + 0x03 - 0xC0000000
+	dq 0
+align 0x1000
+PDPT:
+	dq PDT + 0x03 - 0xC0000000
+	dq 0x00000000
+	dq 0x00000000
+	dq PDT.PDT3GB + 0x03 - 0xC0000000
+	resb 0x1000 - ($ - PDPT)
+align 0x1000
+PDT:
+	dq 0x00000083
+	dq 0x00200083
+	dq 0x00400083
+	dq 0x00600083
+	resb 0x3000 - ($ - PDT)
+.PDT3GB:
+	dq 0x00000083
+	dq 0x00200083
+	dq 0x00400083
+	dq 0x00600083
+	resb 0x1FC000 - ($ - .PDT3GB)

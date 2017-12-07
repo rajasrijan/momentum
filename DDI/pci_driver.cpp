@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -21,42 +21,54 @@
 #include "../kernel/lists.h"
 #include "../libc/stdlib.h"
 
-vector_list_t *pci_driver_tables;
+std::vector<pci_driver_t *> pci_driver_tables;
 
 int pci_register_driver(pci_driver_t *dev)
 {
-    if (pci_driver_tables != 0)
-    {
-        if (pci_driver_tables->push(pci_driver_tables, dev) == -1)
-            return -1;
-    }
-    else
-    {
-        pci_driver_tables = (vector_list_t*) calloc(sizeof (vector_list_t), 1);
-        vector_init_fn(pci_driver_tables, sizeof (pci_driver_t *));
-        if (pci_driver_tables->push(pci_driver_tables, &dev) == -1)
-            return -1;
-    }
-    printf("\nRegistered \"%s\"", dev->name);
-    const vector_list_t* device_list = pci_getDevices();
-    pci_device_t* pci_device = (pci_device_t*) device_list->data;
-    uint32_t no_devices = device_list->size(device_list);
+	pci_driver_tables.push_back(dev);
+	printf("Registered [%s]\n", dev->name);
 
-    for (int i = 0; i < no_devices; i++)
-    {
-        pci_device_id devID;
-        pci_getDeviceId(&pci_device[i], &devID);
-        if (devID.BaseClass == dev->table.BaseClass)
-        {
-            printf("\nMatch found.");
-            dev->probe(&pci_device[i], devID);
-        }
-
-    }
-    return 0;
+	printf("Supported devices:\n");
+	for (int i = 0; i < dev->pci_device_count; i++)
+	{
+		const pci_device_id &device = dev->deviceTable[i];
+		printf("PCI_%x_%x_%x_%x_%x_%x\n", device.VendorID, device.DeviceID,
+			   device.SubVendorID, device.SubSystemID, device.Class, device.SubClass);
+	}
+	return 0;
 }
 
 void pci_unregister_driver(pci_driver_t *dev)
 {
+}
 
+int pci_find_compitable_driver(pci_device_t &device)
+{
+	int ret = 0;
+	pci_device_id dev_id;
+	device.getDeviceId(&dev_id);
+	printf("Trying PCI_%x_%x_%x_%x_%x_%x\n", dev_id.VendorID, dev_id.DeviceID,
+		   dev_id.SubVendorID, dev_id.SubSystemID, dev_id.Class, dev_id.SubClass);
+	for (pci_driver_t *pci_driver : pci_driver_tables)
+	{
+		int it = 0;
+		for (it = 0; it < pci_driver->pci_device_count; it++)
+		{
+			if (pci_driver->deviceTable[it].IsMatching(dev_id))
+			{
+				break;
+			}
+		}
+		if (it != pci_driver->pci_device_count)
+		{
+			printf("Found driver [%s]\n", pci_driver->name);
+			if (!pci_driver->probe(&device, pci_driver->deviceTable[it]))
+			{
+				device.pDriver=pci_driver;
+				printf("Driver registered\n");
+			}
+		}
+	}
+	device.bIsProcessed = true;
+	return ret;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -55,9 +55,6 @@ int toupper(int c);
 #define isxdigit(c)                     (isdigit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #define tolower(c)                      (isupper(c) ? ((c) + 'a' - 'A') : (c))
 #define toupper(c)                      (islower(c) ? ((c) + 'A' - 'a') : (c))
-
-#define true (1==1)
-#define false (0==1)
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -24,31 +24,32 @@
 
 typedef struct _heap_
 {
-    uint32_t size;
+	uint32_t size;
 #define     HEAP_EMPTY  (0)
 #define     HEAP_FULL   (1)
-    uint8_t flags;
-    uint8_t checksum;
+	uint8_t flags;
+	uint8_t checksum;
 } heap_t;
 extern uint64_t total_ram;
 extern uint32_t ram_end;
 void coax_multiboot(void *mbd);
-void initilize_memorymanager(void);
+void initilize_memorymanager(multiboot_info* mbi);
 void create_kernel_heap(void);
-uint32_t get_4mb_block(void);
+uint64_t get_2mb_block(void);
 int IsMemoryReserved(uint32_t mem_addr);
+extern "C" void* g_qKernelEnd;
 #ifndef __cplusplus
 extern "C"
 {
 #endif
-void* _malloc(uint32_t length);
-/*
- * Free allovated memory
- * Syntax:
- * void free(void* ptr);
- * ptr == pointer to memory to be freed.
- */
-void _free(void *ptr);
+	void* _malloc(uint32_t length);
+	/*
+	 * Free allovated memory
+	 * Syntax:
+	 * void free(void* ptr);
+	 * ptr == pointer to memory to be freed.
+	 */
+	void _free(void *ptr);
 #ifndef __cplusplus
 }
 #endif

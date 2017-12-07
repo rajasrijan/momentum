@@ -1,5 +1,5 @@
 ;
-; Copyright 2009-2012 Srijan Kumar Sharma
+; Copyright 2009-2017 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ; 
@@ -16,32 +16,71 @@
 ; You should have received a copy of the GNU General Public License
 ; along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
 ;
-
+[bits 64]
 [EXTERN isr_handler]
-[EXTERN irq_handler]
+;[EXTERN irq_handler]
 [GLOBAL irq_common_stub]
-[GLOBAL get_eflags]
+[GLOBAL get_rflags]
 [GLOBAL get_cpl]
 [GLOBAL switch_context]
 [GLOBAL get_spin_lock]
 [GLOBAL get_async_spin_lock]
 [GLOBAL release_spin_lock]
+[GLOBAL get_cr2]
 [GLOBAL get_cr3]
+[GLOBAL outb]
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
 	[GLOBAL isr%1]        ; %1 accesses the first parameter.
 isr%1:
-    CLI
-    PUSH ESP
-    PUSH BYTE %1
-    JMP isr_common_stub
+    cli
+	push QWORD 0x00
+    push QWORD %1
+    jmp isr_common_stub
 %endmacro
 
 %macro ISR_ERRCODE 1
 	[GLOBAL isr%1]
 isr%1:
-    CLI
-    PUSH BYTE %1
-    JMP isr_common_stub
+    cli
+	push QWORD %1
+    jmp isr_common_stub
+%endmacro 
+
+%macro POP_ALL_REGISTERS 0
+    pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+	pop rdi
+	pop rsi
+	pop rbp
+	add rsp, 8
+	pop rbx
+	pop rdx
+	pop rcx
+	pop rax
+%endmacro 
+%macro PUSH_ALL_REGISTERS 0
+    push rax
+	push rcx
+	push rdx
+	push rbx
+	push rsp
+	push rbp
+	push rsi
+	push rdi
+	push r8
+	push r9
+	push r10
+	push r11
+	push r12
+	push r13
+	push r14
+	push r15
 %endmacro 
 	
 ISR_NOERRCODE 0
@@ -115,89 +154,111 @@ ISR_NOERRCODE 64
 ; up for kernel mode segments, calls the C-level fault handler,
 ; and finally restores the stack frame.
 isr_common_stub:
-	PUSHA                    ; PUSHES EDI,ESI,EBP,ESP,EBX,EDX,ECX,EAX
+	PUSH_ALL_REGISTERS
+	mov rdi,rsp
+	add rdi,0x80
+	mov rsi,rsp
+	call isr_handler
+	POP_ALL_REGISTERS
+	add rsp,0x10
+	iretq
 	
-	MOV AX, DS               ; LOWER 16-BITS OF EAX = DS.
-	PUSH EAX                 ; SAVE THE DATA SEGMENT DESCRIPTOR
-	
-	MOV AX, 0X10  ; LOAD THE KERNEL DATA SEGMENT DESCRIPTOR
-	MOV DS, AX
-	MOV ES, AX
-	;MOV FS, AX FS MUST REMAIN UNCHANGED.
-	MOV GS, AX
-	
-	CALL isr_handler
-	
-	POP EAX        ; RELOAD THE ORIGINAL DATA SEGMENT DESCRIPTOR
-	MOV DS, AX
-	MOV ES, AX
-	;MOV FS, AX FS MUST REMAIN UNCHANGED.
-	MOV GS, AX
-	
-	POPA                     ; POPS EDI,ESI,EBP...
-	ADD ESP, 8     ; CLEANS UP THE PUSHED ERROR CODE AND PUSHED ISR NUMBER
-	STI
-	IRETD           ; POPS 5 THINGS AT ONCE: CS, EIP, EFLAGS, SS, AND ESP
-	
-get_eflags:
-	pushfd
-	POP EAX
-	RET
+get_rflags:
+	push rbp
+	mov rbp,rsp
+	pushfq
+	pop rax
+	leave
+	ret
 	
 switch_context:
-	XCHG BX,BX
-	MOV ESP,[ESP+4]
-	POP DS
-	POPA
-	IRETD
-	
-get_cpl:
-	XOR EAX,EAX
-	PUSH CS
-	POP AX
-	AND EAX,0X3
-	RET
+	mov rsp,rdi
+	POP_ALL_REGISTERS
+	add rsp,16
+	iretq
 	
 atomic_exchange:
-	MOV EBX,[ESP+4]
-	MOV EAX,[ESP+8]
-	MOV [EBX],EAX
-	RET
+	mov rbx,[rsp+4]
+	mov rax,[rsp+8]
+	mov [rbx],rax
+	ret
 	
 get_spin_lock:
-        ;cli
-        ;hlt
-	MOV EBX, [ESP+4]
-        MOV EAX,DWORD [EBX]
-	TEST EAX, 1 ;CHECK IF LOCK IS FREE
-	JZ Get_Lock
-	PAUSE ;Short delay
-	JMP get_spin_lock
-Get_Lock:
-	OR EAX, 1
-	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
-	TEST EAX, 1 ;TEST IF SUCCESSFUL
-	JNZ get_spin_lock
-	RET
+.get_Lock:
+	mov rax, 1
+	xchg rax, QWORD [rdi] ;TRY TO GET LOCK
+	test rax, 1 ;TEST IF SUCCESSFUL
+	jz .done
+	jmp .get_Lock
+.done:
+	ret				;return
 
 get_async_spin_lock:
-        MOV EAX, ESP
-        ADD EAX, 4
-	MOV EBX, [EAX]
-	MOV EAX, DWORD [EBX]
-        OR EAX,1
-	XCHG EAX, DWORD [EBX] ;TRY TO GET LOCK
-	AND EAX, 1
-	RET
+	mov rax, 1
+	xchg rax, QWORD [rdi] ;TRY TO GET LOCK
+	ret				;return
+
 	
 release_spin_lock:
-	MOV EBX,DWORD [ESP+4]
-        MOV EAX,DWORD [EBX]
-	AND EAX,0xFFFFFFFE
-        XCHG EAX, DWORD [EBX]
-        AND EAX,0x1
-	RET
+	mov rax,QWORD [rdi]
+	AND rax,0xFFFFFFFFFFFFFFFE
+	xchg rax, QWORD [rdi]
+	ret
 	
+get_cr2:
+        mov rax,CR2
+        ret
+
 get_cr3:
-        MOV EAX,CR3
-        RET
+        mov rax,CR3
+        ret
+
+;extern void outb(unsigned short port, unsigned char val)
+;rdi=port
+;rsi=val
+outb:
+	push rdx
+	push rax
+	mov rdx,rdi
+	mov rax,rsi
+	out dx, al
+	pop rax
+	pop rdx
+	ret
+
+;extern void outl(unsigned short port, uint32_t val);
+;rdi=port
+;rsi=val
+outl:
+	push rdx
+	push rax
+	mov rdx,rdi
+	mov rax,rsi
+	out dx, eax
+	pop rax
+	pop rdx
+	ret
+;extern uint8_t inb(uint16_t port);
+;rdi=port
+inb:
+	push rdx
+	mov rdx,rdi
+	in al, dx
+	pop rdx
+	ret
+;extern uint16_t inb(uint16_t port);
+;rdi=port
+inw:
+	push rdx
+	mov rdx,rdi
+	in ax, dx
+	pop rdx
+	ret
+;extern uint32_t inl(uint16_t port);
+;rdi=port
+inl:
+	push rdx
+	mov rdx,rdi
+	in eax, dx
+	pop rdx
+	ret

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -22,21 +22,49 @@
 #include "interrupts.h"
 #include "global.h"
 
-#define  max_key (110)
-uint8_t key_grid[max_key] = {SC_ESC, SC_1, SC_2, SC_3, SC_4, 0};
-uint8_t key_buffer[1024];
-uint32_t index = 0;
+#define max_key (256)
+uint8_t key_grid[max_key] = {};
+const int key_buffer_size = 1024;
+uint8_t key_buffer[key_buffer_size];
+volatile uint64_t g_ullKeyBufferIndex = 0;
 
-static void keyboard_handler(registers_t *regs)
+static void keyboard_handler(retStack_t *regs, general_registers_t *context)
 {
-    DBG_OUTPUT
+    bool keyProcessed = false;
     uint8_t scan_code = inb(0x60);
-    if (index > 1024)
-        return;
-    /*
-        if (scan_code <= max_key)
-            printf("keycode %d", key_grid[scan_code - 1]);
-     */
+    bool IsKeyUp = scan_code & 0x80;
+    uint8_t keyCode = scan_code & 0x7F;
+    char ch = 0;
+    
+    if (IsKeyUp)
+        key_grid[keyCode] = 0;
+    else
+        key_grid[keyCode] = 1;
+    
+    if (keyCode==SC_RSHIFT||keyCode==SC_LSHIFT)
+    {
+        keyProcessed=true;
+    }
+    else if (keyCode >= 0xF && keyCode <= 0x39)
+    {
+        const char rowDOWN[] = "\tqwertyuiop[]\n asdfghjkl;'  \\zxcvbnm,./    ";
+        const char rowUP[] = "\tQWERTYUIOP{}\n ASDFGHJKL:\"  |ZXCVBNM<>?    ";
+        if (key_grid[SC_RSHIFT] || key_grid[SC_LSHIFT])
+            ch = rowUP[keyCode - 0xF];
+        else
+            ch = rowDOWN[keyCode - 0xF];
+        keyProcessed = true;
+    }
+
+    if (IsKeyUp && ch)
+    {
+        key_buffer[g_ullKeyBufferIndex % key_buffer_size] = ch;
+        g_ullKeyBufferIndex = ((g_ullKeyBufferIndex + 1) % key_buffer_size);
+    }
+    else if(!keyProcessed)
+    {
+        printf("^%x", keyCode);
+    }
 }
 
 void init_keyboard()
@@ -51,4 +79,17 @@ void init_keyboard()
     outb(0x61, temp | 0x80); /* Disable */
     DBG_OUTPUT
     outb(0x61, temp & 0x7F); /* Re-enable */
+}
+
+char getchar()
+{
+    char c = 0;
+    uint64_t localIndex = g_ullKeyBufferIndex;
+    while (localIndex == g_ullKeyBufferIndex)
+    {
+        __asm__("hlt;");
+    }
+    c = key_buffer[localIndex % key_buffer_size];
+    putchar(c);
+    return c;
 }

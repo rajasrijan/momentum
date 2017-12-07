@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -21,7 +21,7 @@
 #define	PCI_DRIVER_H
 
 #include <stdint.h>
-#include "../arch/x86/pci.h"
+#include "../arch/x86_64/pci.h"
 #include "pci_ids.h"
 
 #define PCI_ANY_ID ((uint32_t)(~0))
@@ -32,19 +32,21 @@ typedef void (*pci_remove_t) (pci_device_t *dev);
 typedef int (*pci_suspend_t) (pci_device_t *dev, uint32_t state);
 typedef int (*pci_resume_t) (pci_device_t *dev);
 
-typedef struct pci_driver
+struct pci_driver_t
 {
     const char* name;
-    pci_device_id table;
+    const pci_device_id *deviceTable;
+    const int pci_device_count;
     pci_probe_t probe;
     pci_remove_t remove;
     pci_suspend_t suspend;
     pci_resume_t resume;
-} pci_driver_t;
+};
 
-extern vector_list_t *pci_driver_tables;
+extern std::vector<pci_driver_t*> pci_driver_tables;
 
 int pci_register_driver(pci_driver_t *dev);
 void pci_unregister_driver(pci_driver_t *dev);
+int pci_find_compitable_driver(pci_device_t &device);
 
 #endif	/* PCI_DRIVER_H */

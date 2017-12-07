@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -28,241 +28,230 @@
 #include "../kernel/lists.h"
 #include "timer.h"
 
-static uint16_t stack_map = 0;
+uint64_t thread_id_counter = 0;
+
+//	TODO: remove hardcoding
+const retStack_t defaultThreadContext = {
+	0,	//interruptNumber
+	0,	// err;
+	0,	//rip
+	0x08, // cs
+	0,	// rflags
+	0,	// rsp
+	0x10  // ss
+};
 
 static uint32_t getrandom(void)
 {
-    static uint32_t local_random_generator = 0;
-    local_random_generator++;
-    if (local_random_generator == 0)
-        local_random_generator++;
-    return local_random_generator;
+	static uint32_t local_random_generator = 0;
+	local_random_generator++;
+	if (local_random_generator == 0)
+		local_random_generator++;
+	return local_random_generator;
 }
 
 void init_multitask()
 {
-    create_linked_list((linked_list_t**)&(sys_info.thread_list), sizeof (thread_info_t));
-    thread_info_t kernel_thread;
-    memset(&kernel_thread, 0, sizeof (kernel_thread));
-    kernel_thread.ProcessID = getrandom();
-    kernel_thread.ThreadID = getrandom();
-
-    /*sys_info.thread_list = calloc(1, sizeof (linked_list_t));
-    null_thread_list = sys_info.thread_list;
-    sys_info.thread_list->pointer = calloc(1, sizeof (thread_info_t));
-    null_thread = sys_info.thread_list->pointer;
-    sys_info.thread_list->next = sys_info.thread_list;
-    sys_info.thread_list->prev = sys_info.thread_list;
-    null_thread->ProcessID = getrandom();
-    null_thread->ThreadID = getrandom();*/
-    /*     
-     * FIXME: get rid of.sizeof (general_registers_t) + sizeof(uint32_t)
-     */
-    get_spin_lock(&(kernel_thread.flags));
-    kernel_thread.context.err_esp = (uint32_t) CreateStack() + 0x100000 - sizeof (iret_stack_same_t);
-    kernel_thread.context.iret_stack.same.eip = (uint32_t) state_c0;
-    kernel_thread.context.iret_stack.same.eflags = get_eflags();
-    kernel_thread.context.ds = 0x10;
-    kernel_thread.context.iret_stack.same.cs = 0x08;
-    kernel_thread.page_table = (vector_list_t*) calloc(1, sizeof (vector_list_t));
-    vector_init_fn(kernel_thread.page_table, sizeof (pt_cache_unit_t));
-    pt_cache_unit_t unit = {0};
-    for (uint32_t i = 0; i < 1024; i++)
-        if ((sys_info.pst->page_directory[i]&1) == 1)
-            for (uint32_t j = 0; j < 1024; j++)
-            {
-                if ((unit.paddress_flags & 0xFFF) != (sys_info.pst->page_table[(i * 1024) + j]&0xFFF))
-                {
-                    if ((unit.paddress_flags & 0x1) == 1)
-                        kernel_thread.page_table->push(kernel_thread.page_table, &unit);
-                    unit.no_of_pages = 1;
-                    unit.start_page = (i * 1024) + j;
-                    unit.paddress_flags = sys_info.pst->page_table[(i * 1024) + j];
-
-                }
-                else
-                {
-                    unit.no_of_pages++;
-                }
-            }
-    addto_linked_list(sys_info.thread_list, &kernel_thread);
-    sys_info.current_thread = (llnode*) getelement_linked_list(sys_info.thread_list, 0);
-    //print_thread_list();
-}
-
-int CreateThread(uint32_t *thd, const uint32_t attr, void *((*start_routine)(void*)), void *arg)
-{
-    disableThreadSwitching();
-    //linked_list_t *cursor = sys_info.thread_list;
-    //linked_list_t *newNode = calloc(1, sizeof (linked_list_t));
-    //((thread_info_t*) newNode)->flags = THREAD_BUSY;
-    //newNode->next = cursor->next;
-    //newNode->prev = cursor;
-    //cursor->next = newNode;
-    //newNode->next->prev = newNode;
-    //cursor = cursor->next;
-    thread_info_t thread;
-    memset(&thread, 0, sizeof (thread));
-    //thread.flags=THREAD_BUSY;
-    thread.context.ds = 0x10;
-    thread.context.err_esp = (uint32_t) CreateStack() + 0x100000;
-    thread.context.err_esp -= 4;
-    * ((uint32_t*) (thread.context.err_esp)) = (uint32_t) arg;
-    thread.context.err_esp -= 4;
-    * ((uint32_t*) (thread.context.err_esp)) = (uint32_t) thread_end;
-    thread.context.err_esp -= sizeof (iret_stack_same_t);
-    thread.context.iret_stack.same.cs = 0x08;
-    thread.context.iret_stack.same.eflags = get_eflags();
-    thread.context.iret_stack.same.eip = (uint32_t) start_routine;
-    thread.ProcessID = ((thread_info_t*) (sys_info.current_thread->ptr))->ProcessID;
-    thread.ThreadID = getrandom();
-    //printf("\nCreating P:%x,T:%x",thread->ProcessID,thread->ThreadID );
-    thread.page_table = ((thread_info_t*) (sys_info.current_thread->ptr))->page_table;
-
-    addto_linked_list(sys_info.thread_list, &thread);
-    //print_thread_list();
-
-    enableThreadSwitching();
-    return 0;
-}
-
-void* CreateStack()
-{
-
-    uint32_t* esp = 0;
-
-    for (uint32_t i = 0; i < 16; i++)
-    {
-        if ((stack_map & (1 << i)) == 0)
-        {
-            stack_map = (uint16_t) (stack_map | (1 << i));
-            break;
-        }
-        else
-        {
-            esp += 0x100000;
-        }
-    }
-
-    esp = (uint32_t*) ((uint32_t) esp + (uint32_t) KERNEL_STACK_PTR);
-
-    map_4mb((uint32_t) esp);
-
-    return esp;
-}
-
-void DestroyStack(uint32_t esp)
-{
-    esp -= (uint32_t) KERNEL_STACK_PTR;
-    esp /= 0x100000;
-    esp = !(uint32_t) (1 << esp);
-    stack_map = (uint16_t) (stack_map & ((uint16_t) esp));
+	multitask::getInstance()->initilize();
 }
 
 /*
  * Changes current thread to new thread with context reg.
- * also enables interrupts (clears NT bit in 'eflags' set by 'cli')
+ * also enables interrupts (clears NT bit in 'rflags' set by 'cli')
  */
-void change_thread(thread_info_t* thread)
+void change_thread(const thread_info &thread, bool enable_interrupts)
 {
-    for (uint32_t i = 0; i < thread->page_table->size(thread->page_table); i++)
-    {
-        pt_cache_unit_t *unit = (pt_cache_unit_t*) thread->page_table->at(thread->page_table, i);
-        for (uint32_t j = 0; j < unit->no_of_pages; j++)
-        {
-            sys_info.pst->page_table[unit->start_page + j] = unit->paddress_flags + (j * 0x1000);
-        }
-    }
-    registers_t *reg = &(thread->context);
-    uint32_t esp = reg->err_esp;
-    /*
-     * set maskable interrupt flag.
-     */
-    reg->iret_stack.same.eflags |= 0x200;
-    //printf("\n%x",reg->iret_stack.same.cs );
-    if (((reg->iret_stack.same.cs) >> 3) == 0)
-    {
-        printf("\nInvalid Code section.Halting...");
-        __asm__("cli;"
-                "hlt;"
-                );
-    }
-    if ((reg->iret_stack.same.cs & 3) == 0)
-    {
-        //DBG_OUTPUT
-        memcpy((char*) esp, (char*) &(reg->iret_stack.same), sizeof (iret_stack_same_t));
-    }
-    else
-    {
-        DBG_OUTPUT
-        memcpy((char*) esp, (char*) &(reg->iret_stack.different), sizeof (iret_stack_different_t));
-    }
-    esp -= sizeof (general_registers_t);
-    memcpy((char*) esp, (char*) &(reg->greg), sizeof (general_registers_t));
-    esp -= 4;
-    *((uint32_t*) esp) = reg->ds;
+	uint64_t cr3;
 
-    switch_context(esp);
+	retStack_t context = thread.context;
+	uint64_t &rsp = context.rsp;
+	//set maskable interrupt flag.
+	if (enable_interrupts)
+	{
+		context.rflags |= 0x200;
+	}
+	if (((context.cs) >> 3) == 0)
+	{
+		printf("\nInvalid Code section.Halting...");
+		__asm__("cli;"
+				"hlt;");
+	}
+
+	rsp -= sizeof(retStack_t);
+	memcpy((char *)rsp, (char *)&(context), sizeof(retStack_t));
+
+	rsp -= sizeof(general_registers_t);
+	memcpy((char *)rsp, (char *)&(thread.regs), sizeof(general_registers_t));
+	//printf(">%x,%x", thread.getThreadID(),thread.context.rip);
+	switch_context(rsp);
 }
 
 void thread_end()
 {
-    //uint32_t esp = ((thread_info_t*) sys_info.current_thread->ptr)->context.greg.esp;
-    //removefrm_linked_list(sys_info.thread_list, sys_info.current_thread->ptr);
-    //__asm__("cli;");
-    //sys_info.current_thread = 0;
-    printf("\nLooping till resheduled.");
-    ((thread_info_t*) sys_info.current_thread->ptr)->flags |= THREAD_STOP;
-    //DestroyStack(esp);
-    while (1)
-    {
-        __asm__(
-                "sti;"
-                "hlt;"
-                );
-    }
+	//uint32_t rsp = ((thread_info*) sys_info.current_thread->ptr)->context.greg.rsp;
+	//removefrm_linked_list(sys_info.thread_list, sys_info.current_thread->ptr);
+	//__asm__("cli;");
+	//sys_info.current_thread = 0;
+	//printf("\nLooping till resheduled.");
+	//sys_info.m_itCurrentThread->flags |= THREAD_STOP;
+	//DestroyStack(rsp);
+	while (1)
+	{
+		__asm__(
+			"sti;"
+			"hlt;");
+	}
 }
 
-thread_info_t* getNextThreadInQueue()
+thread_info *getNextThreadInQueue()
 {
-    /*linked_list_t *cursor = sys_info.thread_list;
-    while (get_async_spin_lock(&(((thread_info_t*) cursor->pointer)->flags)))
-    {
-        cursor = cursor->next;
-        if (sys_info.thread_list == cursor)
-            return null_thread;
-    }
-    return ((thread_info_t*) cursor->pointer);*/
-    return 0;
-}
-
-llnode* getNextThreadListInQueue()
-{
-    llnode* node = sys_info.current_thread;
-    thread_info_t *last_thread = ((thread_info_t*) sys_info.current_thread->ptr);
-
-    while (get_async_spin_lock(&(((thread_info_t*) (node->ptr))->flags)))
-    {
-        if (node == sys_info.thread_list->last_node)
-            node = sys_info.thread_list->first_node;
-        else
-            node = (llnode*) node->next;
-        if (node == sys_info.current_thread)
-            return node;
-    }
-    /*
-     *  Release last thread.
-     */
-    release_spin_lock(&(last_thread->flags));
-    return (node);
+	/*linked_list_t *cursor = sys_info.thread_list;
+	while (get_async_spin_lock(&(((thread_info*) cursor->pointer)->flags)))
+	{
+		cursor = cursor->next;
+		if (sys_info.thread_list == cursor)
+			return null_thread;
+	}
+	return ((thread_info*) cursor->pointer);*/
+	return 0;
 }
 
 int CreateNullProcess()
 {
-    return 0;
+	return 0;
 }
 
-int CreateProcess()
+multitask::multitask() : multitaskMutex(0), uiThreadIterator(0)
 {
-    return 0;
+	printf("NOT MORE THAN ONCE\n");
+}
+
+/*
+allocates stack of stackSize size.
+returns stack pointer and size.
+*/
+int multitask::allocateStack(uint64_t &stackSize, uint64_t &stackPtr)
+{
+	stackSize = PageManager::roundToPageSize(stackSize);
+	//	Find free space after 4GB mark.
+	PageManager::getInstance()->findFreeVirtualMemory(stackPtr, stackSize, 0x100000000);
+	PageManager::getInstance()->setPageAllocation(stackPtr, stackSize);
+	stackPtr += stackSize;
+	return 0;
+}
+
+const thread_info &multitask::getKernelThread()
+{
+	return threadList[0];
+}
+
+multitask::~multitask()
+{
+}
+
+multitask *multitask::getInstance()
+{
+	static multitask instance;
+	return &instance;
+}
+
+int multitask::initilize()
+{
+	int errCode = 0;
+	printf("Creating kernel thread\n");
+	thread_info kernel_thread(0, KERNEL_THREAD_NAME);
+	printf("Creating kernel ProcessID [%d]\n", kernel_thread.ProcessID);
+	printf("Creating kernel ThreadID [%d]\n", kernel_thread.getThreadID());
+	kernel_thread.context.ss = 0x10;
+	kernel_thread.stackSize = KERNEL_STACK_SZ;
+	errCode = allocateStack(kernel_thread.stackSize, kernel_thread.context.rsp);
+	kernel_thread.regs.rbp = kernel_thread.context.rsp;
+	if (errCode)
+	{
+		printf("Error allocating stack for kernel thread\n");
+		return errCode;
+	}
+	kernel_thread.context.rip = (uint64_t)state_c0;
+	kernel_thread.context.rflags = get_rflags();
+	kernel_thread.context.cs = 0x08;
+
+	threadList.push_back(kernel_thread);
+	uiCurrentThreadIndex = 0;
+	return 0;
+}
+
+int multitask::createThread(thread_t *thd, const char *threadName, void *(*start_routine)(void *), void *arg)
+{
+	//	freeze multitasking
+	sync lock(multitaskMutex);
+	int ret = 0;
+	threadList.push_back(thread_info(0, threadName));
+	*thd = &threadList.back();
+	(*thd)->flags = THREAD_BUSY;
+	(*thd)->context = defaultThreadContext;
+	(*thd)->pfnStartRoutine = start_routine;
+	(*thd)->arg = arg;
+	(*thd)->stackSize = KERNEL_STACK_SZ;
+	ret = allocateStack((*thd)->stackSize, (*thd)->context.rsp);
+	if (ret)
+	{
+		printf("Error allocating stack for thread\n");
+		return ret;
+	}
+	(*thd)->context.rflags = get_rflags();
+	(*thd)->context.rip = (uint64_t)&thread_info::thread_start_point;
+	(*thd)->regs.rdi = (uint64_t)(*thd);
+	printf("Creating P:%x,T:%x\n", (uint32_t)(*thd)->ProcessID, (uint32_t)(*thd)->getThreadID());
+	return 0;
+}
+
+const thread_info &multitask::getNextThread(retStack_t *stack, general_registers_t *regs)
+{
+	threadList[uiCurrentThreadIndex].context = *stack;
+	threadList[uiCurrentThreadIndex].regs = *regs;
+	//sync lock(multitaskMutex);
+	if (mtx_trylock(&multitaskMutex) == thrd_success)
+	{
+		mtx_unlock(&threadList[uiCurrentThreadIndex].mtx);
+		const size_t uiThreadCount = threadList.size();
+		do
+		{
+			uiThreadIterator = (uiThreadIterator + 1) % uiThreadCount;
+		} while ((mtx_trylock(&threadList[uiThreadIterator].mtx)!=thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
+
+		uiCurrentThreadIndex = uiThreadIterator;
+		mtx_unlock(&multitaskMutex);
+	}
+	return threadList[uiCurrentThreadIndex];
+}
+
+thread_info::thread_info(uint64_t processID, const char *threadName) : ProcessID(processID)
+{
+	uiThreadId = thread_id_counter++;
+	strcpy(p_sThreadName, threadName);
+	mtx = 0;
+}
+
+thread_info::~thread_info()
+{
+}
+
+uint64_t thread_info::getProcessID()
+{
+	return ProcessID;
+}
+
+uint64_t thread_info::getThreadID() const
+{
+	return uiThreadId;
+}
+
+void thread_info::thread_start_point(thread_info *thread)
+{
+	void *ret = thread->pfnStartRoutine(thread->arg);
+	printf("Thread returned %x\n", (uint64_t)ret);
+	while (true)
+	{
+		__asm__("pause");
+	}
 }

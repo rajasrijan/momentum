@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -22,66 +22,103 @@
 #include <vector>
 #include <memory>
 #include <string>
-#include "partition_table.h"
 #include "../kernel/vfs.h"
-#include "filesystem.h"
-#include "arch/x86/global.h"
+#include "arch/x86_64/global.h"
 #include <kernel/vfs.h>
 #include <map>
+#include <climits>
+#include <string.h>
 
 using namespace std;
 
-std::vector<blockInterface*> blockDeviceList;
+class blkdev
+{
+  private:
+	uint8_t major;
+	char name[256];
+
+  public:
+	blkdev(uint8_t _major, const char *_name) : major(_major)
+	{
+		strcpy(name, _name);
+	}
+	~blkdev()
+	{
+	}
+	const char *getName()
+	{
+		return name;
+	}
+	int getMajor() const
+	{
+		return major;
+	}
+};
+
+std::vector<blockInterface *> blockDeviceList;
+
+std::vector<blkdev> g_vBlkdev;
 
 class blk_vnode : public vnode
 {
-private:
-    blockInterface* blockDrive;
-public:
+  private:
+	blockInterface *blockDrive;
 
-    blk_vnode(blockInterface* _blockDrive) : vnode(0)
-    {
-        blockDrive = _blockDrive;
-        v_type = VBLK;
-        v_name = _blockDrive->getName().c_str();
-        printf("\nthis [%x],flags [%x],flags [%x]", this, v_type, VBLK);
-        //DBG_OUTPUT
-    }
+  public:
+	blk_vnode(blockInterface *_blockDrive) : vnode()
+	{
+		blockDrive = _blockDrive;
+		v_type = VBLK;
+		v_name = blockDrive->getName().c_str();
+		printf("this [%x],flags [%x],flags [%x]\n", this, v_type, VBLK);
+	}
 
-    ~blk_vnode()
-    {
-    }
+	~blk_vnode()
+	{
+	}
 
-    int bread(int position, int size, shared_ptr<char> data)
-    {
-        //printf("\nread called");
-        blockDrive->read(position, size, data.get());
-    }
+	int lookup(const char *const path, vnode *&foundNode)
+	{
+		return 1;
+	}
+
+	int bread(ssize_t position, size_t size, char *data)
+	{
+		//printf("read called");
+		blockDrive->read(position, size, data);
+	}
+
+	int open(uint32_t flags, vfile *&file)
+	{
+		return -1;
+	}
+
+	int ioctl(uint32_t command, void *data, int fflag)
+	{
+		switch (command)
+		{
+		case BLKPBSZGET:
+			((uint32_t *)data)[0] = blockDrive->getBlockSize();
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
 };
 
-int register_blkdev(blockInterface* blockDrive)
+int register_blkdev(blockInterface *blockDrive)
 {
-    //  Registering block device.
-    printf("\nRegistering block device [%s].", blockDrive->getName().c_str());
-    blockDeviceList.push_back(blockDrive);
-    blk_vnode* blkNode = new blk_vnode(blockDrive);
+	//  Registering block device.
+	printf("Registering block device [%s].\n", blockDrive->getName().c_str());
+	blockDeviceList.push_back(blockDrive);
+	blk_vnode *blkNode = new blk_vnode(blockDrive);
 
-    printf("\nblkNode [%x],flags [%x]", blkNode, blkNode->v_type);
-    add_dev(blkNode);
-    //  Searching for partitions.
-    printf("\nSearching for partitions.");
-    PartitionTable pTable;
-    blockDrive->read(0, 1, &pTable);
-    printf("\nBoot signature [%x]", (uint32_t) pTable.boot_signature);
-    for (int i = 0; i < 4; i++)
-    {
-        uint32_t status = pTable.partition[i].status;
-        //printf("\nPartition [%d], status [%x]...%s", i, status, (status == 0x80) ? "valid" : "invalid");
-    }
-    return 0;
+	printf("blkNode [%x],flags [%x]\n", blkNode, blkNode->v_type);
+	add_blk_dev(blkNode);
+	return 0;
 }
 
 int unregister_blkdev(const char *name)
 {
-
 }

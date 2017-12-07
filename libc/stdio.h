@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,15 +20,24 @@
 #ifndef STDIO_H
 #define STDIO_H
 #include <stdint.h>
+#include <stdarg.h>
 
 extern void putcharacter(const char ch, uint32_t x, uint32_t y);
 extern void scroll(void);
 extern void setColor(uint8_t c);
+extern char getchar(void);
 extern "C" void printf(const char *format, ...);
+extern "C" int vsprintf(char *buffer, const char *format, va_list arg);
+extern "C" int sprintf ( char * str, const char * format, ... );
+char *gets_s(char *str, size_t sz);
+int putchar(int c);
 void clrscr(void);
 
-#define assert(x) if(x!=0){printf("\nAssert at [%s],File [%s], Line [%d]",#x,__FILE__,__LINE__);__asm__("cli;hlt;");}
-#define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]",x);
+#define assert(x)                                                                \
+    if (x != 0)                                                                  \
+    {                                                                            \
+        printf("\nAssert at [%s],File [%s], Line [%d]", #x, __FILE__, __LINE__); \
+        __asm__("cli;hlt;");                                                     \
+    }
 
 #endif /* STDIO_H */
-

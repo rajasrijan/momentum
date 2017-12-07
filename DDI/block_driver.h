@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -26,22 +26,32 @@
 
 class blockInterface
 {
-protected:
+  protected:
     std::string name;
-public:
-    virtual int read(size_t offset, size_t count, void* data) = 0;
-    virtual int write(size_t offset, size_t count, void* data) = 0;
+    size_t blockSize;
+
+  public:
+    blockInterface(const string &_name, size_t blkSz) : name(_name), blockSize(blkSz)
+    {
+    }
+    ~blockInterface() {}
+    virtual int read(size_t offset, size_t count, void *data) = 0;
+    virtual int write(size_t offset, size_t count, void *data) = 0;
 
     std::string getName()
     {
         return name;
     }
+
+    size_t getBlockSize()
+    {
+        return blockSize;
+    }
 };
 
-extern std::vector<blockInterface*> blockDeviceList;
+extern std::vector<blockInterface *> blockDeviceList;
 
-int register_blkdev(blockInterface* blockDrive);
+int register_blkdev(blockInterface *blockDrive);
 int unregister_blkdev(const char *name);
 
 #endif /* BLOCK_DRIVER_H */
-

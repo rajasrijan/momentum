@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,33 +20,19 @@
 #ifndef STRING_H
 #define STRING_H
 
-//#ifdef	__cplusplus
-//extern "C"
-//{
-//#endif
-
 #include <stddef.h>
 
-void * memset(void * ptr, int value, size_t num);
+extern "C" void * memset(void * ptr, int value, size_t num);
 char *strdup(const char *s1);
 size_t strlen(const char* str);
 void strcpy(char *dst, const char *src);
+void strcat(char *dst, const char *src);
 
-static inline void* memcpy(void *dst, const void *src, size_t len)
-{
-
-    for (size_t i = 0; i < len; i++)
-    {
-        ((char*)dst)[i] = ((char*)src)[i];
-    }
-    return dst;
-}
+extern "C" void* memcpy(void *dst, const void *src, size_t len);
 int memcmp(const void * ptr1, const void * ptr2, size_t num);
-char strcmp(char* s1, char *s2);
-
-//#ifdef	__cplusplus
-//}
-//#endif
+char strcmp(const char* s1, char *s2);
+const char* strrchar(const char* s1, int character);
+const char *strchar(const char *s1, int character);
 
 #endif /* STRING_H */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -24,45 +24,81 @@
 #include "interrupts.h"
 #include "paging.h"
 #include "../kernel/lists.h"
+#include <vector>
+#include <threads.h>
 
-/*
- *	Thread flags.
- */
+ /*
+  *	Thread flags.
+  */
 #define THREAD_BUSY (1<<0)
 #define THREAD_STOP (1<<1)
 
-/*
- *	Thread info structure.
- */
+#define KERNEL_THREAD_NAME		"kernel_thread"
 
-typedef struct thread_info
+  /*
+   *	Thread info structure.
+   */
+
+struct thread_info
 {
-    uint32_t ProcessID;
-    uint32_t ThreadID;
-    uint32_t isactive;
-    registers_t context;
-    vector_list_t *page_table;
-    uint32_t flags;
-} thread_info_t;
+public:
+	mtx_t mtx;
+	uint64_t flags;
+	uint64_t isactive;
+	uint64_t stackSize;
+	retStack_t context;
+	general_registers_t regs;
+	//std::vector<pt_cache_unit_t> page_table;
+private:
+	uint64_t uiThreadId;
+	uint64_t ProcessID;
+	char p_sThreadName[256];
+	void *(*pfnStartRoutine)(void *);
+
+  public:
+	~thread_info();
+	uint64_t getProcessID();
+	uint64_t getThreadID() const;
+private:
+	friend class multitask;
+	thread_info(uint64_t processID, const char* threadName);
+	static void thread_start_point(thread_info *thread);
+	void *arg;
+};
+
+typedef thread_info* thread_t;
 
 typedef struct core_info
 {
-    thread_info_t *threads;
+	thread_info *threads;
 } __attribute__((packed)) core_info_t;
 
-typedef struct thread
-{
-    uint32_t id;
-} thread_t;
 
 void init_multitask(void);
-void* CreateStack(void);
 void DestroyStack(uint32_t esp);
-int CreateThread(uint32_t *thread, const uint32_t attr, void *((*start_routine)(void*)), void *arg);
 void init_kernel_stack(void);
-void change_thread(thread_info_t* thread);
+void change_thread(const thread_info &thread, bool enable_interrupts = true);
 void thread_end(void);
 int CreateNullProcess(void);
-thread_info_t* getNextThreadInQueue(void);
-llnode* getNextThreadListInQueue(void);
+thread_info* getNextThreadInQueue(void);
+
+class multitask
+{
+public:
+	~multitask();
+	static multitask* getInstance();
+	int initilize();
+	int allocateStack(uint64_t &stackSize, uint64_t &stackPtr);
+	const thread_info& getKernelThread();
+	int createThread(thread_t *thd, const char *threadName, void *(*start_routine)(void *), void *arg);
+	std::vector<thread_info> threadList;
+	const thread_info& getNextThread(retStack_t *stack, general_registers_t *regs);
+	int fork(){}
+private:
+	uint32_t uiThreadIterator;
+	uint32_t uiCurrentThreadIndex;
+private:
+	mtx_t multitaskMutex;
+	multitask();
+};
 #endif	/* MULTITASK_H */

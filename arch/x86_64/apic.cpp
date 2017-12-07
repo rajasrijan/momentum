@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -29,10 +29,10 @@ static void* find_rspd(void);
  */
 static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
 {
-    for (int i = 0; i < size; i++)
-        if ((src[i] - dst[i]) != 0)
-            return (uint8_t) (src[i] - dst[i]);
-    return 0;
+	for (int i = 0; i < size; i++)
+		if ((src[i] - dst[i]) != 0)
+			return (uint8_t)(src[i] - dst[i]);
+	return 0;
 }
 
 /*
@@ -40,10 +40,11 @@ static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
  */
 void init_ioapic()
 {
-    /*
-     * If there is a better way let me know.
-     */
-    ioapic = (ioapic_t*) 0xFEC00000;
+	/*
+	 * If there is a better way let me know.
+	 */
+	ioapic = (ioapic_t*)0xFEC00000;
+	PageManager::getInstance()->IdentityMap2MBPages(0xFEC00000);
 }
 
 /*
@@ -51,8 +52,8 @@ void init_ioapic()
  */
 void write_ioapic(uint32_t offset, uint32_t value)
 {
-    ioapic->ioregsel = offset;
-    ioapic->iowin = value;
+	ioapic->ioregsel = offset;
+	ioapic->iowin = value;
 }
 
 /*
@@ -60,8 +61,8 @@ void write_ioapic(uint32_t offset, uint32_t value)
  */
 uint32_t read_ioapic(uint32_t offset)
 {
-    ioapic->ioregsel = offset;
-    return ioapic->iowin;
+	ioapic->ioregsel = offset;
+	return ioapic->iowin;
 }
 
 /*
@@ -69,7 +70,7 @@ uint32_t read_ioapic(uint32_t offset)
  */
 void apic_pin_enable(uint32_t pin)
 {
-    write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
+	write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
 }
 
 /*
@@ -77,12 +78,12 @@ void apic_pin_enable(uint32_t pin)
  */
 void init_apic_timer(uint32_t frequency)
 {
-    outb(0x21, 0xFF);
-    outb(0xA1, 0xFF);
-    register_interrupt_handler(32, apic_timer_callback);
-    sys_info.local_apic->lvt_timer = 0x00020020;
-    sys_info.local_apic->div_conf = 0x02;
-    sys_info.local_apic->init_count = frequency;
+	outb(0x21, 0xFF);
+	outb(0xA1, 0xFF);
+	register_interrupt_handler(32, apic_timer_callback);
+	sys_info.local_apic->lvt_timer = 0x00020020;
+	sys_info.local_apic->div_conf = 0x02;
+	sys_info.local_apic->init_count = frequency;
 }
 
 /*
@@ -90,25 +91,25 @@ void init_apic_timer(uint32_t frequency)
  */
 static void* find_rspd()
 {
-    uint8_t* ptr;
-    ptr = (uint8_t*) 0x40E;
-    ptr = (uint8_t*) ((uint32_t*) (ptr));
-    for (uint32_t i = 0; i < 1024; i += 2)
-    {
-        if (!kmemcmp((char*) (&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-        {
-            return (void*) (&ptr[i]);
-        }
-    }
-    ptr = (uint8_t*) 0xE0000;
-    for (uint32_t i = 0; i < 0x20000; i += 2)
-    {
-        if (!kmemcmp((char*) (&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-        {
-            return (void*) (&ptr[i]);
-        }
-    }
-    return 0;
+	uint8_t* ptr;
+	ptr = (uint8_t*)0x40E;
+	ptr = (uint8_t*)((uint32_t*)(ptr));
+	for (uint32_t i = 0; i < 1024; i += 2)
+	{
+		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
+		{
+			return (void*)(&ptr[i]);
+		}
+	}
+	ptr = (uint8_t*)0xE0000;
+	for (uint32_t i = 0; i < 0x20000; i += 2)
+	{
+		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
+		{
+			return (void*)(&ptr[i]);
+		}
+	}
+	return 0;
 }
 
 /*
@@ -116,5 +117,5 @@ static void* find_rspd()
  */
 void send_eoi()
 {
-    sys_info.local_apic->eoi = 0;
+	sys_info.local_apic->eoi = 0;
 }

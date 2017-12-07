@@ -1,10 +1,20 @@
 /*
- *	PCI Class, Vendor and Device IDs
- *
- *	Please keep sorted.
- *
- *	Do not add new entries to this file unless the definitions
- *	are shared between multiple drivers.
+ * Copyright 2009-2017 Srijan Kumar Sharma
+ * 
+ * This file is part of Momentum.
+ * 
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* Device classes and subclasses */
@@ -14,10 +24,11 @@
 
 #define PCI_BASE_CLASS_STORAGE		0x01
 #define PCI_CLASS_STORAGE_SCSI		0x0100
-#define PCI_CLASS_STORAGE_IDE		0x0101
+#define PCI_CLASS_STORAGE_IDE		0x01
 #define PCI_CLASS_STORAGE_FLOPPY	0x0102
 #define PCI_CLASS_STORAGE_IPI		0x0103
 #define PCI_CLASS_STORAGE_RAID		0x0104
+#define PCI_CLASS_STORAGE_ATA		0x05
 #define PCI_CLASS_STORAGE_SATA		0x06
 #define PCI_CLASS_STORAGE_SATA_AHCI	0x010601
 #define PCI_CLASS_STORAGE_SAS		0x0107
@@ -103,8 +114,8 @@
 #define PCI_CLASS_SERIAL_FIREWIRE_OHCI	0x0c0010
 #define PCI_CLASS_SERIAL_ACCESS		0x0c01
 #define PCI_CLASS_SERIAL_SSA		0x0c02
-#define PCI_CLASS_SERIAL_USB		0x0c03
-#define PCI_CLASS_SERIAL_USB_UHCI	0x0c0300
+#define PCI_CLASS_SERIAL_USB		0x03
+#define PCI_CLASS_SERIAL_USB_UHCI	0x00
 #define PCI_CLASS_SERIAL_USB_OHCI	0x0c0310
 #define PCI_CLASS_SERIAL_USB_EHCI	0x0c0320
 #define PCI_CLASS_SERIAL_USB_XHCI	0x0c0330

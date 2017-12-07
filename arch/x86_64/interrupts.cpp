@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -17,37 +17,60 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "interrupts.h"
 #include "global.h"
+#include "interrupts.h"
 #include "apic.h"
-static void eoi(void);
-isr_t interrupt_handlers[256] = {0};
+
+isr_t interrupt_handlers[256] = { 0 };
 
 /* This gets called from our ASM interrupt handler stub.*/
 
-void isr_handler(registers_t regs)
+void isr_handler(retStack_t *stack, general_registers_t *regs)
 {
-    if (interrupt_handlers[regs.int_no] != 0)
-    {
-        isr_t handler = interrupt_handlers[regs.int_no];
-        handler(&regs);
-        if (regs.int_no >= 32)
-            eoi();
-    }
-    else
-    {
-        printf("\nregs.int_no=%x", regs.int_no);
-        __asm__("cli");
-        __asm__("hlt");
-    }
+	if (stack->interruptNumber < 256 && interrupt_handlers[stack->interruptNumber] != 0)
+	{
+		isr_t handler = interrupt_handlers[stack->interruptNumber];
+		handler(stack, regs);
+		if (stack->interruptNumber >= 32)
+			eoi();
+	}
+	else
+	{
+		printf("RSP [0x%x]\n", stack);
+		printf("Interrupt No [0x%x], RSP [0x%x], RIP [0x%x]\n", stack->interruptNumber, regs->rsp, stack->rip);
+		if (stack->interruptNumber == 14)
+		{
+			printf("PF addr [0x%x], Error code [0x%x]\n", get_cr2(), stack->err);
+		}
+		else if (stack->interruptNumber == 13)
+		{
+			printf("GP Error code [0x%x]\n", stack->err);
+		}
+		//print call stack.
+		// printf("Call stack:\n");
+		// uint64_t rsp = regs->rsp, rbp = regs->rbp, rip = stack->rip;
+		// for (size_t i = 0; i < 3; i++)
+		// {
+		// 	printf("RIP [0x%lx], RSP [0x%lx], RBP [0x%lx]\n", rip, rsp, rbp);
+		// 	rsp = rbp;
+		// 	rbp = ((uint64_t*)rsp)[0];
+		// 	rip = ((uint64_t*)rsp)[1];
+		// 	if (rip == 0xDEADBEEFDEADBEEF || rbp == 0xDEADBEEFDEADBEEF)
+		// 	{
+		// 		break;
+		// 	}
+		// }
+		__asm__("cli");
+		__asm__("hlt");
+	}
 }
 
 void register_interrupt_handler(uint8_t n, isr_t handler)
 {
-    interrupt_handlers[n] = handler;
+	interrupt_handlers[n] = handler;
 }
 
-static void eoi()
+void eoi()
 {
-    sys_info.local_apic->eoi = 0;
+	sys_info.local_apic->eoi = 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,4 +20,4 @@
 #include "global.h"
 
 gdt_ptr_t gdt_ptr;
-volatile system_info_t sys_info;
+system_info_t sys_info;

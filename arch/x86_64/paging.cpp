@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -19,99 +19,212 @@
 
 #include "paging.h"
 #include "mm.h"
-#include "interrupts.h"
 #include "global.h"
-#include "../../libc/string.h"
-#include "../../libc/stdlib.h"
+#include "string.h"
+#include "stdlib.h"
 
 void new_paging_structure(paging_structure_t* ps)
 {
 
 }
 
-void map_4mb(uint32_t virtual_address)
+//void map_4mb(uint64_t virtual_address)
+//{
+//
+//	uint64_t boundry_4mb = (virtual_address / 0x400000);
+//
+//	uint64_t boundry_4kb = boundry_4mb * 0x400;
+//
+//	uint64_t memory_slab = get_2mb_block();
+//
+//	if (memory_slab == 0)
+//		__asm__("cli;hlt;");
+//
+//	__asm__("xchg %bx,%bx;");
+//
+//	sys_info.pst->page_directory[boundry_4mb] = (uint64_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
+//
+//	for (uint64_t i = 0; i < 0x400; i++)
+//	{
+//		sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
+//		memory_slab += 0x1000;
+//		__asm__ volatile("invlpg %0"::"m" (*(char *)(memory_slab)));
+//	}
+//
+//}
+
+PageManager::PageManager()
 {
-     
-    uint32_t boundry_4mb = (virtual_address / 0x400000);
-     
-    uint32_t boundry_4kb = boundry_4mb * 0x400;
-     
-    uint32_t memory_slab = get_4mb_block();
-     
-    if (memory_slab == 0)
-        __asm__("cli;hlt;");
-     
-    __asm__("xchg %bx,%bx;");
-     
-    sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
-     
-    for (uint32_t i = 0; i < 0x400; i++)
-    {
-        sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
-        memory_slab += 0x1000;
-        __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
-    }
-     
+
 }
 
-static void page_fault_handler_4kpages(registers_t* regs)
+PageManager * PageManager::getInstance()
 {
-    printf("\nError code: 0x%x", regs->err_esp);
-    uint32_t cr2;
-    __asm__ volatile("mov %%cr2, %0" : "=b"(cr2));
-    printf("\npage fault at address: 0x%x", cr2);
-    if (IsMemoryReserved(cr2))
-    {
-        printf("\nMemmory is reserved.");
-        identity_map_4mb(cr2);
-    }
-    else
-        map_4mb(cr2);
+	static PageManager pageManager;
+	return &pageManager;
 }
 
-void init_paging()
+uint64_t PageManager::roundToPageSize(uint64_t sz)
 {
-    /*
-     * stage 1 old.
-     */
-    //pst = (void*) ((uint32_t) ps + 0xC0000000);
-    register_interrupt_handler(0x0E, page_fault_handler_4kpages);
+	return ((sz + 0x1FFFFF) & 0xFFFFFFFFFFE00000);
 }
 
-void identity_map_4mb(uint32_t address)
+int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size)
 {
-    uint32_t boundry_4mb = (address / 0x400000);
-    uint32_t boundry_4kb = boundry_4mb * 0x400;
-#warning "wtf is this"
-    /*
-     * wtf is this
-     * 'uint32_t memory_slab = address & 0xFFC00000;'
-     */
-    uint32_t memory_slab = address & 0xFFC00000;
-    sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
-    for (uint32_t i = 0; i < 0x400; i++)
-    {
-        sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
-        memory_slab += 0x1000;
-        __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
-    }
+	if (size % PAGESIZE)
+	{
+		printf("Size not 2MB aligned\n");
+		__asm__("cli;hlt;");
+	}
+	for (size_t i = 0; i < size / PAGESIZE; i++)
+	{
+		uint64_t memory_slab = get_2mb_block();
+		printf("SLAB addr [%x]\n", memory_slab);
+		setVirtualToPhysicalMemory(vaddr, memory_slab, PAGESIZE);
+	}
+	return 0;
 }
 
-void force_map(uint32_t physical, uint32_t virtual_address, uint32_t pages)
+int PageManager::setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size)
 {
-    uint32_t boundry_4mb = (virtual_address / 0x400000);
-    uint32_t boundry_4kb = boundry_4mb * 0x400;
-    uint32_t memory_slab = physical & 0xFFFFF000;
-    sys_info.pst->page_directory[boundry_4mb] = (uint32_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
-    for (uint32_t i = 0; i < pages; i++)
-    {
-        sys_info.pst->page_table[(virtual_address / 0x1000) + i] = memory_slab | 3;
-        memory_slab += 0x1000;
-        __asm__ volatile("invlpg %0"::"m" (*(char *) (memory_slab)));
-    }
+	for (uint64_t i = 0; i < size; i += PAGESIZE)
+	{
+		set2MBPage(vaddr, paddr);
+		vaddr += PAGESIZE;
+		paddr += PAGESIZE;
+	}
+	return 0;
 }
 
-uint32_t get_physical_address(uint32_t virtual_address)
+int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 {
-    return ((sys_info.pst->page_table[(virtual_address / 0x1000)] & 0xFFFFF000) + (virtual_address & 0x00000FFF));
+	while (size > 0)
+	{
+		int lvl4 = (vaddr >> 39) & 0x1FF;
+		int lvl3 = (vaddr >> 30) & 0x1FF;
+		int lvl2 = (vaddr >> 21) & 0x1FF;
+		if (lvl4 > 0)
+		{
+			return 1;
+		}
+		if (lvl2 == 0)
+		{
+			if (lvl3 == 0)
+			{
+				if (lvl4 = 0)
+				{
+
+				}
+				else if (size >= BIGBIGPAGESIZE)
+				{
+					PML4T[lvl4] &= 0xFFFFFFFFFFFFFFFE;
+					size -= BIGBIGPAGESIZE;
+					vaddr += BIGBIGPAGESIZE;
+				}
+				else if (size >= BIGPAGESIZE)
+				{
+					PDPT[lvl3] &= 0xFFFFFFFFFFFFFFFE;
+					size -= BIGPAGESIZE;
+					vaddr += BIGPAGESIZE;
+				}
+				else if (size >= PAGESIZE)
+				{
+					PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
+					size -= PAGESIZE;
+					vaddr += PAGESIZE;
+				}
+			}
+			else if (size >= BIGPAGESIZE)
+			{
+				PDPT[lvl3] &= 0xFFFFFFFFFFFFFFFE;
+				size -= BIGPAGESIZE;
+				vaddr += BIGPAGESIZE;
+			}
+			else if (size >= PAGESIZE)
+			{
+				PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
+				size -= PAGESIZE;
+				vaddr += PAGESIZE;
+			}
+		}
+		else if (size >= PAGESIZE)
+		{
+			PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
+			size -= PAGESIZE;
+			vaddr += PAGESIZE;
+		}
+
+	}
+	return 0;
+}
+
+int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr)
+{
+	if (paddr % PAGESIZE)
+	{
+		printf("Physical address not correctly aligned\n");
+		__asm("cli;hlt");
+	}
+	int lvl4 = (vaddr >> 39) & 0x1FF;
+	int lvl3 = (vaddr >> 30) & 0x1FF;
+	int lvl2 = (vaddr >> 21) & 0x1FF;
+
+	if (lvl4 > 0)
+	{
+		printf("Not supported yet.\n");
+		__asm("cli;hlt");
+	}
+	PML4T[lvl4] = ((uint64_t)&PDPT[0] - 0xC0000000) | 0x3;
+	PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | 0x3;
+	PDT[(lvl3 * 512) + lvl2] = paddr | 0x83;
+	__asm__ volatile("invlpg %0"::"m" (*(char *)(paddr)));
+	return 0;
+}
+
+int PageManager::IdentityMap2MBPages(uint64_t paddr)
+{
+	return set2MBPage(paddr, paddr);
+}
+
+int PageManager::initialize()
+{
+	//register_interrupt_handler(0x0E, interruptHandler);
+	return 0;
+}
+
+int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset)
+{
+	offset = roundToPageSize(offset);
+	int lvl4 = (offset >> 39) & 0x1FF;
+	int lvl3 = (offset >> 30) & 0x1FF;
+	int lvl2 = (offset >> 21) & 0x1FF;
+	uint64_t foundSize = 0;
+	do
+	{
+		if (!(PDT[(lvl3 * 512) + lvl2] & 1))
+		{
+			foundSize += PAGESIZE;
+		}
+		else
+		{
+			offset += PAGESIZE;
+		}
+		lvl4 = (offset >> 39) & 0x1FF;
+		lvl3 = (offset >> 30) & 0x1FF;
+		lvl2 = (offset >> 21) & 0x1FF;
+	} while ((lvl4 < 1) && foundSize < sz);
+	if (foundSize >= sz)
+	{
+		vaddr = offset;
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+	return 0;
+}
+
+PageManager::~PageManager()
+{
 }

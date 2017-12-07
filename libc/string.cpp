@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -23,13 +23,23 @@
 #include <stdint.h>
 #include <ctype.h>
 
-void * memset(void * ptr, int value, size_t num)
+extern "C" void * memset(void * ptr, int value, size_t num)
 {
     for (int i = 0; i < num; i++)
     {
         ((char*) ptr)[i] = (char) (value);
     }
     return ptr;
+}
+
+extern "C" inline void* memcpy(void *dst, const void *src, size_t len)
+{
+
+	for (size_t i = 0; i < len; i++)
+	{
+		((char*)dst)[i] = ((char*)src)[i];
+	}
+	return dst;
 }
 
 char *strdup(const char *s1)
@@ -46,11 +56,14 @@ size_t strlen(const char* str)
     return i;
 }
 
-char strcmp(char* s1, char* s2)
+char strcmp(const char* s1, char* s2)
 {
-    for (size_t i = 0; (s1[i] * s2[i]) != 0; i++)
+    size_t i = 0;
+    do
+    {
         if ((s1[i] - s2[i]) != 0)
-            return (char) (s1[i] - s2[i]);
+            return (char)(s1[i] - s2[i]);
+    } while ((s1[i] != 0) && (s2[i] != 0) && ++i);
     return 0;
 }
 
@@ -74,4 +87,38 @@ void strcpy(char *dst, const char *src)
         dst[i] = src[i];
     }
     dst[i]=0;
+}
+void strcat(char *dst, const char *src)
+{
+    for (; dst[0] != 0; dst++);
+    int i = 0;
+    for (i = 0; src[i] != 0; i++)
+    {
+        dst[i] = src[i];
+    }
+    dst[i] = 0;
+}
+
+const char* strrchar(const char* s1, int character)
+{
+    for(size_t len = strlen(s1);len>=0;len--)
+    {
+        if(s1[len]==character)
+        {
+            return &s1[len]; 
+        }
+    }
+    return nullptr;
+}
+
+const char *strchar(const char *s1, int character)
+{
+    for (size_t len = 0; s1[len]; len++)
+    {
+        if (s1[len] == character)
+        {
+            return &s1[len];
+        }
+    }
+    return nullptr;
 }

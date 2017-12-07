@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -24,7 +24,7 @@
 
 extern void* _malloc(uint32_t length);
 extern void _free(void *ptr);
-uint32_t mem_used = 0;
+size_t mem_used = 0;
 
 void* malloc(size_t size)
 {

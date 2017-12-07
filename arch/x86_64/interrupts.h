@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2012 Srijan Kumar Sharma
+ * Copyright 2009-2017 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -22,42 +22,27 @@
 
 #include <stdint.h>
 
-typedef struct general_registers
+#pragma pack(push,1)
+struct general_registers_t
 {
-    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; // Pushed by pusha.
-} __attribute__((packed)) general_registers_t;
+	uint64_t R15, R14, R13, R12, R11, R10, R9, R8, rdi, rsi, rbp, rsp, rbx, rdx, rcx, rax; // Pushed by pusha.
+};
 
-typedef struct iret_stack_different
+struct retStack_t
 {
-    uint32_t eip, cs, eflags, useresp, ss; // Pushed by the processor automatically.
-} __attribute__((packed)) iret_stack_different_t;
+	uint64_t interruptNumber, err; // Interrupt number and error code (if applicable)
+	uint64_t rip, cs, rflags, rsp, ss; // Pushed by the processor automatically.
+};
+#pragma pack(pop)
 
-typedef struct iret_stack_same
-{
-    uint32_t eip, cs, eflags; // Pushed by the processor automatically.
-} __attribute__((packed)) iret_stack_same_t;
-
-typedef struct registers
-{
-    uint32_t ds; // Data segment selector
-    general_registers_t greg; // Pushed by pusha.
-    uint32_t int_no, err_esp; // Interrupt number and error code (if applicable)
-
-    union
-    {
-        iret_stack_same_t same;
-        iret_stack_different_t different;
-    } __attribute__((packed)) iret_stack;
-} __attribute__((packed)) registers_t;
-
-typedef void (*isr_t)(registers_t*);
+typedef void(*isr_t)(retStack_t*, general_registers_t*);
 void register_interrupt_handler(uint8_t n, isr_t handler);
-/*This thing is called from asm code.so extern is needed*/
+/*This thing is called from asm code. So extern is needed*/
 extern "C"
 {
-/*called for every interrupt*/
-void isr_handler(registers_t regs);
+	/*called for every interrupt*/
+	void isr_handler(retStack_t *stack, general_registers_t *regs);
 }
-
+void eoi(void);
 #endif /* INTERRUPTS_H */
 

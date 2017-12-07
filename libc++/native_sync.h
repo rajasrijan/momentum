@@ -1,15 +1,28 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright 2009-2017 Srijan Kumar Sharma
+ * 
+ * This file is part of Momentum.
+ * 
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
- * File:   native_sync.h
- * Author: Srijan
- *
- * Created on 23 October, 2015, 12:15 PM
- */
+/*
+  * File:   native_sync.h
+  * Author: Srijan
+  *
+  * Created on 23 October, 2015, 12:15 PM
+  */
 
 #ifndef NATIVE_SYNC_H
 #define NATIVE_SYNC_H
@@ -18,36 +31,41 @@
 
 enum
 {
-    thrd_success,
-    thrd_nomem,
-    thrd_timedout,
-    thrd_busy,
-    thrd_error
+	thrd_success,
+	thrd_nomem,
+	thrd_timedout,
+	thrd_busy,
+	thrd_error
 };
 
-typedef uint32_t mtx_t;
-extern int mtx_init(mtx_t* mutex, int type);
-extern int mtx_lock(mtx_t* mutex);
-extern int mtx_trylock(mtx_t *mutex);
-extern int mtx_unlock(mtx_t *mutex);
-extern void mtx_destroy(mtx_t *mutex);
+typedef uint64_t mtx_t;
+int mtx_init(mtx_t *mutex, int type);
+int mtx_lock(mtx_t *mutex);
+int mtx_trylock(mtx_t *mutex);
+int mtx_unlock(mtx_t *mutex);
+void mtx_destroy(mtx_t *mutex);
 
 /*Syncrosization helper class. Acquires while constructed, releases while destroyed.*/
 class sync
 {
-    mtx_t* lock;
-public:
+	mtx_t &lock;
+	bool validity;
 
-    sync(mtx_t* lock_ptr) : lock(lock_ptr)
-    {
-        mtx_lock(lock);
-    }
+  public:
+	sync(mtx_t &lock_ptr) : lock(lock_ptr), validity(true)
+	{
+		mtx_lock(&lock);
+	}
 
-    ~sync()
-    {
-        mtx_unlock(lock);
-    }
+	~sync()
+	{
+		if (validity)
+			mtx_unlock(&lock);
+	}
+
+	void invalidateLock()
+	{
+		validity = false;
+	}
 };
-
 #endif /* NATIVE_SYNC_H */
-
