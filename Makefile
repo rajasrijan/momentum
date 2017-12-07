@@ -47,7 +47,7 @@ kernel.elf:$(OBJECT)
 	$(LD) $(LDFLAGS) -o $@ $^
 	x86_64-elf-objdump -x kernel.elf > objdump.txt
 	x86_64-elf-objdump -d -M intel -S kernel.elf -j .text -j .text0> kernel.s
-#	ImFat momentum.vhd create kernel.elf < kernel.elf
+#	./ImFat momentum.vhd create kernel.elf < kernel.elf
 source.elf:source.o
 	
 #%.o:%.cpp
