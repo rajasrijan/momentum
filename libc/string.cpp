@@ -23,40 +23,41 @@
 #include <stdint.h>
 #include <ctype.h>
 
-extern "C" void * memset(void * ptr, int value, size_t num)
+extern "C" void *memset(void *ptr, int value, size_t num)
 {
     for (int i = 0; i < num; i++)
     {
-        ((char*) ptr)[i] = (char) (value);
+        ((char *)ptr)[i] = (char)(value);
     }
     return ptr;
 }
 
-extern "C" inline void* memcpy(void *dst, const void *src, size_t len)
+extern "C" inline void *memcpy(void *dst, const void *src, size_t len)
 {
 
-	for (size_t i = 0; i < len; i++)
-	{
-		((char*)dst)[i] = ((char*)src)[i];
-	}
-	return dst;
+    for (size_t i = 0; i < len; i++)
+    {
+        ((char *)dst)[i] = ((char *)src)[i];
+    }
+    return dst;
 }
 
 char *strdup(const char *s1)
 {
-    char* ret = (char*) malloc(strlen(s1)+1);
+    char *ret = (char *)malloc(strlen(s1) + 1);
     memcpy(ret, s1, strlen(s1) + 1);
     return ret;
 }
 
-size_t strlen(const char* str)
+size_t strlen(const char *str)
 {
     size_t i;
-    for (i = 0; str[i] != 0; i++);
+    for (i = 0; str[i] != 0; i++)
+        ;
     return i;
 }
 
-char strcmp(const char* s1, char* s2)
+char strcmp(const char *s1, const char *s2)
 {
     size_t i = 0;
     do
@@ -67,11 +68,23 @@ char strcmp(const char* s1, char* s2)
     return 0;
 }
 
-int memcmp(const void * ptr1, const void * ptr2, size_t num)
+const char *strstr(const char *str1, const char *str2)
+{
+    for (int i = 0; str1[i] != 0; i++)
+    {
+        if (strcmp(&str1[i], str2) == 0)
+        {
+            return &str1[i];
+        }
+    }
+    return nullptr;
+}
+
+int memcmp(const void *ptr1, const void *ptr2, size_t num)
 {
     for (size_t i = 0; i < num; i++)
     {
-        if (((char*) ptr1)[i] != ((char*) ptr2)[i])
+        if (((char *)ptr1)[i] != ((char *)ptr2)[i])
         {
             return false;
         }
@@ -86,26 +99,28 @@ void strcpy(char *dst, const char *src)
     {
         dst[i] = src[i];
     }
-    dst[i]=0;
+    dst[i] = 0;
 }
-void strcat(char *dst, const char *src)
+char *strcat(char *dst, const char *src)
 {
-    for (; dst[0] != 0; dst++);
+    for (; dst[0] != 0; dst++)
+        ;
     int i = 0;
     for (i = 0; src[i] != 0; i++)
     {
         dst[i] = src[i];
     }
     dst[i] = 0;
+    return &dst[i];
 }
 
-const char* strrchar(const char* s1, int character)
+const char *strrchar(const char *s1, int character)
 {
-    for(size_t len = strlen(s1);len>=0;len--)
+    for (size_t len = strlen(s1); len >= 0; len--)
     {
-        if(s1[len]==character)
+        if (s1[len] == character)
         {
-            return &s1[len]; 
+            return &s1[len];
         }
     }
     return nullptr;

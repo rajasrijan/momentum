@@ -23,7 +23,8 @@
 #include <native_sync.h>
 uint32_t x = 0, y = 0;
 
-void clrscr() {
+void clrscr()
+{
 	x = 0;
 	y = 0;
 	for (int i = 0; i < 80 * 25; i++)
@@ -34,15 +35,18 @@ void clrscr() {
 
 static void print_num(uint32_t arg, uint32_t base)
 {
-	char str[12] = { 0 };
+	char str[12] = {0};
 	str[11] = '0';
-	char symbol[] = { "0123456789ABCDEFG" };
-	for (uint32_t i = arg, no = 11; (i > 0) && (no >= 0); i /= base, no--) {
+	char symbol[] = {"0123456789ABCDEFG"};
+	for (uint32_t i = arg, no = 11; (i > 0) && (no >= 0); i /= base, no--)
+	{
 		str[no] = symbol[(i % base)];
 	}
 
-	for (int i = 0; i < 12; ++i) {
-		if (str[i] != 0) {
+	for (int i = 0; i < 12; ++i)
+	{
+		if (str[i] != 0)
+		{
 			putcharacter(str[i], x, y);
 			x++;
 			y += (x / 80);
@@ -52,9 +56,9 @@ static void print_num(uint32_t arg, uint32_t base)
 }
 static void print_num(uint64_t arg, uint32_t base)
 {
-	char str[24] = { 0 };
+	char str[24] = {0};
 	str[23] = '0';
-	char symbol[] = { "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" };
+	char symbol[] = {"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
 	for (uint64_t i = arg, no = 23; (i > 0) && (no >= 0); i /= base, no--)
 	{
 		str[no] = symbol[(i % base)];
@@ -89,6 +93,14 @@ int putchar(int c)
 			x %= 80;
 		}
 	}
+	else if (c == '\b')
+	{
+		if (x > 0)
+		{
+			x--;
+			putcharacter(' ', x, y);
+		}
+	}
 	else
 	{
 		putcharacter(c, x, y);
@@ -105,12 +117,15 @@ int putchar(int c)
 	return c;
 }
 
-void printf(const char *format, ...) {
+void printf(const char *format, ...)
+{
 	va_list ap;
 	va_start(ap, format);
 
-	for (uint64_t i = 0; format[i] != 0; i++) {
-		switch (format[i]) {
+	for (uint64_t i = 0; format[i] != 0; i++)
+	{
+		switch (format[i])
+		{
 		case '%':
 			i++;
 			switch (format[i])
@@ -139,16 +154,16 @@ void printf(const char *format, ...) {
 			}
 			case 's':
 			{
-				char* str = va_arg(ap, char*);
-				while (str[0] != 0) {
+				char *str = va_arg(ap, char *);
+				while (str[0] != 0)
+				{
 
-					putcharacter(str++[0], x, y);
+					putcharacter(str++ [0], x, y);
 					x++;
 					y += (x / 80);
 					x %= 80;
 				}
 				break;
-
 			}
 			}
 			break;
@@ -172,7 +187,8 @@ void printf(const char *format, ...) {
 			x %= 80;
 			break;
 		}
-		if (y > 24) {
+		if (y > 24)
+		{
 			y = 24;
 			x = 0;
 			scroll();
@@ -196,23 +212,25 @@ char *gets_s(char *str, size_t sz)
 }
 bool kisnum(const char ch)
 {
-    return (ch >= '0' && ch <= '9');
+	return (ch >= '0' && ch <= '9');
 }
 
-template <typename _type>
+template <typename _type, typename fetch = _type>
 void kprint_number(char *alpha_number, int alpha_number_count, int &alpha_number_it, bool &is_negative, va_list arg, const int base, const char *number_representation)
 {
-	_type number = va_arg(arg, _type);
+	_type number = va_arg(arg, fetch);
 	if (number < 0)
 	{
 		number *= -1;
 		is_negative = true;
 	}
-	while (number != 0 && alpha_number_it < alpha_number_count)
+	while (alpha_number_it < alpha_number_count)
 	{
 		alpha_number[alpha_number_it] = number_representation[(number % base)];
 		number /= base;
 		alpha_number_it++;
+		if (number == 0)
+			break;
 	}
 }
 
@@ -342,11 +360,11 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 						}
 						else if (length_type == 1)
 						{
-							kprint_number<signed char>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 10, number_representation);
+							kprint_number<signed char, int>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 10, number_representation);
 						}
 						else if (length_type == 2)
 						{
-							kprint_number<short int>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 10, number_representation);
+							kprint_number<short int, int>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 10, number_representation);
 						}
 						else if (length_type == 3)
 						{
@@ -389,11 +407,11 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 						}
 						else if (length_type == 1)
 						{
-							kprint_number<unsigned char>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 0x10, number_representation);
+							kprint_number<unsigned char, int>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 0x10, number_representation);
 						}
 						else if (length_type == 2)
 						{
-							kprint_number<unsigned short int>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 0x10, number_representation);
+							kprint_number<unsigned short int, int>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 0x10, number_representation);
 						}
 						else if (length_type == 3)
 						{

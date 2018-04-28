@@ -29,6 +29,12 @@ inline void *operator new[](size_t size)
     return malloc(size);
 }
 
+template <typename T>
+inline void *operator new(size_t size, T * t)
+{
+    return t;
+}
+
 inline void operator delete(void *p)
 {
     free(p);

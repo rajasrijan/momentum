@@ -23,84 +23,148 @@
 
 namespace std
 {
+template <class T>
+class shared_ptr
+{
+	template <class U>
+	friend class shared_ptr;
+	T *__data;
+	unsigned int *__refCount;
+	mtx_t *lock;
 
-	template<class T>
-	class shared_ptr
+  public:
+	shared_ptr() : __data(nullptr), __refCount(nullptr), lock(nullptr)
 	{
-		T *__data;
-		unsigned int *__refCount;
-		mtx_t *lock;
-	public:
+	}
 
-		shared_ptr() : __data(0), __refCount(0)
+	shared_ptr(T *data_ptr) : __data(nullptr), __refCount(nullptr), lock(nullptr)
+	{
+		__data = data_ptr;
+		lock = new mtx_t;
+		mtx_init(lock, 0);
+		__refCount = new unsigned int;
+		__refCount[0] = 1;
+	}
+
+	shared_ptr(const shared_ptr &src) : __data(nullptr), __refCount(nullptr), lock(nullptr)
+	{
+		lock = src.lock;
+		if (lock)
 		{
-
+			sync auto_lock(*lock);
+			__refCount = src.__refCount;
+			__data = src.__data;
+			__refCount[0]++;
 		}
+	}
 
-		shared_ptr(T* data_ptr)
+	template <class Y>
+	shared_ptr(shared_ptr<Y> &&src) : __data(nullptr), __refCount(nullptr), lock(nullptr)
+	{
+		lock = src.lock;
+		if (lock)
 		{
-			__data = data_ptr;
-			lock = new mtx_t;
-			mtx_init(lock, 0);
-			__refCount = new unsigned int;
-			__refCount[0] = 1;
+			sync auto_lock(*lock);
+			__refCount = src.__refCount;
+			__data = src.__data;
+			__refCount[0]++;
 		}
+	}
 
-		shared_ptr(shared_ptr& src)
+	template <class Y>
+	shared_ptr &operator=(shared_ptr<Y> &&r)
+	{
+		//	Relese old
 		{
-			lock = src.lock;
+			if (__refCount != 0)
 			{
 				sync auto_lock(*lock);
-				__refCount = src.__refCount;
-				__data = src.__data;
-				__refCount[0]++;
-			}
-		}
-
-		void operator=(T* data_ptr)
-		{
-			//	Relese old
-			{
 				if (__refCount != 0)
 				{
-					sync auto_lock(*lock);
-					if (__refCount != 0)
+					__refCount[0]--;
+
+					if (__refCount[0] == 0)
 					{
-						__refCount[0]--;
-
-						if (__refCount[0] == 0)
+						if (__data != 0)
 						{
-							if (__data != 0)
-							{
-								delete __data;
-								__data = 0;
-							}
-							if (lock != 0)
-							{
-								auto_lock.invalidateLock();
-								delete lock;
-								lock = 0;
-							}
+							delete __data;
+							__data = 0;
+						}
+						if (lock != 0)
+						{
+							auto_lock.invalidateLock();
+							delete lock;
+							lock = 0;
+						}
 
-							if (__refCount != 0)
-							{
-								delete __refCount;
-								__refCount = 0;
-							}
+						if (__refCount != 0)
+						{
+							delete __refCount;
+							__refCount = 0;
 						}
 					}
 				}
 			}
-
-			//	Create new
-			__data = data_ptr;
-			lock = new mtx_t;
-			mtx_init(lock, 0);
-			__refCount = new unsigned int;
+		}
+		lock = r.lock;
+		if (lock)
+		{
+			sync auto_lock(*lock);
+			__data = r.__data;
+			__refCount = r.__refCount;
 			__refCount[0]++;
 		}
+		return *this;
+	}
 
-		~shared_ptr()
+	shared_ptr &operator=(const shared_ptr &r)
+	{
+		//	Relese old
+		{
+			if (__refCount != 0)
+			{
+				sync auto_lock(*lock);
+				if (__refCount != 0)
+				{
+					__refCount[0]--;
+
+					if (__refCount[0] == 0)
+					{
+						if (__data != 0)
+						{
+							delete __data;
+							__data = 0;
+						}
+						if (lock != 0)
+						{
+							auto_lock.invalidateLock();
+							delete lock;
+							lock = 0;
+						}
+
+						if (__refCount != 0)
+						{
+							delete __refCount;
+							__refCount = 0;
+						}
+					}
+				}
+			}
+		}
+		lock = r.lock;
+		if (lock)
+		{
+			sync auto_lock(*lock);
+			__data = r.__data;
+			__refCount = r.__refCount;
+			__refCount[0]++;
+		}
+		return *this;
+	}
+
+	void operator=(T *data_ptr)
+	{
+		//	Relese old
 		{
 			if (__refCount != 0)
 			{
@@ -133,17 +197,82 @@ namespace std
 			}
 		}
 
-		T *get()
-		{
-			return __data;
-		}
+		//	Create new
+		__data = data_ptr;
+		lock = new mtx_t;
+		mtx_init(lock, 0);
+		__refCount = new unsigned int;
+		__refCount[0]++;
+	}
 
-		operator shared_ptr<char>&()
+	~shared_ptr()
+	{
+		if (__refCount != 0)
 		{
-			return *(shared_ptr<char>*)this;
+			sync auto_lock(*lock);
+			if (__refCount != 0)
+			{
+				__refCount[0]--;
+
+				if (__refCount[0] == 0)
+				{
+					if (__data != 0)
+					{
+						delete __data;
+						__data = 0;
+					}
+					if (lock != 0)
+					{
+						auto_lock.invalidateLock();
+						delete lock;
+						lock = 0;
+					}
+
+					if (__refCount != 0)
+					{
+						delete __refCount;
+						__refCount = 0;
+					}
+				}
+			}
 		}
-	};
+	}
+
+	T *get()
+	{
+		return __data;
+	}
+
+	T *operator->()
+	{
+		return __data;
+	}
+
+	const T *operator->() const
+	{
+		return __data;
+	}
+
+	operator shared_ptr<char> &()
+	{
+		return *(shared_ptr<char> *)this;
+	}
+
+	bool operator==(const T *ptr)
+	{
+		return __data == ptr;
+	}
+	bool operator!=(const T *ptr)
+	{
+		return __data != ptr;
+	}
+};
+
+template <class T, class... Args>
+shared_ptr<T> make_shared(Args &&... args)
+{
+	return shared_ptr<T>(new T(args...));
+}
 }
 
 #endif /* MEMORY_H */
-

@@ -17,12 +17,17 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-template<class T1, class T2>
+template <class T1, class T2>
 struct pair
 {
 	T1 first;
 	T2 second;
-	pair(T1 _first, T2 _second) :first(_first), second(_second) {}
+	pair(T1 _first, T2 _second) : first(_first), second(_second) {}
+	pair(const pair &p)
+	{
+		first = p.first;
+		second = p.second;
+	}
 };
 
 template <class T1, class T2>

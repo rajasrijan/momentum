@@ -269,7 +269,6 @@ map_4mb:
         MOV ESP,EBP
         POP EBP
         ret 8
-
 data:
         gdt_ptr dd 0
         paging_structure dd 0
@@ -332,7 +331,7 @@ IDT64:
 	dd 0x0000FFFF,0x00CF9200
 .end:
 
-
+align 0x1000
 stack:
 	resb STACKSIZE
 section .data

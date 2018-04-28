@@ -23,7 +23,7 @@
 #include <string>
 #include <errno.h>
 #include <kernel/vfs.h>
-#include <ddi/driver.h>
+#include <DDI/driver.h>
 
 #define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]", x);
 #define LOGSTR(x) printf("\n\"" #x "\" :[%s]", x);
@@ -89,16 +89,18 @@ class fat32dir
 	string getName()
 	{
 		char filename[15] = {0};
-		copy(DIR_Name, DIR_Name + 8, filename);
-		for (int i = 7; i >= 0; i--)
-			if (filename[i] != ' ')
+		for (int i = 0; i < 8 && DIR_Name[i] != ' '; i++)
+		{
+			filename[i] = DIR_Name[i];
+		}
+		if (DIR_Name[8] != ' ')
+		{
+			auto tmp = strcat(filename, ".");
+			for (int i = 8; i < 11 && DIR_Name[i] != ' '; i++)
 			{
-				filename[i + 1] = '.';
-				copy(DIR_Name + 8, DIR_Name + 11, filename + i + 2);
-				break;
+				*tmp++ = DIR_Name[i];
 			}
-			else
-				filename[i] = 0;
+		}
 		return string(filename);
 	}
 	uint32_t getFirstCluster()
@@ -131,54 +133,57 @@ std::string convertFat32String(char name[11], bool isDir)
 
 class fat_vnode : public vnode
 {
-	class fat *parent;
-	vnode *dev_node;
+	shared_ptr<vnode> dev_node;
 	uint32_t start_cluster;
 	uint32_t sectorSize;
 	uint32_t sectorsPerCluster;
 
   public:
-	fat_vnode(class fat *_parent, vnode *dev, uint32_t sclus, uint32_t _sectorSize, uint32_t _sectorsPerCluster) : parent(_parent), dev_node(dev), start_cluster(sclus), vnode(), sectorSize(_sectorSize), sectorsPerCluster(_sectorsPerCluster)
+	fat_vnode(vfs *vfsp, shared_ptr<vnode> dev, uint32_t sclus, uint32_t _sectorSize, uint32_t _sectorsPerCluster, fat32dir *dir) : vnode(vfsp), dev_node(dev), start_cluster(sclus), sectorSize(_sectorSize), sectorsPerCluster(_sectorsPerCluster)
 	{
 		v_type = VDIR;
+		if (dir)
+			setName(dir->getName().c_str());
 	}
-
+	~fat_vnode() {}
 	int bread(ssize_t position, size_t size, char *data);
 
-	int lookup(const char *const path, vnode *&foundNode);
+	int lookup(const char *const path, shared_ptr<vnode> &foundNode);
 
 	int open(uint32_t flags, vfile *&file);
 
 	int ioctl(uint32_t command, void *data, int fflag);
 
-	int getMountedDevice(vnode *&devNode);
+	int readdir(vector<shared_ptr<vnode>> &vnodes);
+
+	int getMountedDevice(shared_ptr<vnode> &devNode);
 };
 
 class fat : public vfs
 {
-	vnode *dev_node;
-	bpb *bfat;
+	shared_ptr<vnode> dev_node;
+	bpb bfat;
 	uint32_t FirstDataSector;
 	shared_ptr<uint32_t> fatlist;
 	uint32_t totalSectorCount;
-	
+
   public:
-	fat() : dev_node(0)
+	fat()
 	{
 	}
 
 	int unmount(void) {}
 	int root(vnode *&rootNode) {}
-	int statfs(vnode* rootNode, statfs_t& statfs)
+	int statfs(shared_ptr<vnode> rootNode, statfs_t &statfs)
 	{
-		vnode *MountedDevice = nullptr;
-		((fat_vnode *)rootNode)->getMountedDevice(MountedDevice);
+		shared_ptr<vnode> MountedDevice;
+		((fat_vnode *)rootNode.get())->getMountedDevice(MountedDevice);
 		statfs.type = MSDOS_SUPER_MAGIC;
 		statfs.bsize = 512;
 		shared_ptr<char> data(new char[statfs.bsize]);
 		MountedDevice->bread(0, 1, data.get());
 		uint64_t fat_uuid = *(uint32_t *)(&(data.get()[0x43]));
-		uint64_t uuid = ((fat_uuid & 0xFFFF0000) << 16) | (fat_uuid & 0x0000FFFF);		
+		uint64_t uuid = ((fat_uuid & 0xFFFF0000) << 16) | (fat_uuid & 0x0000FFFF);
 		statfs.fsid = uuid;
 		return 0;
 	}
@@ -186,78 +191,53 @@ class fat : public vfs
 	int fid(void) {}
 	int vget(void) {}
 
-	int mount(uint64_t flags, vnode *blk_dev, vnode *&fs_root_directory)
+	int mount(uint64_t flags, shared_ptr<vnode> blk_dev, shared_ptr<vnode> &fs_root_directory)
 	{
-
-		//printf("\nmount issued for [%s]", dev_path.c_str());
 		fs_root_directory = NULL;
-		//mount_bdev(this, flags, dev_path);
 		dev_node = blk_dev;
 		if (dev_node == NULL)
 			return true;
-
 		//  FAT32 stuff
 		shared_ptr<char> data;
 		data = new char[512];
 		dev_node->bread(0, 1, data.get());
-		bfat = (bpb *)data.get();
-		uint64_t fat_uuid = *(uint32_t *)(&((char *)bfat)[0x43]);
+		bfat = *((bpb *)data.get());
+		uint64_t fat_uuid = *(uint32_t *)(&((char *)&bfat)[0x43]);
 		uint64_t uuid = ((fat_uuid & 0xFFFF0000) << 16) | (fat_uuid & 0x0000FFFF);
 		printf("Device UUID [%x-%x]\n", uuid >> 32, (uuid & 0xFFFFFFFF));
-		uint32_t RootDirSectors = ((bfat->BPB_RootEntCnt * 32) + (bfat->BPB_BytsPerSec - 1)) / bfat->BPB_BytsPerSec;
-		//LOGHEX(bfat->BPB_RootEntCnt)
+		uint32_t RootDirSectors = ((bfat.BPB_RootEntCnt * 32) + (bfat.BPB_BytsPerSec - 1)) / bfat.BPB_BytsPerSec;
 		uint32_t FATSz = 0;
 		uint32_t TotSec = 0;
-		if (bfat->BPB_FATSz16 != 0)
-			FATSz = bfat->BPB_FATSz16;
+		if (bfat.BPB_FATSz16 != 0)
+			FATSz = bfat.BPB_FATSz16;
 		else
-			FATSz = bfat->BPB_FATSz32;
-		//LOGHEX(RootDirSectors);
-		FirstDataSector = bfat->BPB_RsvdSecCnt + (bfat->BPB_NumFATs * FATSz) + RootDirSectors;
-
-		/*char type[10] = {0};
-		for (int i = 0; i < 8; i++)
-			type[i] = bfat->BS_FilSysType[i];*/
-
-		//FirstSectorofCluster = ((N – 2) * BPB_SecPerClus) + FirstDataSector;
-
-		//uint32_t RootDirSectors = ((BPB_RootEntCnt * 32) + (BPB_BytsPerSec - 1)) // BPB_BytsPerSec;
-
-		if (bfat->BPB_TotSec16 != 0)
-			TotSec = bfat->BPB_TotSec16;
+			FATSz = bfat.BPB_FATSz32;
+		FirstDataSector = bfat.BPB_RsvdSecCnt + (bfat.BPB_NumFATs * FATSz) + RootDirSectors;
+		if (bfat.BPB_TotSec16 != 0)
+			TotSec = bfat.BPB_TotSec16;
 		else
-			TotSec = bfat->BPB_TotSec32;
+			TotSec = bfat.BPB_TotSec32;
 
-		uint32_t DataSec = TotSec - (bfat->BPB_RsvdSecCnt + (bfat->BPB_NumFATs * FATSz) + RootDirSectors);
-		uint32_t CountofClusters = DataSec / bfat->BPB_SecPerClus;
-
-		//printf("\nCluster Count:[%d]", CountofClusters);
+		uint32_t DataSec = TotSec - (bfat.BPB_RsvdSecCnt + (bfat.BPB_NumFATs * FATSz) + RootDirSectors);
+		uint32_t CountofClusters = DataSec / bfat.BPB_SecPerClus;
 
 		//  get the fat list
-		totalSectorCount = ((((CountofClusters * (uint32_t)sizeof(uint32_t)) + bfat->BPB_BytsPerSec - 1) / bfat->BPB_BytsPerSec) * bfat->BPB_BytsPerSec) / (uint32_t)sizeof(uint32_t);
+		totalSectorCount = ((((CountofClusters * (uint32_t)sizeof(uint32_t)) + bfat.BPB_BytsPerSec - 1) / bfat.BPB_BytsPerSec) * bfat.BPB_BytsPerSec) / (uint32_t)sizeof(uint32_t);
 		fatlist = new uint32_t[CountofClusters];
 
-		dev_node->bread(bfat->BPB_RsvdSecCnt, (CountofClusters * sizeof(uint32_t)) / bfat->BPB_BytsPerSec, (char *)fatlist.get());
-		LOGHEX(fatlist.get()[8]);
+		dev_node->bread(bfat.BPB_RsvdSecCnt, (CountofClusters * sizeof(uint32_t)) / bfat.BPB_BytsPerSec, (char *)fatlist.get());
 		uint32_t root = getFirstSectorOfCluster(2);
 		shared_ptr<char> root_sec(new char[512]);
-		//        LOGHEX(root)
 		dev_node->bread(root, 1, root_sec.get());
-
-		fat32dir *f32d = (fat32dir *)root_sec.get();
-
-		for (int i = 0; i < 10; i++)
-			if ((f32d[i].DIR_Attr & ATTR_LONG_NAME) != ATTR_LONG_NAME)
-				printf("\nName:[%s]", f32d[i].DIR_Name);
-
-		fs_root_directory = new fat_vnode(this, dev_node, 2, bfat->BPB_BytsPerSec, bfat->BPB_SecPerClus);
+		auto BPB_BytsPerSec = bfat.BPB_BytsPerSec;
+		fs_root_directory = make_shared<fat_vnode>(this, dev_node, 2, BPB_BytsPerSec, bfat.BPB_SecPerClus, nullptr);
+		fs_root_directory->v_type = VDIR;
 		return false;
 	}
 
 	int read(ssize_t position, size_t size, char *_data)
 	{
-		LOGHEX(position);
-		////size *= bfat->BPB_SecPerClus*bfat->BPB_BytsPerSec;
+		////size *= bfat.BPB_SecPerClus*bfat.BPB_BytsPerSec;
 		//int sectorIndex = getFirstSectorOfCluster(position);
 		//printf("\nreading from block drive [%s]", dev_node->v_name.c_str());
 		//size_t blockSize = 0;
@@ -270,14 +250,14 @@ class fat : public vfs
 		//		memcpy(&_data[dataRead], sectorData.get(), min(blockSize, size - dataRead));
 		//		sectorIndex++;
 		//	}
-
 		//}
+		printf("Not implemented");
+		asm("cli;hlt;");
 	}
 
 	uint32_t getFirstSectorOfCluster(uint32_t N)
 	{
-		LOGHEX(FirstDataSector);
-		return ((N - 2) * bfat->BPB_SecPerClus) + FirstDataSector;
+		return ((N - 2) * bfat.BPB_SecPerClus) + FirstDataSector;
 	}
 
 	uint32_t getClusterByIndex(uint32_t index, uint32_t currentCluster)
@@ -299,78 +279,39 @@ void fat_init()
 
 int fat_vnode::bread(ssize_t position, size_t size, char *data)
 {
-	parent->read(position, size, data);
+	((fat *)v_vfsp)->read(position, size, data);
 }
 
-int fat_vnode::lookup(const char *const path, vnode *&foundNode)
+int fat_vnode::lookup(const char *const path, shared_ptr<vnode> &foundNode)
 {
-	size_t name_len = 0;
-	for (name_len = 0; (path[name_len] != 0) && (path[name_len] != '/'); name_len++)
-		;
-	string file(path, name_len);
-	LOGSTR(file.c_str());
+	if (v_type != VDIR)
+		return ENOTDIR;
 	shared_ptr<char> clusterData(new char[sectorSize * sectorsPerCluster]);
-
 	uint32_t current_cluster = start_cluster;
-	uint32_t current_sector = parent->getFirstSectorOfCluster(current_cluster);
-
-	fat32dir fatDir;
-	bool fileFound = false;
-
-	DBG_OUTPUT;
-	bool allDirsParsed = false;
-	for (int sec = 0; sec < 1 && !allDirsParsed; sec++)
+	uint32_t current_sector = ((fat *)v_vfsp)->getFirstSectorOfCluster(current_cluster);
+	dev_node->bread(current_sector, sectorsPerCluster, clusterData.get());
+	fat32dir *dirArr = (fat32dir *)clusterData.get();
+	for (int i = 0; i < sectorsPerCluster * 16; i++)
 	{
-		parent->read(current_sector + sec, sectorSize, clusterData.get());
-		//bread(start_cluster + sec, sectorSize*sectorsPerCluster, clusterData.get());
-		fat32dir *dirArr = (fat32dir *)clusterData.get();
-
-		for (int i = 0; i < 16 * sectorsPerCluster; i++)
+		if (dirArr[i].DIR_Name[0] == 0)
 		{
-			string filename;
-			if (dirArr[i].DIR_Name[0] == 0)
-			{
-				allDirsParsed = true;
-				break;
-			}
-			else if (dirArr[i].DIR_Name[0] == 0x5E)
-			{
-				printf("\nEmpty entry skipping...");
-				continue;
-			}
-			if ((dirArr[i].DIR_Attr & ATTR_LONG_NAME) == ATTR_LONG_NAME)
-			{
-				printf("\nCannot print filename. Not implemented");
-				continue;
-			}
-			else
-			{
-				filename = convertFat32String(dirArr[i].DIR_Name, dirArr[i].DIR_Attr == ATTR_DIRECTORY);
-				LOGSTR(filename.c_str());
-			}
-			if (filename == file)
-			{
-				fatDir = dirArr[i];
-				fileFound = true;
-				break;
-			}
-		}
-		if (fileFound)
 			break;
+		}
+		else if (dirArr[i].DIR_Name[0] == 0x5E)
+		{
+			continue;
+		}
+		if ((dirArr[i].DIR_Attr & ATTR_LONG_NAME) == ATTR_LONG_NAME)
+		{
+			continue;
+		}
+		if (dirArr[i].getName() == path)
+		{
+			foundNode = make_shared<fat_vnode>(v_vfsp, dev_node, dirArr[i].getFirstCluster(), sectorSize, sectorsPerCluster, &dirArr[i]);
+			return 0;
+		}
 	}
-
-	if (!fileFound)
-	{
-		return 1;
-	}
-
-	LOGSTR(fatDir.getName().c_str());
-	LOGHEX(fatDir.getFirstCluster());
-	LOGHEX(parent->getFirstSectorOfCluster(fatDir.getFirstCluster()));
-
-	foundNode = new fat_vnode(parent, NULL, fatDir.getFirstCluster(), sectorSize, sectorsPerCluster);
-
-	return 0;
+	return ENOFILE;
 }
 
 int fat_vnode::open(uint32_t flags, vfile *&file)
@@ -386,10 +327,38 @@ int fat_vnode::ioctl(uint32_t command, void *data, int fflag)
 	return 1;
 }
 
-int fat_vnode::getMountedDevice(vnode *&devNode)
+int fat_vnode::getMountedDevice(shared_ptr<vnode> &devNode)
 {
 	devNode = dev_node;
 	return 0;
 }
 
+int fat_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
+{
+	if (v_type != VDIR)
+		return ENOTDIR;
+	shared_ptr<char> clusterData(new char[sectorSize * sectorsPerCluster]);
+	uint32_t current_cluster = start_cluster;
+	uint32_t current_sector = ((fat *)v_vfsp)->getFirstSectorOfCluster(current_cluster);
+	dev_node->bread(current_sector, sectorsPerCluster, clusterData.get());
+	fat32dir *dirArr = (fat32dir *)clusterData.get();
+	for (int i = 0; i < sectorsPerCluster * 16; i++)
+	{
+		if (dirArr[i].DIR_Name[0] == 0)
+		{
+			break;
+		}
+		else if (dirArr[i].DIR_Name[0] == 0x5E)
+		{
+			continue;
+		}
+		if ((dirArr[i].DIR_Attr & ATTR_LONG_NAME) == ATTR_LONG_NAME)
+		{
+			continue;
+		}
+		auto tmp = new fat_vnode(v_vfsp, dev_node, dirArr[i].getFirstCluster(), sectorSize, sectorsPerCluster, &dirArr[i]);
+		vnodes.push_back(shared_ptr<vnode>(tmp));
+	}
+	return 0;
+}
 MODULT_INIT(fat_init)

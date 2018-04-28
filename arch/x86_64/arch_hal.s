@@ -18,7 +18,6 @@
 ;
 [bits 64]
 [EXTERN isr_handler]
-;[EXTERN irq_handler]
 [GLOBAL irq_common_stub]
 [GLOBAL get_rflags]
 [GLOBAL get_cpl]
@@ -29,6 +28,8 @@
 [GLOBAL get_cr2]
 [GLOBAL get_cr3]
 [GLOBAL outb]
+[GLOBAL atomic_increment]
+
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
 	[GLOBAL isr%1]        ; %1 accesses the first parameter.
 isr%1:
@@ -261,4 +262,10 @@ inl:
 	mov rdx,rdi
 	in eax, dx
 	pop rdx
+	ret
+
+;extern int64_t atomic_increment(int64_t *val);
+atomic_increment:
+	mov rax, 1
+	lock xadd [rdi], rax
 	ret

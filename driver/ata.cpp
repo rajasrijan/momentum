@@ -81,11 +81,11 @@ class ata_blk_vnode : public vnode
 	bool IsMaster;
 
   public:
-	ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name) : data_port(dataPort), IsMaster(isMaster)
+	ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name) : vnode(nullptr), data_port(dataPort), IsMaster(isMaster)
 	{
-		v_name = name;
+		setName(name.c_str());
 		v_type = VBLK;
-		printf("creating interface for [%s]\n", v_name.c_str());
+		printf("creating interface for [%s]\n", getName().c_str());
 	}
 	~ata_blk_vnode()
 	{
@@ -95,6 +95,12 @@ class ata_blk_vnode : public vnode
 	{
 		printf("%s not implemented\n", __FUNCTION__);
 		__asm__("cli;hlt");
+	}
+	int readdir(vector<shared_ptr<vnode>> &vnodes)
+	{
+		printf("Not implemented");
+		asm("cli;hlt;");
+		return 0;
 	}
 };
 
@@ -121,7 +127,7 @@ pci_device_id supportedDevices[] = {
 
 pci_driver_t ata_pci_driver_interface = {"IDE PCI Driver",
 										 supportedDevices,
-										 2,
+										 sizeof(supportedDevices) / sizeof(supportedDevices[0]),
 										 ata_probe,
 										 ata_remove,
 										 ata_suspend,
@@ -145,7 +151,7 @@ int ata_probe(pci_device_t *dev, pci_device_id table)
 	pci_device_id devID;
 	dev->getDeviceId(&devID);
 	uint32_t standard_bars[] = {0x1F0, 0x3F6, 0x170, 0x376};
-	uint32_t BAR[6];
+	uint32_t BAR[6] = {0};
 	for (uint32_t j = 0; j < 6; j++)
 	{
 		BAR[j] = pci_resource_start(dev, j);
@@ -154,23 +160,21 @@ int ata_probe(pci_device_t *dev, pci_device_id table)
 			//  Replace BAR[j] with standard bars if it is 0x0 or 0x1
 			BAR[j] = ((BAR[j] == 0) || (BAR[j] == 1)) ? standard_bars[j] : BAR[j];
 		}
-		printf("BAR[%d]=0x%x\n", j, BAR[j]);
+		//printf("BAR[%d]=0x%x\n", j, BAR[j]);
 	}
 	for (int bus = 0; bus < 2; bus++)
 	{
 		for (int master = 0; master <= 1; master++)
 		{
-			printf("Trying [%s] [%s].....", !bus ? "primary" : "secondry", !master ? "master" : "slave");
 			if (ataIdentify((uint16_t)BAR[bus * 2], !master))
 			{
-				printf("Not drive\n");
 				continue;
 			}
-			char disk_name[] = "/dev/hda";
-			disk_name[7] += disk_no++;
+			printf("IDE drive at [%s] [%s]\n", !bus ? "primary" : "secondry", !master ? "master" : "slave");
+			string disk_name = "hda";
+			disk_name.back() += disk_no++;
 			auto ataBlkInterface = new ata_blk_vnode(BAR[bus * 2], !master, disk_name);
-			//ret = register_blkdev(ataBlkInterface);
-			ret = mknod(disk_name,ataBlkInterface);
+			ret = mknod(("/dev/" + disk_name).c_str(), ataBlkInterface);
 			if (ret)
 			{
 				printf("Failed to register block device\n");
@@ -284,5 +288,4 @@ int ataIdentify(uint16_t data_port, bool IsMaster)
 	}
 	return ret;
 }
-
 MODULT_INIT(ata_init)

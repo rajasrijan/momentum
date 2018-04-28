@@ -60,6 +60,7 @@ static void print_gdt(void)
 void apic_timer_callback(retStack_t *stack, general_registers_t *regs)
 {
 	tick++;
+	//printf("<(%lx,%lx),", stack->rip, stack->rsp);
 	const thread_info &next_thread = multitask::getInstance()->getNextThread(stack, regs);
 	eoi();
 	change_thread(next_thread);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -88,7 +88,7 @@ enum FS_TYPE_MAGIC
 	MINIX_SUPER_MAGIC = 0x137f,
 	MINIX_SUPER_MAGIC2 = 0x138f,
 	MINIX2_SUPER_MAGIC = 0x2468,
-	MINIX2_SUPER_MAGIC2= 0x2478,
+	MINIX2_SUPER_MAGIC2 = 0x2478,
 	MINIX3_SUPER_MAGIC = 0x4d5a,
 	MQUEUE_MAGIC = 0x19800202,
 	MSDOS_SUPER_MAGIC = 0x4d44,
@@ -150,20 +150,23 @@ class vnode
 {
   public:
 	uint16_t v_flag;			 /* vnode flags */
-	uint16_t v_count;			 /* reference count */
 	uint16_t v_shlockc;			 /* # of shared locks */
 	uint16_t v_exlockc;			 /* # of exclusive locks */
 	uint32_t v_type;			 /* vnode type */
 	class vfs *v_vfsmountedhere; /* covering vfs */
-	//struct vnodeops *v_op; /* vnode operations */
 	class vfs *v_vfsp; /* vfs we are in */
 	vnode *v_root;
-	
-	//protected:
+
+  private:
 	string v_name;
+	uint64_t v_count; /* reference count */
+  protected:
+	void setName(const char *name);
+
   public:
-	vnode();
+	vnode(class vfs *vfsp);
 	virtual ~vnode();
+	const string &getName() const;
 	virtual int open(uint32_t flags, class vfile *&file);
 	virtual int close(void);
 	virtual int rdwr(void);
@@ -172,15 +175,15 @@ class vnode
 	virtual int getattr(void);
 	virtual int setattr(void);
 	virtual int access(void);
-	virtual int lookup(const char *const path, vnode *&foundNode);
+	int dolookup(const char *const path, shared_ptr<vnode> &foundNode);
 	virtual int create(void);
 	virtual int remove(void);
 	virtual int link(void);
 	virtual int rename(string name);
-	virtual int mkdir(std::string name, vnode *&pDir);
-	virtual int mknod(vnode *pNode);
+	virtual int mkdir(std::string name, shared_ptr<vnode> &pDir);
+	virtual int mknod(shared_ptr<vnode> pNode);
 	virtual int rmdir(void);
-	virtual int readdir(void);
+	int doreaddir(vector<shared_ptr<vnode>> &vnodes);
 	virtual int symlink(void);
 	virtual int readlink(void);
 	virtual int fsync(void);
@@ -190,6 +193,12 @@ class vnode
 	virtual int bread(ssize_t position, size_t size, char *data);
 	virtual int bwrite(void);
 	virtual int brelse(void);
+	void addRef();
+	uint64_t release();
+
+  protected:
+	virtual int lookup(const char *const path, shared_ptr<vnode> &foundNode);
+	virtual int readdir(vector<shared_ptr<vnode>> &vnodes) = 0;
 };
 
 class vfile
@@ -210,17 +219,17 @@ class vfs
   public:
 	//class vfs *vfs_next; /* next vfs in list */
 	//struct vfsops *vfs_op; /* operations on vfs */
-	vnode *vfs_vnodecovered; /* vnode we cover */
+	shared_ptr<vnode> vfs_vnodecovered; /* vnode we cover */
 	int flag;				 /* flags */
 	int bsize;				 /* native block size */
 							 //void* vfs_data; /* private data */
   public:
 	vfs();
 	virtual ~vfs();
-	virtual int mount(uint64_t flags, vnode *blk_dev, vnode *&fs_root_directory) = 0;
+	virtual int mount(uint64_t flags, shared_ptr<vnode> blk_dev, shared_ptr<vnode> &fs_root_directory) = 0;
 	virtual int unmount(void) = 0;
 	virtual int root(vnode *&rootNode) = 0;
-	virtual int statfs(vnode* rootNode, statfs_t& statfs) = 0;
+	virtual int statfs(shared_ptr<vnode> rootNode, statfs_t &statfs) = 0;
 	virtual int sync(void) = 0;
 	virtual int fid(void) = 0;
 	virtual int vget(void) = 0;
@@ -229,15 +238,43 @@ class vfs
 void init_vfs(void);
 void register_filesystem(vfs *fs, string fsName);
 void unregister_filesystem(vfs *fs);
-int mknod(const char *pathname, vnode *dev);
+int mknod(const char *pathname, shared_ptr<vnode> dev);
 //extern std::vector<vfs*> vfs_list;
-extern vnode *rnode; //	Pointer to root vnode.
+extern shared_ptr<vnode> rnode; //	Pointer to root vnode.
 int mount_root(vnode *vn);
-int add_blk_dev(vnode *blk_dev);
+int add_blk_dev(shared_ptr<vnode> blk_dev);
 vnode *open_bdev(string dev_path);
 
+enum OpenAt_Flags
+{
+	FDCWD = -100,			  /* Indicates that openat should use the current working directory. */
+	SYMLINK_NOFOLLOW = 0x100, /* Do not follow symbolic links.  */
+	REMOVEDIR = 0x200,		  /* Remove directory instead of unlinking file.  */
+	SYMLINK_FOLLOW = 0x400,   /* Follow symbolic links.  */
+	NO_AUTOMOUNT = 0x800,	 /* Suppress terminal automount traversal */
+	EMPTY_PATH = 0x1000		  /* Allow empty relative pathname */
+};
+
+enum Open_Flags
+{
+	O_RDONLY = 1 << 0,   //    Open for reading only.
+	O_WRONLY = 1 << 1,   //    Open for writing only.
+	O_RDWR = 1 << 2,	 //    Open for reading and writing. The result is undefined if this flag is applied to a FIFO.
+	O_NONBLOCK = 1 << 3, //    When opening a FIFO with O_RDONLY or O_WRONLY set: If O_NONBLOCK is set:
+						 //    An open() for reading only will return without delay. An open() for writing only will return an error if no process currently has the file open for reading.
+	O_DIRECTORY = 1 << 4,
+	O_CLOEXEC = 1 << 5,
+};
+
+typedef uint64_t mode_t;
+
 uint32_t open(string name);
+void close(int fd);
+int openat(int dirfd, const string &pathname, int flags, mode_t mode);
+int chdir(const char *path);
+
 uint32_t read(uint32_t fd, char *dst, size_t size);
 uint32_t fseek(uint32_t fd, long int offset, int origin);
 int mount(string mountPoint, string mountSource);
+int getdents(int fd, vector<string> &dir);
 #endif

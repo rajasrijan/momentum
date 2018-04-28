@@ -1,19 +1,16 @@
-SRCS = $(shell find -name '*.s') $(shell find -name '*.asm') $(shell find -name '*.c')
-OBJS = $(addsuffix .o,$(basename $(SRCS)))
-
 CXXINCLUDE := -include new
 
 CFLAGS :=   -m64 -Wshadow -Wpointer-arith -Wcast-align -fno-leading-underscore\
-	    -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations  -march=corei7 \
+	    -Wwrite-strings -Wmissing-prototypes  \
 	    -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow -mno-red-zone\
 	    -ffreestanding -Wstrict-prototypes -std=c11  -mcmodel=large -masm=intel\
-	    -I libc/ -g -fno-function-sections -DNDEBUG --verbose
+	    -I libc/ -g -O0-fno-function-sections
 
 CXXFLAGS :=   -m64 -Wshadow -Wpointer-arith -Wcast-align -fno-leading-underscore -mno-red-zone\
-	    -Wwrite-strings -Wmissing-declarations  -fno-exceptions -fno-rtti -march=corei7 \
+	    -Wwrite-strings -fno-exceptions -fno-rtti  \
 	    -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel\
-	    -ffreestanding -std=c++11 --verbose \
-	    -I libc/ -I libc++/ -I . $(CXXINCLUDE) -g -fno-function-sections -DNDEBUG
+	    -ffreestanding -std=c++11\
+	    -I libc/ -I libc++/ -I . $(CXXINCLUDE) -g -O0 -fno-function-sections
 
 LDFLAGS:= -T x86_64.ld -z max-page-size=0x1000
 
@@ -39,23 +36,19 @@ CXX := x86_64-elf-g++
 AS := nasm
 LD := x86_64-elf-ld
 
-run_command = $(if $(V),$(2),@echo $(1);$(2))
-
 all: kernel.elf
 
 kernel.elf:$(OBJECT)
 	$(LD) $(LDFLAGS) -o $@ $^
-	x86_64-elf-objdump -x kernel.elf > objdump.txt
-	x86_64-elf-objdump -d -M intel -S kernel.elf -j .text -j .text0> kernel.s
-#	./ImFat momentum.vhd create kernel.elf < kernel.elf
-source.elf:source.o
+	objdump -x kernel.elf > objdump.txt
+	objdump -d -M intel -S kernel.elf -j .text -j .text0> kernel.s
 	
-#%.o:%.cpp
-#	$(CXX) $(CXXFLAGS) -c -o $@ $^
-
 clean:
 	$(RM) $(OBJECT)
 	$(RM) kernel.elf
 
 backup:
 	tar -cf momentum.tar $(shell find -name '*.s') $(shell find -name '*.asm') $(shell find -name '*.c') $(shell find -name '*.h') $(shell find -name '*.cpp')
+
+install:kernel.elf
+	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M kernel.elf ::kernel.elf

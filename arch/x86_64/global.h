@@ -26,8 +26,6 @@
 #define KERNEL_DRIVER_PTR ((void *)0x00000000E0000000)
 #define KERNEL_DRV_HEAP_PTR ((void *)0x00000000F0000000)
 
-#define DBG_OUTPUT printf("%s:%s():%d\n", __FILE__, __FUNCTION__, __LINE__);
-
 #include <stdint.h>
 #include <stddef.h>
 #include "descriptor_tables.h"

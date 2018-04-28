@@ -1,0 +1,6 @@
+**/*.o
+*.raw
+*.img
+*.elf
+.vscode/**
+kernel.s

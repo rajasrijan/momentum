@@ -45,14 +45,14 @@ static void keyboard_handler(retStack_t *regs, general_registers_t *context)
     {
         keyProcessed=true;
     }
-    else if (keyCode >= 0xF && keyCode <= 0x39)
+    else if (keyCode >= 0x1 && keyCode <= 0x39)
     {
-        const char rowDOWN[] = "\tqwertyuiop[]\n asdfghjkl;'  \\zxcvbnm,./    ";
-        const char rowUP[] = "\tQWERTYUIOP{}\n ASDFGHJKL:\"  |ZXCVBNM<>?    ";
+        const char rowDOWN[] = " 1234567890-=\b\tqwertyuiop[]\n asdfghjkl;'` \\zxcvbnm,./    ";
+        const char rowUP[] = " !@#$%^&*()_+\b\tQWERTYUIOP{}\n ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
         if (key_grid[SC_RSHIFT] || key_grid[SC_LSHIFT])
-            ch = rowUP[keyCode - 0xF];
+            ch = rowUP[keyCode-1];
         else
-            ch = rowDOWN[keyCode - 0xF];
+            ch = rowDOWN[keyCode-1];
         keyProcessed = true;
     }
 

@@ -61,10 +61,8 @@ void init_multitask()
  */
 void change_thread(const thread_info &thread, bool enable_interrupts)
 {
-	uint64_t cr3;
-
 	retStack_t context = thread.context;
-	uint64_t &rsp = context.rsp;
+	uint64_t rsp = context.rsp;
 	//set maskable interrupt flag.
 	if (enable_interrupts)
 	{
@@ -76,25 +74,16 @@ void change_thread(const thread_info &thread, bool enable_interrupts)
 		__asm__("cli;"
 				"hlt;");
 	}
-
 	rsp -= sizeof(retStack_t);
 	memcpy((char *)rsp, (char *)&(context), sizeof(retStack_t));
-
 	rsp -= sizeof(general_registers_t);
 	memcpy((char *)rsp, (char *)&(thread.regs), sizeof(general_registers_t));
-	//printf(">%x,%x", thread.getThreadID(),thread.context.rip);
+	//printf("(%lx,%lx)>", thread.context.rip, thread.context.rsp);
 	switch_context(rsp);
 }
 
 void thread_end()
 {
-	//uint32_t rsp = ((thread_info*) sys_info.current_thread->ptr)->context.greg.rsp;
-	//removefrm_linked_list(sys_info.thread_list, sys_info.current_thread->ptr);
-	//__asm__("cli;");
-	//sys_info.current_thread = 0;
-	//printf("\nLooping till resheduled.");
-	//sys_info.m_itCurrentThread->flags |= THREAD_STOP;
-	//DestroyStack(rsp);
 	while (1)
 	{
 		__asm__(
@@ -217,7 +206,7 @@ const thread_info &multitask::getNextThread(retStack_t *stack, general_registers
 		do
 		{
 			uiThreadIterator = (uiThreadIterator + 1) % uiThreadCount;
-		} while ((mtx_trylock(&threadList[uiThreadIterator].mtx)!=thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
+		} while ((mtx_trylock(&threadList[uiThreadIterator].mtx) != thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
 
 		uiCurrentThreadIndex = uiThreadIterator;
 		mtx_unlock(&multitaskMutex);
@@ -225,11 +214,25 @@ const thread_info &multitask::getNextThread(retStack_t *stack, general_registers
 	return threadList[uiCurrentThreadIndex];
 }
 
-thread_info::thread_info(uint64_t processID, const char *threadName) : ProcessID(processID)
+thread_info::thread_info(uint64_t processID, const char *threadName) : mtx(0),
+																	   flags(0),
+																	   isactive(0),
+																	   stackSize(0),
+																	   context({}),
+																	   regs({}),
+																	   uiThreadId(0),
+																	   ProcessID(processID)
 {
 	uiThreadId = thread_id_counter++;
 	strcpy(p_sThreadName, threadName);
-	mtx = 0;
+}
+
+void thread_info::operator=(const thread_info &t)
+{
+	printf("stack %x,%x\n", stackSize, t.stackSize);
+	stackSize = t.stackSize;
+	printf("stack %x,%x\n", stackSize, t.stackSize);
+	//memcpy(this, &t, sizeof(t));
 }
 
 thread_info::~thread_info()

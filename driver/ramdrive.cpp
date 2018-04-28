@@ -31,10 +31,10 @@ public:
 	~ramfs_vfs()
 	{
 	}
-	int mount(uint64_t flags, vnode *blk_dev, vnode *&fs_root_directory) { return 1; }
+	int mount(uint64_t flags, shared_ptr<vnode> blk_dev, shared_ptr<vnode> &fs_root_directory) { return 1; }
 	int unmount(void) { return 1; }
 	int root(vnode* &rootNode) { return 1; }
-	int statfs(vnode* rootNode, statfs_t& statfs) { return 1; }
+	int statfs(shared_ptr<vnode> rootNode, statfs_t& statfs) { return 1; }
 	int sync(void) { return 1; }
 	int fid(void) { return 1; }
 	int vget(void) { return 1; }

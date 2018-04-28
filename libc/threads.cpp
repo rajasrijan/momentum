@@ -27,7 +27,6 @@ int mtx_init(mtx_t* mutex, int type)
 
 int mtx_lock(mtx_t* mutex)
 {
-    //printf("Waiting for mtx [%lx]\n",(uint64_t)mutex);
     if (!get_spin_lock(mutex))
         return thrd_success;
     return thrd_error;

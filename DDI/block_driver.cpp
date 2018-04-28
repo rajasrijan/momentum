@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -65,11 +65,11 @@ class blk_vnode : public vnode
 	blockInterface *blockDrive;
 
   public:
-	blk_vnode(blockInterface *_blockDrive) : vnode()
+	blk_vnode(blockInterface *_blockDrive) : vnode(nullptr)
 	{
 		blockDrive = _blockDrive;
 		v_type = VBLK;
-		v_name = blockDrive->getName().c_str();
+		setName(blockDrive->getName().c_str());
 		printf("this [%x],flags [%x],flags [%x]\n", this, v_type, VBLK);
 	}
 
@@ -103,6 +103,12 @@ class blk_vnode : public vnode
 		default:
 			break;
 		}
+		return 0;
+	}
+	int readdir(vector<shared_ptr<vnode>> &vnodes)
+	{
+		printf("Not implemented");
+		asm("cli;hlt;");
 		return 0;
 	}
 };

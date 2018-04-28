@@ -26,213 +26,259 @@
 namespace std
 {
 
-	class string
-	{
-		char* data;
-		size_t count;
-		size_t _size;
-	public:
+class string
+{
+	char *data;
+	size_t count;
+	size_t _size;
 
-		string()
+  public:
+	static const size_t npos = -1;
+
+  public:
+	string()
+	{
+		_size = 32;
+		count = 0;
+		data = new char[_size];
+	}
+
+	string(const char *str)
+	{
+		if (str != 0)
+		{
+			for (count = 0; str[count] != 0; count++)
+				;
+			_size = count + 32;
+			data = new char[_size];
+			copy(str, &str[count], data);
+			data[count] = 0;
+		}
+		else
 		{
 			_size = 32;
 			count = 0;
 			data = new char[_size];
 		}
+	}
 
-		string(const char* str)
+	string(const char *str, size_t n)
+	{
+		if (str != 0)
 		{
-			if (str != 0)
+			for (count = 0; str[count] != 0; count++)
+				;
+			count = (n < count) ? n : count;
+			_size = count + 32;
+			data = new char[_size];
+			copy(str, &str[count], data);
+			data[count] = 0;
+		}
+		else
+		{
+			_size = 32;
+			count = 0;
+			data = new char[_size];
+		}
+	}
+
+	string(const string &str, size_t pos, size_t len = npos)
+	{
+		if (!str.empty())
+		{
+			if (len == npos || (pos + len) > str.size())
 			{
-				for (count = 0; str[count] != 0; count++);
-				_size = count + 32;
-				data = new char[_size];
-				copy(str, &str[count], data);
-				data[count] = 0;
+				count = str.size() - pos;
 			}
 			else
 			{
-				_size = 32;
-				count = 0;
-				data = new char[_size];
+				count = len;
 			}
+			_size = count + 32;
+			data = new char[_size];
+			memcpy(data, str.c_str() + pos, count);
 		}
-
-		string(const char* str, size_t n)
+		else
 		{
-			if (str != 0)
-			{
-				for (count = 0; str[count] != 0; count++);
-				count = (n < count) ? n : count;
-				_size = count + 32;
-				data = new char[_size];
-				copy(str, &str[count], data);
-				data[count] = 0;
-			}
-			else
-			{
-				_size = 32;
-				count = 0;
-				data = new char[_size];
-			}
+			_size = 32;
+			count = 0;
+			data = new char[_size];
 		}
+	}
 
-		~string()
+	~string()
+	{
+		if (data != 0)
+			delete data;
+		_size = 0;
+		data = 0;
+	}
+
+	void operator=(const char *str)
+	{
+		// remove current
+		if (data != 0)
+			delete data;
+		_size = 0;
+		data = 0;
+		// add
+		if (str != 0)
 		{
-			if (data != 0)
-				delete data;
-			_size = 0;
-			data = 0;
+			for (count = 0; str[count] != 0; count++)
+				;
+			_size = count + 32;
+			data = new char[_size];
+			copy(str, &str[count], data);
+			data[count] = 0;
 		}
-
-		void operator=(const char* str)
+		else
 		{
-			// remove current
-			if (data != 0)
-				delete data;
-			_size = 0;
-			data = 0;
-			// add
-			if (str != 0)
-			{
-				for (count = 0; str[count] != 0; count++);
-				_size = count + 32;
-				data = new char[_size];
-				copy(str, &str[count], data);
-				data[count] = 0;
-			}
-			else
-			{
-				_size = 32;
-				count = 0;
-				data = new char[_size];
-			}
+			_size = 32;
+			count = 0;
+			data = new char[_size];
 		}
+	}
 
-		void operator=(string s)
+	void operator=(string s)
+	{
+		const char *str = s.c_str();
+
+		// remove current
+		if (data != 0)
+			delete data;
+		_size = 0;
+		data = 0;
+		// add
+		if (str != 0)
 		{
-			const char* str = s.c_str();
-
-			// remove current
-			if (data != 0)
-				delete data;
-			_size = 0;
-			data = 0;
-			// add
-			if (str != 0)
-			{
-				for (count = 0; str[count] != 0; count++);
-				_size = count + 32;
-				data = new char[_size];
-				copy(str, &str[count], data);
-				data[count] = 0;
-			}
-			else
-			{
-				_size = 32;
-				count = 0;
-				data = new char[_size];
-			}
+			for (count = 0; str[count] != 0; count++)
+				;
+			_size = count + 32;
+			data = new char[_size];
+			copy(str, &str[count], data);
+			data[count] = 0;
 		}
-
-		size_t size()
+		else
 		{
-			return count;
+			_size = 32;
+			count = 0;
+			data = new char[_size];
 		}
+	}
 
-		const char* c_str()
+	size_t size() const
+	{
+		return count;
+	}
+
+	const char *c_str() const
+	{
+		return data;
+	}
+
+	bool operator>(const string &str) const
+	{
+		return strcmp(this->c_str(), str.c_str()) > 0;
+	}
+
+	int compare(const string &str) const
+	{
+		return strcmp(this->c_str(), str.c_str());
+	}
+
+	size_t find_first_of(const char *s, size_t pos = 0) const
+	{
+		auto loc = strstr(this->c_str() + pos, s);
+		if (!loc)
+			return npos;
+		else
+			return (size_t)(loc - this->c_str());
+	}
+
+	char &operator[](size_t index) const
+	{
+		if (index < count)
 		{
-			return data;
+			return data[index];
 		}
+		return data[count];
+	}
 
-		char& operator[](size_t index)
+	bool operator==(string str2) const
+	{
+		for (int i = 0; data[i] != 0 && str2[i] != 0; i++)
 		{
-			if (index < count)
-			{
-				return data[index];
-			}
-			return data[count];
-		}
-
-		bool operator==(string str2)
-		{
-			if (size() != str2.size())
-			{
+			if (data[i] != str2[i])
 				return false;
-			}
-			for (int i = 0; data[i] != 0 && str2[i] != 0; i++)
-			{
-				if (data[i] != str2[i])
-					return false;
-			}
-			//printf("\nstring equal\n");
-			return true;
 		}
+		return true;
+	}
 
-		void operator+=(char c)
+	void operator+=(char c)
+	{
+	}
+
+	bool empty() const
+	{
+		return size() == 0;
+	}
+
+	size_t find(const char *str, size_t offset = 0) const
+	{
+		for (; data[offset] != 0; offset++)
 		{
-			assert("Not implemented");
-		}
-		size_t find_first_of(const char* substr, size_t offset = 0)
-		{
-			size_t substrLen = 0;
-			for (substrLen = 0; substr[substrLen] != 0; substrLen++);
-			bool found = false;
-			for (; offset + substrLen < count && !found; offset++)
+			int diff = 0;
+			for (int i = 0; str[i] != 0 && data[offset + i] != 0; i++)
 			{
-				for (size_t i = 0; i < substrLen; i++)
+				diff = str[i] - data[offset + i];
+				if (diff != 0)
 				{
-					if (data[offset + i] != substr[i])
-					{
-						found = false;
-						break;
-					}
-					found = true;
+					break;
 				}
 			}
-			if (found)
+			if (diff == 0)
 			{
 				return offset;
 			}
-			else
-			{
-				return -1;
-			}
 		}
-		int compare(const char *str) const
-		{
-			return !strcmp(str, data);
-		}
-
-	  protected:
-
-		int add_bytes(unsigned int len)
-		{
-		}
-	};
-
-	//  Number to string
-
-	inline string to_string(unsigned val)
-	{
-		char number[256] = { 0 };
-		int len = 0;
-		while (val)
-		{
-			number[len++] = (char)((unsigned) '0' + (val % 10));
-			val /= 10;
-		}
-
-		for (int i = 0; i < (len / 2); i++)
-		{
-			char t = number[i];
-			number[i] = number[len - i];
-			number[len - i] = t;
-		}
-
-		return string(number);
+		return npos;
 	}
+
+	char &back()
+	{
+		return data[count - 1];
+	}
+
+	string substr(size_t pos = 0, size_t len = npos) const
+	{
+		return string(*this, pos, len);
+	}
+
+  protected:
+	int add_bytes(unsigned int len)
+	{
+	}
+};
+
+//  Number to string
+
+inline string to_string(unsigned val)
+{
+	char number[256] = {0};
+	sprintf(number, "%d", val);
+	return string(number);
+}
+}
+
+static std::string operator+(const char *first, std::string second)
+{
+	size_t new_length = strlen(first) + second.size();
+	char *new_string = new char[new_length + 1];
+	strcpy(new_string, first);
+	strcat(new_string, second.c_str());
+	std::string ret = new_string;
+	delete[] new_string;
+	return ret;
 }
 
 #endif /* STRING_HPP */
-

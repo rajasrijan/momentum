@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#define DBG_OUTPUT printf("%s:%s():%d\n", __FILE__, __FUNCTION__, __LINE__);
+
 extern void putcharacter(const char ch, uint32_t x, uint32_t y);
 extern void scroll(void);
 extern void setColor(uint8_t c);
