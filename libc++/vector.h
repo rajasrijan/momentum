@@ -32,6 +32,7 @@ class vector
 	uint32_t _size;
 	uint32_t _count;
 	mtx_t lock;
+	const size_t element_size = sizeof(T);
 
   public:
 	vector()
@@ -56,7 +57,7 @@ class vector
 		_count = 0;
 		if (__data != nullptr)
 		{
-			for (int index = 0; index < _count; index++)
+			for (size_t index = 0; index < _count; index++)
 			{
 				__data[index].~T();
 			}
@@ -82,18 +83,21 @@ class vector
 				free(__data);
 			__data = temp;
 		}
-		new ((void *)&__data[_count]) T(val);
+		void *tmp = (void *)&__data[_count];
+		new (tmp) T(val);
 		_count++;
 	}
 
 	T &operator[](uint32_t index)
 	{
-		return __data[index];
+		void *tmp = (void *)((char *)__data + (element_size * index));
+		return *((T *)tmp);
 	}
 
 	const T &operator[](uint32_t index) const
 	{
-		return __data[index];
+		void *tmp = (void *)((char *)__data + (element_size * index));
+		return *((const T *)tmp);
 	}
 
 	vector &operator=(const vector &other)
@@ -257,6 +261,7 @@ class vector
 		position->~T();
 		copy(position + 1, end(), position);
 		_count--;
+		return position;
 	}
 };
 }

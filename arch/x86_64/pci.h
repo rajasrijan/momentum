@@ -143,9 +143,8 @@ struct pci_device_id
     bool IsMatching(const pci_device_id& in) const;
 } __attribute__((packed));
 
-class pci_device_t
+struct pci_device_t
 {
-public:
     union {
         struct
         {
@@ -160,7 +159,6 @@ public:
     };
     bool bIsProcessed;
     struct pci_driver_t *pDriver;
-public:
     pci_device_t();
     ~pci_device_t();
     void getDeviceId(pci_device_id *devID) const;

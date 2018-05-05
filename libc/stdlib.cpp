@@ -22,39 +22,54 @@
 #include "string.h"
 #include "stdio.h"
 
-extern void* _malloc(uint32_t length);
+extern void *_malloc(uint32_t length);
 extern void _free(void *ptr);
+extern void *_aligned_malloc(uint32_t len, int n);
 size_t mem_used = 0;
 
-void* malloc(size_t size)
+void *aligned_malloc(size_t size, int n)
 {
-    volatile void* ptr = _malloc(size);
+    volatile void *ptr = _aligned_malloc(size, n);
     if (ptr == 0)
     {
         printf("\nmm error.");
         __asm__("cli;hlt");
     }
     mem_used += size;
-    return (void*)ptr;
+    memset((void *)ptr, 0xcc, size);
+    return (void *)ptr;
 }
 
-void free(void* ptr)
+void *malloc(size_t size)
+{
+    volatile void *ptr = _malloc(size);
+    if (ptr == 0)
+    {
+        printf("\nmm error.");
+        __asm__("cli;hlt");
+    }
+    mem_used += size;
+    memset((void *)ptr, 0xcc, size);
+    return (void *)ptr;
+}
+
+void free(void *ptr)
 {
     _free(ptr);
 }
 
-void* realloc(void* ptr, size_t size)
+void *realloc(void *ptr, size_t size)
 {
     _free(ptr);
     return _malloc(size);
 }
 
-void* calloc(size_t blocks, size_t size)
+void *calloc(size_t blocks, size_t size)
 {
-    void* ptr = _malloc(size * blocks);
+    void *ptr = _malloc(size * blocks);
     if (ptr == 0)
     {
-        printf("\nmm error.%x,%x",mem_used,(size * blocks));
+        printf("\nmm error.%x,%x", mem_used, (size * blocks));
         __asm__("cli;hlt");
     }
     memset(ptr, 0, size * blocks);

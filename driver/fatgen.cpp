@@ -172,8 +172,8 @@ class fat : public vfs
 	{
 	}
 
-	int unmount(void) {}
-	int root(vnode *&rootNode) {}
+	int unmount(void) { return ENOSYS; }
+	int root(vnode *&rootNode) { return ENOSYS; }
 	int statfs(shared_ptr<vnode> rootNode, statfs_t &statfs)
 	{
 		shared_ptr<vnode> MountedDevice;
@@ -187,9 +187,9 @@ class fat : public vfs
 		statfs.fsid = uuid;
 		return 0;
 	}
-	int sync(void) {}
-	int fid(void) {}
-	int vget(void) {}
+	int sync(void) { return ENOSYS; }
+	int fid(void) { return ENOSYS; }
+	int vget(void) { return ENOSYS; }
 
 	int mount(uint64_t flags, shared_ptr<vnode> blk_dev, shared_ptr<vnode> &fs_root_directory)
 	{
@@ -253,6 +253,7 @@ class fat : public vfs
 		//}
 		printf("Not implemented");
 		asm("cli;hlt;");
+		return ENOSYS;
 	}
 
 	uint32_t getFirstSectorOfCluster(uint32_t N)
@@ -279,7 +280,7 @@ void fat_init()
 
 int fat_vnode::bread(ssize_t position, size_t size, char *data)
 {
-	((fat *)v_vfsp)->read(position, size, data);
+	return ((fat *)v_vfsp)->read(position, size, data);
 }
 
 int fat_vnode::lookup(const char *const path, shared_ptr<vnode> &foundNode)
@@ -291,7 +292,7 @@ int fat_vnode::lookup(const char *const path, shared_ptr<vnode> &foundNode)
 	uint32_t current_sector = ((fat *)v_vfsp)->getFirstSectorOfCluster(current_cluster);
 	dev_node->bread(current_sector, sectorsPerCluster, clusterData.get());
 	fat32dir *dirArr = (fat32dir *)clusterData.get();
-	for (int i = 0; i < sectorsPerCluster * 16; i++)
+	for (uint32_t i = 0; i < sectorsPerCluster * 16; i++)
 	{
 		if (dirArr[i].DIR_Name[0] == 0)
 		{
@@ -342,7 +343,7 @@ int fat_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
 	uint32_t current_sector = ((fat *)v_vfsp)->getFirstSectorOfCluster(current_cluster);
 	dev_node->bread(current_sector, sectorsPerCluster, clusterData.get());
 	fat32dir *dirArr = (fat32dir *)clusterData.get();
-	for (int i = 0; i < sectorsPerCluster * 16; i++)
+	for (uint32_t i = 0; i < sectorsPerCluster * 16; i++)
 	{
 		if (dirArr[i].DIR_Name[0] == 0)
 		{

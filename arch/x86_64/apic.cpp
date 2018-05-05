@@ -29,7 +29,7 @@ static void* find_rspd(void);
  */
 static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
 {
-	for (int i = 0; i < size; i++)
+	for (uint32_t i = 0; i < size; i++)
 		if ((src[i] - dst[i]) != 0)
 			return (uint8_t)(src[i] - dst[i]);
 	return 0;

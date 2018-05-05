@@ -27,7 +27,7 @@ void init_drivers()
 {
     uint64_t noOfModules = (uint64_t)(&__MOD_END__ - &__MOD_LIST__);
 	printf("No of modules: %x\n", noOfModules);
-	for (int i = 0; i < noOfModules; i++)
+	for (uint64_t i = 0; i < noOfModules; i++)
 	{
 		printf("calling...[%x]\n", (&__MOD_LIST__)[i]);
 		void (*constructor_fn)(void) = (void (*)(void))(&__MOD_LIST__)[i];

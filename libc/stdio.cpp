@@ -199,7 +199,7 @@ void printf(const char *format, ...)
 
 char *gets_s(char *str, size_t sz)
 {
-	int it = 0;
+	size_t it = 0;
 	char ch = 0;
 	do
 	{
@@ -209,6 +209,7 @@ char *gets_s(char *str, size_t sz)
 	} while (it < sz && ch != '\n');
 	if (it >= 1)
 		str[it - 1] = 0;
+	return str;
 }
 bool kisnum(const char ch)
 {
@@ -444,7 +445,7 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 
 					if (!left_justify && !left_pad_with_zeros && width_specified && width > tmp_length)
 					{
-						for (size_t i = 0; i < width - tmp_length; i++)
+						for (int i = 0; i < width - tmp_length; i++)
 						{
 							*output_buffer++ = ' ';
 						}
@@ -466,12 +467,12 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 					}
 					if (left_pad_with_zeros && width_specified && width > tmp_length)
 					{
-						for (size_t i = 0; i < width - tmp_length; i++)
+						for (int i = 0; i < width - tmp_length; i++)
 						{
 							*output_buffer++ = '0';
 						}
 					}
-					for (size_t i = 0; i < alpha_number_it; i++)
+					for (int i = 0; i < alpha_number_it; i++)
 					{
 						if (specifier == 's')
 						{
@@ -484,7 +485,7 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 					}
 					if (left_justify && width_specified && width > tmp_length)
 					{
-						for (size_t i = 0; i < width - tmp_length; i++)
+						for (int i = 0; i < width - tmp_length; i++)
 						{
 							*output_buffer++ = ' ';
 						}

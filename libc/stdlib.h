@@ -25,6 +25,7 @@
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
+void *aligned_malloc(size_t size, int n);
 void* malloc(size_t size);
 void free(void* ptr);
 void* realloc(void* ptr, size_t size);

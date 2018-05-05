@@ -36,7 +36,7 @@ int putchar(int c);
 void clrscr(void);
 
 #define assert(x)                                                                \
-    if (x != 0)                                                                  \
+    if (x)                                                                  \
     {                                                                            \
         printf("\nAssert at [%s],File [%s], Line [%d]", #x, __FILE__, __LINE__); \
         __asm__("cli;hlt;");                                                     \

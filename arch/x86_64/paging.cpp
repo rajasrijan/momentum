@@ -111,7 +111,7 @@ int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 		{
 			if (lvl3 == 0)
 			{
-				if (lvl4 = 0)
+				if (lvl4 == 0)
 				{
 
 				}

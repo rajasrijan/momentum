@@ -26,6 +26,7 @@
 #include "../kernel/lists.h"
 #include <vector>
 #include <threads.h>
+#include <errno.h>
 
 /*
   *	Thread flags.
@@ -41,7 +42,7 @@
 
 class thread_info
 {
-  public:
+public:
 	mtx_t mtx;
 	uint64_t flags;
 	uint64_t isactive;
@@ -49,20 +50,20 @@ class thread_info
 	retStack_t context;
 	general_registers_t regs;
 	//std::vector<pt_cache_unit_t> page_table;
-  private:
+private:
 	uint64_t uiThreadId;
 	uint64_t ProcessID;
 	char p_sThreadName[256];
 	void *(*pfnStartRoutine)(void *);
 
-  public:
+public:
 	void operator=(const thread_info &t);
 	thread_info(uint64_t processID, const char *threadName);
 	~thread_info();
 	uint64_t getProcessID();
 	uint64_t getThreadID() const;
 
-  private:
+private:
 	friend class multitask;
 	static void thread_start_point(thread_info *thread);
 	void *arg;
@@ -85,7 +86,7 @@ thread_info *getNextThreadInQueue(void);
 
 class multitask
 {
-  public:
+public:
 	~multitask();
 	static multitask *getInstance();
 	int initilize();
@@ -94,13 +95,13 @@ class multitask
 	int createThread(thread_t *thd, const char *threadName, void *(*start_routine)(void *), void *arg);
 	std::vector<thread_info> threadList;
 	const thread_info &getNextThread(retStack_t *stack, general_registers_t *regs);
-	int fork() {}
+	int fork() { return ENOSYS; }
 
-  private:
+private:
 	uint32_t uiThreadIterator;
 	uint32_t uiCurrentThreadIndex;
 
-  private:
+private:
 	mtx_t multitaskMutex;
 	multitask();
 };

@@ -45,7 +45,7 @@ void pci_unregister_driver(pci_driver_t *dev)
 int pci_find_compitable_driver(pci_device_t &device)
 {
 	int ret = 0;
-	pci_device_id dev_id;
+	pci_device_id dev_id={0};
 	device.getDeviceId(&dev_id);
 	printf("Trying PCI_%x_%x_%x_%x_%x_%x\n", dev_id.VendorID, dev_id.DeviceID,
 		   dev_id.SubVendorID, dev_id.SubSystemID, dev_id.Class, dev_id.SubClass);

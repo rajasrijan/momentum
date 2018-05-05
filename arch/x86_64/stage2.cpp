@@ -112,6 +112,7 @@ int lspci(char *args)
 		printf("\tPCI_%x_%x_%x_%x_%x_%x_%x\n", devId.VendorID, devId.DeviceID, devId.SubVendorID, devId.SubSystemID, devId.Class, devId.SubClass, devId.ProgIf);
 		printf("\t\tDriver: %s\n", driver_name);
 	}
+	return 0;
 }
 
 int echo(char *args)
@@ -125,7 +126,7 @@ int echo(char *args)
 int help(char *args)
 {
 	printf("Supported commands:\n");
-	for (int i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++)
+	for (size_t i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++)
 	{
 		printf("\t%s <args>\n", cmdMapping[i].command);
 	}
@@ -141,6 +142,7 @@ int decode_commandline_args(const char *cmdline, map<string, string> &args)
 		char tmp[256] = {0};
 		std::copy(start_ptr, end_ptr, tmp);
 	}
+	return 0;
 }
 
 void stage2(multiboot_info *mbi)
@@ -175,7 +177,7 @@ void stage2(multiboot_info *mbi)
 	init_keyboard();
 	uint64_t noOfConstructors = (uint64_t)(&__CTOR_END__ - &__CTOR_LIST__);
 	printf("No of constructors: %x\n", noOfConstructors);
-	for (int i = 0; i < noOfConstructors; i++)
+	for (uint64_t i = 0; i < noOfConstructors; i++)
 	{
 		printf("calling...[%x]\n", (&__CTOR_LIST__)[i]);
 		void (*constructor_fn)(void) = (void (*)(void))(&__CTOR_LIST__)[i];
@@ -184,7 +186,7 @@ void stage2(multiboot_info *mbi)
 	init_multitask();
 	pci_init_devices();
 	auto &kthread = multitask::getInstance()->getKernelThread();
-	change_thread(kthread, false);
+	change_thread(kthread, true);
 }
 
 void *t1(void *arg)
@@ -230,8 +232,6 @@ void *pnpHotPlug(void *arg)
  */
 void state_c0()
 {
-	uint32_t tid = 0;
-	int errorCode = 0;
 	printf("Kernal thread started\n");
 	init_vfs();
 	init_drivers();
@@ -244,8 +244,7 @@ void state_c0()
 			pci_find_compitable_driver(device);
 		}
 	}
-	thread_t pnp_hotplug_thread = nullptr;
-	__asm__("sti");
+	//thread_t pnp_hotplug_thread = nullptr;
 	//multitask::getInstance()->createThread(&pnp_hotplug_thread, "pnp_hotplug_thread", &t1, (void *)0);
 	char input[4096];
 	//sleep(100);
@@ -267,7 +266,7 @@ void state_c0()
 			}
 		}
 		bool cmdFound = false;
-		for (int i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++)
+		for (size_t i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++)
 		{
 			if (!strcmp(cmdMapping[i].command, cmd))
 			{

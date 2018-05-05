@@ -50,6 +50,7 @@ int __cxa_atexit(void (*destructor)(void *), void *arg, void *dso)
 	__atexit_funcs[fn_count].arg = arg;
 	__atexit_funcs[fn_count].dso = dso;
 	fn_count++;
+	return 0;
 }
 
 void __cxa_pure_virtual()

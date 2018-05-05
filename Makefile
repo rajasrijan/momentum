@@ -1,15 +1,15 @@
 CXXINCLUDE := -include new
 
 CFLAGS :=   -m64 -Wshadow -Wpointer-arith -Wcast-align -fno-leading-underscore\
-	    -Wwrite-strings -Wmissing-prototypes  \
+	    -Wwrite-strings -Wmissing-prototypes   -Wall\
 	    -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow -mno-red-zone\
 	    -ffreestanding -Wstrict-prototypes -std=c11  -mcmodel=large -masm=intel\
-	    -I libc/ -g -O0-fno-function-sections
+	    -I libc/ -g -O0 -fno-function-sections
 
 CXXFLAGS :=   -m64 -Wshadow -Wpointer-arith -Wcast-align -fno-leading-underscore -mno-red-zone\
 	    -Wwrite-strings -fno-exceptions -fno-rtti  \
 	    -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel\
-	    -ffreestanding -std=c++11\
+	    -ffreestanding -std=c++11 -Wall\
 	    -I libc/ -I libc++/ -I . $(CXXINCLUDE) -g -O0 -fno-function-sections
 
 LDFLAGS:= -T x86_64.ld -z max-page-size=0x1000
@@ -24,7 +24,7 @@ OBJECT := arch/x86_64/loader.o arch/x86_64/arch_hal.o arch/x86_64/interrupts.o \
 	arch/x86_64/paging.o arch/x86_64/global.o arch/x86_64/acpi.o arch/x86_64/mm.o \
 	arch/x86_64/video.o arch/x86_64/timer.o arch/x86_64/apic.o arch/x86_64/pci.o \
 	arch/x86_64/multitask.o arch/x86_64/multiboot2.o arch/x86_64/keyboard.o \
-	libc/stdio.o libc/string.o libc/stdlib.o libc/threads.o \
+	libc/stdio.o libc/string.o libc/stdlib.o libc/threads.o libc++/string.o\
 	kernel/lists.o kernel/vfs.o kernel/vfsops.o kernel/ELFLoader.o kernel/ELFFile.o \
 	DDI/driver.o DDI/ddi.o DDI/pci_driver.o DDI/block_driver.o\
 	driver/ata.o driver/ramdrive.o driver/fatgen.o\

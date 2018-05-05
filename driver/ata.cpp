@@ -95,6 +95,7 @@ class ata_blk_vnode : public vnode
 	{
 		printf("%s not implemented\n", __FUNCTION__);
 		__asm__("cli;hlt");
+		return ENOSYS;
 	}
 	int readdir(vector<shared_ptr<vnode>> &vnodes)
 	{
@@ -251,12 +252,14 @@ int ataReadSectors(uint16_t data_port, bool IsMaster, size_t offset, size_t coun
 			dst[(c * 256) + i] = tmp;
 		}
 	}
+	return 0;
 }
 
 int ataSoftReset()
 {
 	outb(control_register, SRST);
 	outb(control_register, 0);
+	return 0;
 }
 
 int ataIdentify(uint16_t data_port, bool IsMaster)
@@ -283,8 +286,7 @@ int ataIdentify(uint16_t data_port, bool IsMaster)
 
 	for (int i = 0; i < 256; i++)
 	{
-		uint16_t tmp = inw(data_port);
-		dst[i] = tmp;
+		dst[i] = inw(data_port);
 	}
 	return ret;
 }

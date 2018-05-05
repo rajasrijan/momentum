@@ -58,8 +58,16 @@ extern system_info_t sys_info;
 
 static inline void outb(unsigned short port, unsigned char val)
 {
-    __asm__ volatile( "out %1, %0"
-            : : "a"(val), "Nd"(port));
+	__asm__ volatile("out %1, %0"
+					 :
+					 : "a"(val), "Nd"(port));
+}
+
+static inline void outw(unsigned short port, uint16_t val)
+{
+	__asm__ volatile("out %1, %0"
+					 :
+					 : "a"(val), "Nd"(port));
 }
 
 static inline void outl(unsigned short port, uint32_t val)
@@ -106,7 +114,7 @@ static inline void insl(uint16_t port, void *addr, uint32_t count)
 static inline uint8_t checksum(uint8_t *ptr, uint32_t len)
 {
 	uint8_t res = 0;
-	for (int i = 0; i < len; i++)
+	for (uint32_t i = 0; i < len; i++)
 		res = (uint8_t)(res + ptr[i]);
 	return res;
 }
@@ -114,12 +122,10 @@ static inline uint8_t checksum(uint8_t *ptr, uint32_t len)
 static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
 {
 	uint8_t res = 0;
-	for (int i = 0; i < len; i++)
+	for (uint32_t i = 0; i < len; i++)
 		res = (uint8_t)(res + ptr[i]);
 	return (uint8_t)(-res);
 }
-
-void *alined_alloc(uint32_t size, uint32_t alignment);
 
 /*Functions defined in asm*/
 extern "C" {
@@ -140,5 +146,5 @@ uint64_t get_rflags(void);
 void state_c0(void);
 #define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]", x);
 #define LOGSTR(x) printf("\n\"" #x "\" :[%s]", x);
-#define ROOT_UUID_NAME	"ROOT_UUID"
+#define ROOT_UUID_NAME "ROOT_UUID"
 #endif

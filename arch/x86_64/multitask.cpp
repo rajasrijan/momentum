@@ -110,7 +110,7 @@ int CreateNullProcess()
 	return 0;
 }
 
-multitask::multitask() : multitaskMutex(0), uiThreadIterator(0)
+multitask::multitask() : uiThreadIterator(0), multitaskMutex(0)
 {
 	printf("NOT MORE THAN ONCE\n");
 }

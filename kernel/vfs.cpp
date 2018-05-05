@@ -129,11 +129,13 @@ class partition_vnode : public vnode
 	}
 	int bread(ssize_t position, size_t size, char *data)
 	{
+		int errorcode = 0;
 		if (size >= v_size_blk)
 		{
 			return EINVAL;
 		}
-		v_parent->bread(v_start_blk + position, size, data);
+		errorcode = v_parent->bread(v_start_blk + position, size, data);
+		return errorcode;
 	}
 	int readdir(vector<shared_ptr<vnode>> &vnodes)
 	{
@@ -290,7 +292,7 @@ vfs::~vfs(void)
 	printf("\nde-Initialisint vfs");
 }
 
-vnode::vnode(class vfs *vfsp) : v_vfsp(vfsp), v_count(0), v_vfsmountedhere(nullptr)
+vnode::vnode(class vfs *vfsp) : v_vfsmountedhere(nullptr), v_vfsp(vfsp), v_count(0)
 {
 }
 
@@ -304,14 +306,14 @@ int vnode::ioctl(unsigned int, void *, int) { return ENOSYS; }
 int vnode::dolookup(const char *const path, shared_ptr<vnode> &foundNode)
 {
 	if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
-		v_vfsmountedhere->vfs_vnodecovered->dolookup(path, foundNode);
+		return v_vfsmountedhere->vfs_vnodecovered->dolookup(path, foundNode);
 	else
 		return lookup(path, foundNode);
 }
 int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
 {
 	if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
-		v_vfsmountedhere->vfs_vnodecovered->doreaddir(vnodes);
+		return v_vfsmountedhere->vfs_vnodecovered->doreaddir(vnodes);
 	else
 		return readdir(vnodes);
 }
@@ -319,7 +321,7 @@ int vnode::lookup(char const *, shared_ptr<vnode> &) { return ENOSYS; }
 int vnode::bread(ssize_t, size_t, char *) { return ENOSYS; }
 int vnode::mkdir(std::string name, shared_ptr<vnode> &pDir) { return ENOSYS; }
 int vnode::mknod(shared_ptr<vnode> pNode) { return ENOSYS; }
-int vnode::rename(string name) { v_name = name; }
+int vnode::rename(string name) { return ENOSYS; }
 int vnode::close(void) { return ENOSYS; }
 int vnode::rdwr(void) { return ENOSYS; }
 int vnode::select(void) { return ENOSYS; }
@@ -376,7 +378,8 @@ int vfile::read(char *data, size_t sz)
 {
 	ssize_t position = posG;
 	int errCode = 0;
-	if (errCode = _parent->bread(position, sz, data))
+	errCode = _parent->bread(position, sz, data);
+	if (errCode)
 		return errCode;
 	return errCode;
 }
@@ -396,6 +399,7 @@ int vfile::seekg(long int offset, int origin)
 	default:
 		break;
 	}
+	return 0;
 }
 
 int mount(string mountPoint, string mountSource)
@@ -407,13 +411,13 @@ uint32_t open(string name)
 {
 	uint32_t fd = 0;
 	shared_ptr<vnode> node = nullptr;
-	vfile *file = 0;
+	vfile *file = nullptr;
 	assert(name[0] != '/');
 	if (rnode->dolookup(&(name.c_str()[1]), node) != 0)
 	{
 		return -1;
 	}
-	for (size_t i = name.find_first_of("/", 1); i != -1; i = name.find_first_of("/", i))
+	for (size_t i = name.find_first_of("/", 1); i != string::npos; i = name.find_first_of("/", i))
 	{
 		if (node->dolookup(&(name.c_str()[i]), node) != 0)
 		{

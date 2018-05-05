@@ -85,7 +85,7 @@ class blk_vnode : public vnode
 	int bread(ssize_t position, size_t size, char *data)
 	{
 		//printf("read called");
-		blockDrive->read(position, size, data);
+		return blockDrive->read(position, size, data);
 	}
 
 	int open(uint32_t flags, vfile *&file)
@@ -127,4 +127,5 @@ int register_blkdev(blockInterface *blockDrive)
 
 int unregister_blkdev(const char *name)
 {
+	return ENOSYS;
 }

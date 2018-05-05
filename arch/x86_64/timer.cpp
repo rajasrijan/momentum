@@ -38,7 +38,7 @@ static inline void push(uint32_t **ptr, uint32_t value)
 
 static void print_gdt(void)
 {
-	gdt_ptr_t gptr;
+	gdt_ptr_t gptr={0};
 	__asm__("sgdt [%0]" ::"r"(&gptr));
 	printf("\nGDT Base:     %x", gptr.base);
 	printf("\nGDT Limit:    %x", gptr.limit);
@@ -66,9 +66,9 @@ void apic_timer_callback(retStack_t *stack, general_registers_t *regs)
 	change_thread(next_thread);
 }
 
-void sleep(int64_t delay)
+void sleep(uint64_t delay)
 {
-	for (int64_t start_tick = tick; (tick - start_tick) < delay;)
+	for (uint64_t start_tick = tick; (tick - start_tick) < delay;)
 	{
 		__asm__("hlt");
 	}

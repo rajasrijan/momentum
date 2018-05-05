@@ -82,6 +82,24 @@ class string
 		}
 	}
 
+	string(const string &str)
+	{
+		if (!str.empty())
+		{
+			count = str.size();
+			_size = count + 32;
+			data = new char[_size];
+			memcpy(data, str.c_str(), count);
+		}
+		else
+		{
+			_size = 32;
+			count = 0;
+			data = new char[_size];
+		}
+		data[count] = 0;
+	}
+
 	string(const string &str, size_t pos, size_t len = npos)
 	{
 		if (!str.empty())
@@ -108,19 +126,19 @@ class string
 
 	~string()
 	{
-		if (data != 0)
+		if (data != nullptr)
 			delete data;
 		_size = 0;
-		data = 0;
+		data = nullptr;
 	}
 
 	void operator=(const char *str)
 	{
 		// remove current
-		if (data != 0)
+		if (data != nullptr)
 			delete data;
 		_size = 0;
-		data = 0;
+		data = nullptr;
 		// add
 		if (str != 0)
 		{
@@ -147,7 +165,7 @@ class string
 		if (data != 0)
 			delete data;
 		_size = 0;
-		data = 0;
+		data = nullptr;
 		// add
 		if (str != 0)
 		{
@@ -257,6 +275,7 @@ class string
   protected:
 	int add_bytes(unsigned int len)
 	{
+		return 0;
 	}
 };
 
@@ -270,15 +289,6 @@ inline string to_string(unsigned val)
 }
 }
 
-static std::string operator+(const char *first, std::string second)
-{
-	size_t new_length = strlen(first) + second.size();
-	char *new_string = new char[new_length + 1];
-	strcpy(new_string, first);
-	strcat(new_string, second.c_str());
-	std::string ret = new_string;
-	delete[] new_string;
-	return ret;
-}
+std::string operator+(const char *first, std::string second);
 
 #endif /* STRING_HPP */

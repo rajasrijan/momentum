@@ -131,7 +131,7 @@ std::vector<pci_device_t> &pci_getDevices(void)
 	return pci_devices;
 }
 
-pci_device_t::pci_device_t() : pDriver(0)
+pci_device_t::pci_device_t() : address(0), bIsProcessed(false), pDriver(nullptr)
 {
 }
 
@@ -170,5 +170,5 @@ uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar)
 
 bool pci_device_id::IsMatching(const pci_device_id &in) const
 {
-	return (VendorID == in.VendorID || VendorID == 0xFFFF) && (DeviceID == in.DeviceID || DeviceID == 0xFFFF) && (SubVendorID == in.SubVendorID || SubVendorID == 0xFFFF) && (SubSystemID == in.SubSystemID || SubSystemID == 0xFFFF) && (Class == in.Class || Class == 0xFF) && (SubClass == in.SubClass || SubClass == 0xFF) &&(ProgIf == in.ProgIf || ProgIf == 0xFF);
+	return (VendorID == in.VendorID || VendorID == 0xFFFF) && (DeviceID == in.DeviceID || DeviceID == 0xFFFF) && (SubVendorID == in.SubVendorID || SubVendorID == 0xFFFF) && (SubSystemID == in.SubSystemID || SubSystemID == 0xFFFF) && (Class == in.Class || Class == 0xFF) && (SubClass == in.SubClass || SubClass == 0xFF) && (ProgIf == in.ProgIf || ProgIf == 0xFF);
 }
