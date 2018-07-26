@@ -21,6 +21,7 @@
 #include <DDI/pci_driver.h>
 #include <kernel/vfs.h>
 #include <arch/x86_64/timer.h>
+#include <arch/x86_64/paging.h>
 #include <errno.h>
 
 #define USB_HC_NAME "/dev/usb-hca"
@@ -40,9 +41,7 @@ static int controller_count = 0;
 // 	Start Of Frame Modify
 #define SOFMOD(base) (base + 0x0C)
 // 	Port 1 Status/Control
-#define PORTSC1(base) (base + 0x10)
-// 	Port 2 Status/Control
-#define PORTSC2(base) (base + 0x12)
+#define PORTSCn(base, n) (base + 0x10 + (n * 2))
 
 //  run schedule
 #define CMD_HC_RUN (1 << 0)
@@ -158,11 +157,11 @@ struct transfer_descriptor_status
 
 struct transfer_descriptor_packet_header
 {
-    uint8_t packet_type;          // 	0x69 = IN, 0xE1 = OUT, 0x2D = SETUP
-    uint8_t device : 7;           //
-    uint8_t endpoint : 4;         //
-    uint8_t data_toggle : 1;      //
-    uint8_t reserved : 1;         //
+    uint8_t packet_type; // 	0x69 = IN, 0xE1 = OUT, 0x2D = SETUP
+    uint8_t device : 7;
+    uint8_t endpoint : 4;
+    uint8_t data_toggle : 1;
+    uint8_t reserved : 1;
     uint16_t maximum_length : 11; // 	(Length - 1)
 };
 
@@ -175,14 +174,54 @@ struct transfer_descriptor
     uint32_t buffer_address;
 };
 
+#define GET_STATUS 0
+#define CLEAR_FEATURE 1
+#define SET_FEATURE 3
+#define SET_ADDRESS 5
+#define GET_DESCRIPTOR 6
+#define SET_DESCRIPTOR 7
+#define GET_CONFIGURATION 8
+#define SET_CONFIGURATION 9
+#define GET_INTERFACE 10
+#define SET_INTERFACE 11
+#define SYNC_FRAME 12
+
+#define DESC_TYPE_DEVICE 1
+#define DESC_TYPE_CONFIGURATION 2
+#define DESC_TYPE_STRING 3
+#define DESC_TYPE_INTERFACE 4
+#define DESC_TYPE_ENDPOINT 5
+#define DESC_TYPE_DEVICE_QUALIFIER 6
+#define DESC_TYPE_OTHER_SPEED_CONFIGURATION 7
+#define DESC_TYPE_INTERFACE_POWER 8
+
+#pragma align(16)
 struct control_transfer
 {
-    union{
+    union {
         uint8_t bmRequestType;
-        struct {
-            
+        struct
+        {
+            uint8_t data_transfer_direction : 1;
+            uint8_t type_of_request : 2;
+            uint8_t Recipient : 4;
         };
     };
+    uint8_t bRequest;
+    uint16_t wValue, wIndex, wLength;
+};
+
+struct DEVICE_desc
+{
+    uint8_t bLength, bDescriptorType;
+    uint8_t bcdUSB[2];
+    uint8_t bDeviceClass, bDeviceSubClass, bDeviceProtocol, bMaxPacketSize0;
+    uint16_t idVendor, idProduct, bcdDevice;
+    uint8_t iManufacturer, iProduct, iSerialNumber, bNumConfigurations;
+    void print()
+    {
+        printf("USB ver. %d.%d\n\tDevice class [%x]\n\tDevice sub class [%x]\n\tDevice protocol [%x]\n\tNumConfigurations [%x]\n", bcdUSB[1], bcdUSB[0], bDeviceClass, bDeviceSubClass, bDeviceProtocol, bNumConfigurations);
+    }
 };
 
 #pragma pack(pop)
@@ -199,7 +238,7 @@ class uhci_char_interface : public vnode
     uint32_t USBBASEPort;
     //  pointer to a 'Frame List Pointer'
     frame_list_pointer *frame_list;
-    transfer_descriptor *td;
+    uint64_t port_count;
     //  frame lists should be aligned on 4k boundry
     uint32_t frame_list_base_address;
 
@@ -218,7 +257,7 @@ class uhci_char_interface : public vnode
         outw(USBINTR(USBBASEPort), 0);
         outw(USBCMD(USBBASEPort), 0);
         frame_list = (frame_list_pointer *)aligned_malloc(1024 * sizeof(frame_list_pointer), 12);
-
+        memset(frame_list, 0, 1024 * sizeof(frame_list_pointer));
         for (int i = 0; i < 1024; i++)
         {
             frame_list[i].is_empty = 1;
@@ -226,7 +265,7 @@ class uhci_char_interface : public vnode
             frame_list[i].process_full_queue = 0;
             frame_list[i].reserved = 0;
         }
-        frame_list_base_address = *(uint32_t *)&frame_list;
+        frame_list_base_address = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)frame_list);
         // set at 1ms
         outb(SOFMOD(USBBASEPort), SOF_DEFAULT);
         //  set DMA address
@@ -235,26 +274,168 @@ class uhci_char_interface : public vnode
         outl(FRNUM(USBBASEPort), 0);
         // //  enable all interrupts
         // outw(USBINTR(USBBASEPort), INTR_TIMEOUTCRC | INTR_RESUME | INTR_COMPLETE | INTR_SHORTPKT);
-        //  run schedule
-        outw(USBCMD(USBBASEPort), CMD_HC_RST | CMD_HC_CFG);
-        enumerate_devices();
+        // //  run schedule
+        // outw(USBCMD(USBBASEPort), CMD_HC_RUN | CMD_HC_CFG);
+        //  stop transfers
+        outw(USBCMD(USBBASEPort), 0);
+        sleep(50);
+        for (port_count = 0; port_count < 128; port_count++)
+        {
+            auto tmp = inw(PORTSCn(USBBASEPort, port_count));
+            if ((tmp & (1 << 7)) == 0)
+                break;
+            printf("USB Port %d %s\n", port_count, (tmp & 1) ? "connected" : "not connected");
+            if ((tmp & 1) && !(tmp & PORT_ENABLE))
+            {
+                printf("Enabling port %d\n", port_count);
+                outw(PORTSCn(USBBASEPort, port_count), PORT_ENABLE);
+                sleep(50);
+                tmp = inw(PORTSCn(USBBASEPort, port_count));
+                if (!(tmp & PORT_ENABLE))
+                {
+                    printf("Failed to enable port\n");
+                }
+            }
+        }
+        //  stop transfers
+        outw(USBCMD(USBBASEPort), 0);
+        set_address(0);
+        DEVICE_desc deviceDesc = {};
+        get_descriptor(1, 0, deviceDesc);
+        deviceDesc.print();
+        for (int confId = 0; confId < deviceDesc.bNumConfigurations; confId++)
+        {
+        }
     }
 
     ~uhci_char_interface()
     {
     }
 
-    void enumerate_devices()
+    int get_descriptor(uint8_t address, uint8_t endpoint, DEVICE_desc &deviceDesc)
     {
-        transfer_descriptor td = {0};
-        td.link_pointer.is_empty = 1;
-        td.packet_header.packet_type = PACKET_TYPE_SETUP;
-        td.packet_header.device;
-        td.packet_header.endpoint;
-        td.packet_header.data_toggle;
-        td.packet_header.reserved;
-        td.packet_header.maximum_length;
-        td.buffer_address;
+        size_t transfer_size = 0;
+        control_transfer get_desc_pld = {0x80, GET_DESCRIPTOR, DESC_TYPE_DEVICE << 8, 0, sizeof(DEVICE_desc)};
+        int ret = transfer<PACKET_TYPE_SETUP>(address, endpoint, &get_desc_pld, sizeof(control_transfer), transfer_size, (uint8_t *)&deviceDesc);
+        return ret;
+    }
+
+    int set_address(uint8_t endpoint)
+    {
+        control_transfer set_add_pld = {0, SET_ADDRESS, 1, 0, 0};
+        size_t transfer_size = 0;
+        return transfer<PACKET_TYPE_SETUP>(0, endpoint, &set_add_pld, sizeof(control_transfer), transfer_size, nullptr);
+    }
+
+    void link_td(transfer_descriptor *src, transfer_descriptor *dst)
+    {
+        uint32_t dst_phy_addr = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)dst);
+        src->link_pointer.descriptor_address = (dst_phy_addr >> 4);
+        src->link_pointer.is_empty = 0;
+    }
+
+    uint32_t virtual_addr_to_phy(void *ptr)
+    {
+        return (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)ptr);
+    }
+
+    template <uint8_t packet_type>
+    int transfer(uint8_t address, uint8_t endpoint, control_transfer *pPayload, size_t sz, size_t &actual_transfer, uint8_t *pData)
+    {
+        shared_ptr<transfer_descriptor> pSetupDesc((transfer_descriptor *)aligned_malloc(sizeof(transfer_descriptor), 4));
+        shared_ptr<transfer_descriptor> pDataDesc((transfer_descriptor *)aligned_malloc(sizeof(transfer_descriptor), 4));
+        shared_ptr<transfer_descriptor> pStatusDesc((transfer_descriptor *)aligned_malloc(sizeof(transfer_descriptor), 4));
+        memset(pSetupDesc.get(), 0, sizeof(transfer_descriptor));
+        memset(pDataDesc.get(), 0, sizeof(transfer_descriptor));
+        memset(pStatusDesc.get(), 0, sizeof(transfer_descriptor));
+        uint32_t payload_phy_addr = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)pPayload);
+        uint32_t setup_phy_addr = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)pSetupDesc.get());
+        pSetupDesc->link_pointer.is_empty = 1;
+        pSetupDesc->status.active = 1;
+        pSetupDesc->status.interrupt_on_complete = 0;
+        pSetupDesc->packet_header.packet_type = packet_type;
+        pSetupDesc->packet_header.device = address;
+        pSetupDesc->packet_header.endpoint = endpoint;
+        pSetupDesc->packet_header.data_toggle = 0;
+        pSetupDesc->packet_header.maximum_length = sz - 1;
+        pSetupDesc->buffer_address = payload_phy_addr;
+        if (pPayload->wLength > 0)
+        {
+            pDataDesc->link_pointer.is_empty = 1;
+            pDataDesc->status.active = 1;
+            pDataDesc->status.interrupt_on_complete = 0;
+            pDataDesc->packet_header.packet_type = PACKET_TYPE_IN;
+            pDataDesc->packet_header.device = address;
+            pDataDesc->packet_header.endpoint = endpoint;
+            pDataDesc->packet_header.data_toggle = 0;
+            pDataDesc->packet_header.maximum_length = pPayload->wLength - 1;
+            pDataDesc->buffer_address = virtual_addr_to_phy(pData);
+            link_td(pSetupDesc, pDataDesc);
+            link_td(pDataDesc, pStatusDesc);
+        }
+        else
+        {
+            link_td(pSetupDesc, pStatusDesc);
+        }
+        //if (packet_type == PACKET_TYPE_SETUP)
+        {
+            pStatusDesc->packet_header.packet_type = PACKET_TYPE_IN;
+        }
+        pStatusDesc->link_pointer.is_empty = 1;
+        pStatusDesc->status.active = 1;
+        pStatusDesc->status.interrupt_on_complete = 1;
+        pStatusDesc->packet_header.device = address;
+        pStatusDesc->packet_header.endpoint = endpoint;
+        pStatusDesc->packet_header.data_toggle = 1;
+        pStatusDesc->packet_header.maximum_length = 0x7FF;
+        pStatusDesc->buffer_address = 0;
+
+        frame_list[0].descriptor_address = (setup_phy_addr >> 4);
+        frame_list[0].reserved = 0;
+        frame_list[0].process_full_queue = 1;
+        frame_list[0].is_queue = 0;
+        frame_list[0].is_empty = 0;
+        outw(FRNUM(USBBASEPort), 0);
+        outw(USBCMD(USBBASEPort), CMD_HC_RUN);
+        sleep(50);
+        auto status = inw(USBSTS(USBBASEPort));
+        for (int i = 0; i < 10 && status == 0; i++, status = inw(USBSTS(USBBASEPort)))
+        {
+            printf("try %d, status 0x%x\n", i + 1, status);
+            sleep(50);
+        }
+        frame_list[0].is_empty = 1;
+        actual_transfer = pSetupDesc->status.actual_length;
+        printf("status 0x%x\n", status);
+        sleep(50);
+        //  clear status
+        outw(USBSTS(USBBASEPort), 1);
+        sleep(50);
+        status = inw(USBSTS(USBBASEPort));
+        printf("status 0x%x\n", status);
+        //  stop transfers
+        outw(USBCMD(USBBASEPort), 0);
+        //print_descriptor(pSetupDesc.get());
+        //print_descriptor(pStatusDesc.get());
+        return 0;
+    }
+
+    void print_descriptor(transfer_descriptor *pDesc)
+    {
+        printf("USB Transfer status:\n\tactual_length: %d"
+               "\tbit_stuff_error: %d\n\ttimeout_crc: %d"
+               "\tnon_acknowledged: %d\n\tbabble_detected: %d"
+               "\tdata_buffer_error: %d\n\tstalled: %d"
+               "\tactive: %d\n\tinterrupt_on_complete: %d"
+               "\tis_isochronous: %d\n\tlow_speed: %d"
+               "\terror_counter: %d\n\tshort_packet_detect: %d\n",
+               pDesc->status.actual_length, pDesc->status.bit_stuff_error,
+               pDesc->status.timeout_crc, pDesc->status.non_acknowledged,
+               pDesc->status.babble_detected, pDesc->status.data_buffer_error,
+               pDesc->status.stalled, pDesc->status.active,
+               pDesc->status.interrupt_on_complete, pDesc->status.is_isochronous,
+               pDesc->status.low_speed, pDesc->status.error_counter,
+               pDesc->status.short_packet_detect);
     }
 
     int read(size_t offset, size_t count, void *data)
