@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -18,7 +18,6 @@
  */
 
 #include "pci_driver.h"
-#include "../kernel/lists.h"
 #include "../libc/stdlib.h"
 
 std::vector<pci_driver_t *> pci_driver_tables;

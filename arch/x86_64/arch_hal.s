@@ -1,5 +1,5 @@
 ;
-; Copyright 2009-2017 Srijan Kumar Sharma
+; Copyright 2009-2018 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ; 
@@ -28,7 +28,14 @@
 [GLOBAL get_cr2]
 [GLOBAL get_cr3]
 [GLOBAL outb]
+[GLOBAL outl]
+[GLOBAL outw]
+[GLOBAL inb]
+[GLOBAL inw]
+[GLOBAL inl]
 [GLOBAL atomic_increment]
+[GLOBAL load_interrupt_descriptor_table]
+[GLOBAL get_gdt]
 
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
 	[GLOBAL isr%1]        ; %1 accesses the first parameter.
@@ -36,6 +43,7 @@ isr%1:
     cli
 	push QWORD 0x00
     push QWORD %1
+	push QWORD 0x00; zero padding
     jmp isr_common_stub
 %endmacro
 
@@ -44,10 +52,13 @@ isr%1:
 isr%1:
     cli
 	push QWORD %1
+	push QWORD 0x00; zero padding
     jmp isr_common_stub
 %endmacro 
 
 %macro POP_ALL_REGISTERS 0
+	FXRSTOR [RSP]
+	ADD RSP, 512
     pop r15
 	pop r14
 	pop r13
@@ -82,6 +93,8 @@ isr%1:
 	push r13
 	push r14
 	push r15
+	SUB RSP, 512
+	FXSAVE [RSP]
 %endmacro 
 	
 ISR_NOERRCODE 0
@@ -157,11 +170,11 @@ ISR_NOERRCODE 64
 isr_common_stub:
 	PUSH_ALL_REGISTERS
 	mov rdi,rsp
-	add rdi,0x80
+	add rdi,0x280
 	mov rsi,rsp
 	call isr_handler
 	POP_ALL_REGISTERS
-	add rsp,0x10
+	add rsp,0x18
 	iretq
 	
 get_rflags:
@@ -175,7 +188,7 @@ get_rflags:
 switch_context:
 	mov rsp,rdi
 	POP_ALL_REGISTERS
-	add rsp,16
+	add rsp,0x18
 	iretq
 	
 atomic_exchange:
@@ -227,6 +240,19 @@ outb:
 	pop rdx
 	ret
 
+;extern void outw(unsigned short port, uint16_t val);
+;rdi=port
+;rsi=val
+outw:
+	push rdx
+	push rax
+	mov rdx,rdi
+	mov rax,rsi
+	out dx, ax
+	pop rax
+	pop rdx
+	ret
+
 ;extern void outl(unsigned short port, uint32_t val);
 ;rdi=port
 ;rsi=val
@@ -247,11 +273,12 @@ inb:
 	in al, dx
 	pop rdx
 	ret
-;extern uint16_t inb(uint16_t port);
+;extern uint16_t inw(uint16_t port);
 ;rdi=port
 inw:
 	push rdx
 	mov rdx,rdi
+	XOR RAX, RAX
 	in ax, dx
 	pop rdx
 	ret
@@ -268,4 +295,20 @@ inl:
 atomic_increment:
 	mov rax, 1
 	lock xadd [rdi], rax
+	ret
+
+;rdi=pointer
+load_interrupt_descriptor_table:
+	PUSH RBX
+	MOV RBX, RDI
+	LIDT [RBX]
+	POP RBX
+	CLI
+	RET
+
+;extern void inl(uint64_t pGdt);
+;rdi=gdt pointer
+get_gdt:
+	mov RAX,RDI
+	sgdt [RAX]
 	ret

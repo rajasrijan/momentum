@@ -24,6 +24,7 @@
 #include <string>
 #include <memory>
 #include <stddef.h>
+#include <functional>
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -32,6 +33,7 @@
 using namespace std;
 
 #define BLKPBSZGET 1
+#define BLKGETSIZE64 2
 
 enum vtype
 {
@@ -149,66 +151,77 @@ struct statfs_t
 class vnode
 {
   public:
-	uint16_t v_flag;			 /* vnode flags */
 	uint16_t v_shlockc;			 /* # of shared locks */
 	uint16_t v_exlockc;			 /* # of exclusive locks */
 	uint32_t v_type;			 /* vnode type */
 	class vfs *v_vfsmountedhere; /* covering vfs */
-	class vfs *v_vfsp; /* vfs we are in */
-	vnode *v_root;
+	class vfs *v_vfsp;			 /* vfs we are in */
+								 //vnode *v_root;
 
   private:
+	uint16_t v_flag; /* vnode flags */
 	string v_name;
 	uint64_t v_count; /* reference count */
+	vector<shared_ptr<vnode>> special_nodes;
+	vector<shared_ptr<vnode>> dnode_cache;
+	bool runOnce = false;
+	vector<shared_ptr<vnode>> ref_nodes;
+
   protected:
 	void setName(const char *name);
 
   public:
 	vnode(class vfs *vfsp);
+	vnode(const vnode &) = delete;
+	constexpr vnode &operator=(const vnode &) = delete;
 	virtual ~vnode();
-	const string &getName() const;
-	virtual int open(uint32_t flags, class vfile *&file);
-	virtual int close(void);
-	virtual int rdwr(void);
-	virtual int ioctl(uint32_t command, void *data, int fflag);
-	virtual int select(void);
-	virtual int getattr(void);
-	virtual int setattr(void);
 	virtual int access(void);
-	int dolookup(const char *const path, shared_ptr<vnode> &foundNode);
-	virtual int create(void);
-	virtual int remove(void);
-	virtual int link(void);
-	virtual int rename(string name);
-	virtual int mkdir(std::string name, shared_ptr<vnode> &pDir);
-	virtual int mknod(shared_ptr<vnode> pNode);
-	virtual int rmdir(void);
-	int doreaddir(vector<shared_ptr<vnode>> &vnodes);
-	virtual int symlink(void);
-	virtual int readlink(void);
-	virtual int fsync(void);
-	virtual int inactive(void);
 	virtual int bmap(void);
-	virtual int strategy(void);
-	virtual int bread(ssize_t position, size_t size, char *data);
+	virtual int bread(ssize_t position, size_t size, char *data, int *bytesRead) = 0;
 	virtual int bwrite(void);
 	virtual int brelse(void);
-	void addRef();
-	uint64_t release();
+	virtual int close(void);
+	virtual int create(void);
+	int dolookup(const char *const path, shared_ptr<vnode> &foundNode);
+	int doreaddir(vector<shared_ptr<vnode>> &vnodes);
+	int doopen(shared_ptr<vnode> &node, uint32_t flags, class vfile **file);
+	virtual int fsync(void);
+	const string &getName() const;
+	virtual int getattr(void);
+	virtual int ioctl(uint32_t command, void *data, int fflag);
+	virtual int inactive(void);
+	virtual int link(void);
+	virtual int mkdir(std::string name, shared_ptr<vnode> &pDir);
+	int mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> pNode);
+	virtual int rdwr(void);
+	virtual int rename(string name);
+	virtual int rmdir(void);
+	virtual int readlink(void);
+	virtual int remove(void);
+	virtual int select(void);
+	virtual int setattr(void);
+	virtual int symlink(void);
+	virtual int strategy(void);
+	virtual bool namecmp(const string &name) const;
+	void addRef(shared_ptr<vnode> node) { ref_nodes.push_back(node); }
+	bool isDirectory() { return (v_type == VDIR); }
+	bool isFile() { return (v_type == VREG); }
+	bool isBlockDevice() { return (v_type == VBLK); }
 
   protected:
 	virtual int lookup(const char *const path, shared_ptr<vnode> &foundNode);
 	virtual int readdir(vector<shared_ptr<vnode>> &vnodes) = 0;
+	virtual int open(uint32_t flags) = 0;
 };
 
 class vfile
 {
-	vnode *_parent;
+	shared_ptr<vnode> _parent;
 	ssize_t posP, posG;
 	mtx_t fileIOLock;
 
   public:
-	vfile(vnode *parent);
+	vfile(shared_ptr<vnode> parent);
 	~vfile();
 	int read(char *data, size_t sz);
 	int seekg(long int offset, int origin);
@@ -217,12 +230,9 @@ class vfile
 class vfs
 {
   public:
-	//class vfs *vfs_next; /* next vfs in list */
-	//struct vfsops *vfs_op; /* operations on vfs */
 	shared_ptr<vnode> vfs_vnodecovered; /* vnode we cover */
-	int flag;				 /* flags */
-	int bsize;				 /* native block size */
-							 //void* vfs_data; /* private data */
+	int flag;							/* flags */
+										//void* vfs_data; /* private data */
   public:
 	vfs();
 	virtual ~vfs();
@@ -235,9 +245,15 @@ class vfs
 	virtual int vget(void) = 0;
 };
 
+struct fileSystem
+{
+	function<vfs *(void)> new_vfs;
+	function<void(vfs *)> delete_vfs;
+};
+
 void init_vfs(void);
-void register_filesystem(vfs *fs, string fsName);
-void unregister_filesystem(vfs *fs);
+void register_filesystem(fileSystem fs, string fsName);
+void unregister_filesystem(fileSystem fs);
 int mknod(const char *pathname, shared_ptr<vnode> dev);
 //extern std::vector<vfs*> vfs_list;
 extern shared_ptr<vnode> rnode; //	Pointer to root vnode.
@@ -267,14 +283,15 @@ enum Open_Flags
 };
 
 typedef uint64_t mode_t;
-
-uint32_t open(string name);
+int lookup(const char *path, shared_ptr<vnode> &node);
+int open(const string &name);
 void close(int fd);
 int openat(int dirfd, const string &pathname, int flags, mode_t mode);
 int chdir(const char *path);
 
-uint32_t read(uint32_t fd, char *dst, size_t size);
-uint32_t fseek(uint32_t fd, long int offset, int origin);
+int read(int fd, char *dst, size_t size);
+int fseek(int fd, long int offset, int origin);
 int mount(string mountPoint, string mountSource);
 int getdents(int fd, vector<string> &dir);
+string getCurrentPath();
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -53,10 +53,11 @@ class map
     vector<pair<Key, T>> k;
 
   public:
+    map() : k() {}
     T &operator[](const Key &_k)
     {
         auto found_it = lower_bound(k.begin(), k.end(), _k, [](const pair<Key, T> &it, const Key &value) { return value > it.first; });
-        if (found_it->first == _k)
+        if (found_it != k.end() && found_it->first == _k)
             return found_it->second;
         k.insert(found_it, make_pair<Key, T>(_k, T()));
         return found_it->second;
@@ -83,5 +84,5 @@ class map
         k.erase(where_it.mapIt);
     }
 };
-}
+} // namespace std
 #endif /* MAP_H */

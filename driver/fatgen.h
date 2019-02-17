@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -19,7 +19,58 @@
 #ifndef FATGEN_H
 #define FATGEN_H
 
+struct bpb
+{
+    uint8_t BS_jmpBoot[3];
+    char BS_OEMName[8];
+    uint16_t BPB_BytsPerSec;
+    uint8_t BPB_SecPerClus;
+    uint16_t BPB_RsvdSecCnt;
+    uint8_t BPB_NumFATs;
+    uint16_t BPB_RootEntCnt;
+    uint16_t BPB_TotSec16;
+    uint8_t BPB_Media;
+    uint16_t BPB_FATSz16;
+    uint16_t BPB_SecPerTrk;
+    uint16_t BPB_NumHeads;
+    uint32_t BPB_HiddSec;
+    uint32_t BPB_TotSec32;
+    //  FAT32
+    uint32_t BPB_FATSz32;
+    uint16_t BPB_ExtFlags;
+    uint16_t BPB_FSVer;
+    uint32_t BPB_RootClus;
+    uint16_t BPB_FSInfo;
+    uint16_t BPB_BkBootSec;
+    uint8_t BPB_Reserved[12];
+    uint8_t BS_DrvNum;
+    uint8_t BS_Reserved1;
+    uint8_t BS_BootSig;
+    uint32_t BS_VolID;
+    uint8_t BS_VolLab[11];
+    uint8_t BS_FilSysType[8];
+
+    uint32_t getRootDirSectorCount()
+    {
+        return ((BPB_RootEntCnt * 32) + (BPB_BytsPerSec - 1)) / BPB_BytsPerSec;
+    }
+
+    uint32_t getFatSize()
+    {
+        return (BPB_FATSz16 != 0) ? BPB_FATSz16 : BPB_FATSz32;
+    }
+
+    uint32_t getFirstDataSector()
+    {
+        return BPB_RsvdSecCnt + (BPB_NumFATs * getFatSize()) + getRootDirSectorCount();
+    }
+
+    uint32_t getFirstSectorOfCluster(uint32_t N)
+    {
+        return ((N - 2) * BPB_SecPerClus) + getFirstDataSector();
+    }
+} __attribute__((packed));
+
 void fat_init();
 
 #endif /* FATGEN_H */
-

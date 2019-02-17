@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -18,18 +18,25 @@
  */
 
 #ifndef STDLIB_H
-#define	STDLIB_H
+#define STDLIB_H
 
 #include "stddef.h"
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-void *aligned_malloc(size_t size, int n);
-void* malloc(size_t size);
-void free(void* ptr);
-void* realloc(void* ptr, size_t size);
-void* calloc(size_t blocks, size_t size);
+    void *aligned_malloc(size_t size, int n);
+    void *malloc(size_t size);
+    void free(void *ptr);
+    void *realloc(void *ptr, size_t size);
+    void *calloc(size_t blocks, size_t size);
 
-#endif	/* STDLIB_H */
+#ifdef __cplusplus
+}
+#endif
 
+#endif /* STDLIB_H */

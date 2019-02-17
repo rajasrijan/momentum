@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -23,42 +23,15 @@
 #include "string.h"
 #include "stdlib.h"
 
-void new_paging_structure(paging_structure_t* ps)
+void new_paging_structure(paging_structure_t *ps)
 {
-
 }
-
-//void map_4mb(uint64_t virtual_address)
-//{
-//
-//	uint64_t boundry_4mb = (virtual_address / 0x400000);
-//
-//	uint64_t boundry_4kb = boundry_4mb * 0x400;
-//
-//	uint64_t memory_slab = get_2mb_block();
-//
-//	if (memory_slab == 0)
-//		__asm__("cli;hlt;");
-//
-//	__asm__("xchg %bx,%bx;");
-//
-//	sys_info.pst->page_directory[boundry_4mb] = (uint64_t)&(sys_info.pst->page_table[boundry_4kb]) | 3;
-//
-//	for (uint64_t i = 0; i < 0x400; i++)
-//	{
-//		sys_info.pst->page_table[boundry_4kb + i] = memory_slab | 3;
-//		memory_slab += 0x1000;
-//		__asm__ volatile("invlpg %0"::"m" (*(char *)(memory_slab)));
-//	}
-//
-//}
 
 PageManager::PageManager()
 {
-
 }
 
-PageManager * PageManager::getInstance()
+PageManager *PageManager::getInstance()
 {
 	static PageManager pageManager;
 	return &pageManager;
@@ -96,6 +69,19 @@ int PageManager::setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint
 	return 0;
 }
 
+uint64_t PageManager::getPhysicalAddress(uint64_t virtual_address)
+{
+	uint64_t paddr = 0;
+	uint64_t lvl4 = (virtual_address >> 39) & 0x1FF;
+	uint64_t lvl3 = (virtual_address >> 30) & 0x1FF;
+	uint64_t lvl2 = (virtual_address >> 21) & 0x1FF;
+	uint64_t lvl1 = virtual_address & 0x3FFFFF;
+	uint64_t tmp4 = (PML4T[lvl4] & (~0xFF)) + 0xC0000000;
+	uint64_t tmp3 = (((uint64_t *)tmp4)[lvl3] & (~0xFF)) + 0xC0000000;
+	paddr = (((uint64_t *)tmp3)[lvl2] & (~0xFF)) + lvl1;
+	return paddr;
+}
+
 int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 {
 	while (size > 0)
@@ -113,7 +99,6 @@ int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 			{
 				if (lvl4 == 0)
 				{
-
 				}
 				else if (size >= BIGBIGPAGESIZE)
 				{
@@ -153,7 +138,6 @@ int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 			size -= PAGESIZE;
 			vaddr += PAGESIZE;
 		}
-
 	}
 	return 0;
 }
@@ -177,7 +161,7 @@ int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr)
 	PML4T[lvl4] = ((uint64_t)&PDPT[0] - 0xC0000000) | 0x3;
 	PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | 0x3;
 	PDT[(lvl3 * 512) + lvl2] = paddr | 0x83;
-	__asm__ volatile("invlpg %0"::"m" (*(char *)(paddr)));
+	__asm__ volatile("invlpg %0" ::"m"(*(char *)(paddr)));
 	return 0;
 }
 
@@ -190,6 +174,25 @@ int PageManager::initialize()
 {
 	//register_interrupt_handler(0x0E, interruptHandler);
 	return 0;
+}
+
+int PageManager::findVirtualMemory(uint64_t paddr, uint64_t &vaddr)
+{
+	for (uint64_t lvl4 = 0; lvl4 < 1; lvl4++)
+		for (uint64_t lvl3 = 0; lvl3 < 512; lvl3++)
+			for (uint64_t lvl2 = 0; lvl2 < 512; lvl2++)
+			{
+				if (PDT[(lvl3 * 512) + lvl2] & 1)
+				{
+					uint64_t phy_addr = PDT[(lvl3 * 512) + lvl2] & 0xFFFFFFFFFFFFFF00;
+					if (paddr >= phy_addr && paddr < phy_addr + PAGESIZE)
+					{
+						vaddr = ((lvl4 << 39) | (lvl3 << 30) | (lvl2 << 21)) + (paddr % PAGESIZE);
+						return 0;
+					}
+				}
+			}
+	return 1;
 }
 
 int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset)
@@ -215,7 +218,7 @@ int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t of
 	} while ((lvl4 < 1) && foundSize < sz);
 	if (foundSize >= sz)
 	{
-		vaddr = offset;
+		vaddr = offset-foundSize;
 		return 0;
 	}
 	else
@@ -227,4 +230,33 @@ int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t of
 
 PageManager::~PageManager()
 {
+}
+
+int PageManager::getMemoryMap(std::vector<MemPage> &memMap)
+{
+	uint64_t vaddr = 0, paddr = 0;
+	uint8_t flags = 0;
+	for (uint64_t lvl4 = 0; lvl4 < 1; lvl4++)
+		for (uint64_t lvl3 = 0; lvl3 < 512; lvl3++)
+			for (uint64_t lvl2 = 0; lvl2 < 512; lvl2++)
+			{
+				uint8_t _flags = PDT[(lvl3 * 512) + lvl2] & 0x07;
+				uint64_t _paddr = PDT[(lvl3 * 512) + lvl2] & 0xFFFFFFFFFFFFFF00;
+				vaddr = ((lvl4 << 39) | (lvl3 << 30) | (lvl2 << 21));
+				if (((_flags != flags) || (_paddr != (paddr + PAGESIZE))))
+				{
+					if ((_flags & 1) == 1)
+					{
+						MemPage page = {vaddr, _paddr, PAGESIZE};
+						memMap.push_back(page);
+					}
+				}
+				else
+				{
+					memMap.back().size += PAGESIZE;
+				}
+				paddr = _paddr;
+				flags = _flags;
+			}
+	return 0;
 }

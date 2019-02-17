@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -20,7 +20,6 @@
 #include "pci.h"
 #include "string.h"
 #include "paging.h"
-#include "../../kernel/lists.h"
 
 std::vector<pci_device_t> pci_devices;
 
@@ -129,14 +128,6 @@ void pci_writeRegister(const pci_device_t *device, uint32_t offset, uint32_t val
 std::vector<pci_device_t> &pci_getDevices(void)
 {
 	return pci_devices;
-}
-
-pci_device_t::pci_device_t() : address(0), bIsProcessed(false), pDriver(nullptr)
-{
-}
-
-pci_device_t::~pci_device_t()
-{
 }
 
 void pci_device_t::getDeviceId(pci_device_id *devID) const

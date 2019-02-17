@@ -28,6 +28,7 @@
 #include <map>
 #include <climits>
 #include <string.h>
+#include <errno.h>
 
 using namespace std;
 
@@ -59,70 +60,9 @@ std::vector<blockInterface *> blockDeviceList;
 
 std::vector<blkdev> g_vBlkdev;
 
-class blk_vnode : public vnode
-{
-  private:
-	blockInterface *blockDrive;
-
-  public:
-	blk_vnode(blockInterface *_blockDrive) : vnode(nullptr)
-	{
-		blockDrive = _blockDrive;
-		v_type = VBLK;
-		setName(blockDrive->getName().c_str());
-		printf("this [%x],flags [%x],flags [%x]\n", this, v_type, VBLK);
-	}
-
-	~blk_vnode()
-	{
-	}
-
-	int lookup(const char *const path, vnode *&foundNode)
-	{
-		return 1;
-	}
-
-	int bread(ssize_t position, size_t size, char *data)
-	{
-		//printf("read called");
-		return blockDrive->read(position, size, data);
-	}
-
-	int open(uint32_t flags, vfile *&file)
-	{
-		return -1;
-	}
-
-	int ioctl(uint32_t command, void *data, int fflag)
-	{
-		switch (command)
-		{
-		case BLKPBSZGET:
-			((uint32_t *)data)[0] = blockDrive->getBlockSize();
-			break;
-		default:
-			break;
-		}
-		return 0;
-	}
-	int readdir(vector<shared_ptr<vnode>> &vnodes)
-	{
-		printf("Not implemented");
-		asm("cli;hlt;");
-		return 0;
-	}
-};
-
 int register_blkdev(blockInterface *blockDrive)
 {
-	//  Registering block device.
-	printf("Registering block device [%s].\n", blockDrive->getName().c_str());
-	blockDeviceList.push_back(blockDrive);
-	blk_vnode *blkNode = new blk_vnode(blockDrive);
-
-	printf("blkNode [%x],flags [%x]\n", blkNode, blkNode->v_type);
-	add_blk_dev(blkNode);
-	return 0;
+	return ENOSYS;
 }
 
 int unregister_blkdev(const char *name)

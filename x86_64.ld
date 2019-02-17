@@ -8,12 +8,12 @@ SECTIONS
 	.text0 ALIGN (0x1000) : AT(ADDR(.text0))
 	{
 		*(.multiboot)
-		*(.text0)
+		*(.text0*)
 	}
 	. += 0xC0000000;
-	.text : AT(ADDR(.text) - 0xC0000000)
+	.text ALIGN (0x1000) : AT(ADDR(.text) - 0xC0000000)
 	{
-		*(.text)
+		*(.text*)
 		*(.rodata*)
 		. = ALIGN(4096);
 	}

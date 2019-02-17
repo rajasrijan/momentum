@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -87,7 +87,6 @@ void initilize_memorymanager(multiboot_info *mbi)
 			}
 			pm_stack[mStackSize] = (addr);
 			mStackSize++;
-			addr += PageManager::PAGESIZE;
 		}
 	}
 }
@@ -151,7 +150,7 @@ void *_aligned_malloc(uint32_t len, int n)
 				heap_ptr->size -= size;
 				heap_ptr->checksum = 0;
 				heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
-				heap_ptr = (heap_t *)((char *)heap_ptr + heap_ptr->size);
+				heap_ptr = (heap_t *)((uint64_t)heap_ptr + heap_ptr->size);
 				heap_ptr->flags = HEAP_FULL;
 				heap_ptr->checksum = 0;
 				heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
@@ -160,7 +159,7 @@ void *_aligned_malloc(uint32_t len, int n)
 			}
 			else
 			{
-				heap_ptr = (heap_t *)((char *)heap_ptr + heap_ptr->size);
+				heap_ptr = (heap_t *)((uint64_t)heap_ptr + heap_ptr->size);
 			}
 		}
 		else
@@ -183,8 +182,8 @@ void *_malloc(uint32_t length)
 
 void _free(void *ptr)
 {
-#warning compact heap.
-	heap_t *heap_ptr = (heap_t *)((char *)ptr - sizeof(heap_t));
+#pragma message("compact heap.")
+	heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));
 	if (heap_ptr->flags == HEAP_EMPTY)
 	{
 		printf("Double free\n");

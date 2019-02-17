@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -33,76 +33,11 @@
 #include "acpi.h"
 #include "apic.h"
 #include <stdio.h>
-#include "../../kernel/lists.h"
 #include "multiboot.h"
-#include "multitask.h"
 #include <list>
 
 extern void *memory_map;
 extern uint32_t memory_map_len;
-
-typedef struct system_info
-{
-	uint32_t no_of_cpus;
-	gdt_t *gdt_ptr;
-	void *memory_map;
-	uint32_t memory_map_len;
-	uint32_t kernel_end;
-	local_apic_structure *local_apic;
-	idt_t idt;
-	acpi_rsdp *rsdp;
-	uint64_t root_drive_uuid;
-} __attribute__((packed)) system_info_t;
-
-extern system_info_t sys_info;
-
-static inline void outb(unsigned short port, unsigned char val)
-{
-	__asm__ volatile("out %1, %0"
-					 :
-					 : "a"(val), "Nd"(port));
-}
-
-static inline void outw(unsigned short port, uint16_t val)
-{
-	__asm__ volatile("out %1, %0"
-					 :
-					 : "a"(val), "Nd"(port));
-}
-
-static inline void outl(unsigned short port, uint32_t val)
-{
-	__asm__ volatile("out %1, %0"
-					 :
-					 : "a"(val), "Nd"(port));
-}
-
-static inline uint8_t inb(uint16_t port)
-{
-	uint8_t ret;
-	__asm__ volatile("in %0, %1"
-					 : "=a"(ret)
-					 : "Nd"(port));
-	return ret;
-}
-
-static inline uint16_t inw(uint16_t port)
-{
-	uint16_t ret;
-	__asm__ volatile("in %0, %1"
-					 : "=a"(ret)
-					 : "Nd"(port));
-	return ret;
-}
-
-static inline uint32_t inl(uint16_t port)
-{
-	uint32_t ret;
-	__asm__ volatile("in %0, %1"
-					 : "=a"(ret)
-					 : "Nd"(port));
-	return ret;
-}
 
 static inline void insl(uint16_t port, void *addr, uint32_t count)
 {
@@ -128,20 +63,29 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
 }
 
 /*Functions defined in asm*/
-extern "C" {
-uint64_t get_spin_lock(void *lock_ptr);
-uint32_t get_async_spin_lock(void *lock_ptr);
-uint32_t release_spin_lock(void *lock_ptr);
+extern "C"
+{
+	uint64_t get_spin_lock(void *lock_ptr);
+	uint32_t get_async_spin_lock(void *lock_ptr);
+	uint32_t release_spin_lock(void *lock_ptr);
 
-void stage2(multiboot_info *mbi);
-void switch_context(uint64_t esp);
-/*
+	void stage2(multiboot_info *mbi);
+	void switch_context(uint64_t esp);
+	/*
 	 * gets the current previlage leval.
 	 */
-uint32_t get_cpl(void);
-uint32_t *get_cr3(void);
-uint32_t *get_cr2(void);
-uint64_t get_rflags(void);
+	uint32_t get_cpl(void);
+	uint32_t *get_cr3(void);
+	uint32_t *get_cr2(void);
+	uint64_t get_rflags(void);
+	void get_gdt(void *ptr);
+	void load_interrupt_descriptor_table(void *ptr);
+	void outb(unsigned short port, unsigned char val);
+	void outw(unsigned short port, uint16_t val);
+	void outl(unsigned short port, uint32_t val);
+	uint8_t inb(uint16_t port);
+	uint32_t inl(uint16_t port);
+	uint16_t inw(uint16_t port);
 }
 void state_c0(void);
 #define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]", x);

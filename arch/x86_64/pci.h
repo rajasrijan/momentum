@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -159,8 +159,6 @@ struct pci_device_t
     };
     bool bIsProcessed;
     struct pci_driver_t *pDriver;
-    pci_device_t();
-    ~pci_device_t();
     void getDeviceId(pci_device_id *devID) const;
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -17,10 +17,12 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "ata.h"
-#include "../arch/x86_64/pci.h"
+#include <arch/x86_64/pci.h>
+#include <arch/x86_64/timer.h>
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
 #include <DDI/block_driver.h>
+#include <errno.h>
 
 #define ATA_HDDEVSEL_PORT(x) (x + 6)
 #define ATA_COMMAND_PORT(x) (x + 7)
@@ -59,19 +61,14 @@ enum ATA_COMMAND
 	IDENTIFY = 0xEC
 };
 
-struct ATA_IDENT
+#pragma pack(1)
+struct ata_identity
 {
-	uint16_t DEVICETYPE;
-	uint32_t CYLINDERS;
-	uint32_t HEADS, unknown1;
-	uint64_t SECTORS;
-	char SERIAL[0x34];
-	char MODEL[44];
-	uint8_t CAPABILITIES[0x6E];
-	uint8_t FIELDVALID[0x1A];
-	uint64_t MAX_LBA, unk[0xf];
-	uint8_t COMMANDSETS[0x9c];
-	uint64_t MAX_LBA_EXT;
+	uint16_t DEVICETYPE;  //0
+	char pad1[118];		  //2
+	uint32_t MAX_LBA;	 //120
+	char pad2[76];		  //124
+	uint32_t MAX_LBA_EXT; //200
 };
 
 class ata_blk_vnode : public vnode
@@ -90,12 +87,12 @@ class ata_blk_vnode : public vnode
 	~ata_blk_vnode()
 	{
 	}
-	int bread(ssize_t position, size_t size, char *data);
+	int bread(ssize_t position, size_t size, char *data, int *bytesRead);
 	int write(size_t offset, size_t count, void *data)
 	{
 		printf("%s not implemented\n", __FUNCTION__);
 		__asm__("cli;hlt");
-		return ENOSYS;
+		return -ENOSYS;
 	}
 	int readdir(vector<shared_ptr<vnode>> &vnodes)
 	{
@@ -103,6 +100,8 @@ class ata_blk_vnode : public vnode
 		asm("cli;hlt;");
 		return 0;
 	}
+	int ioctl(uint32_t command, void *data, int fflag);
+	int open(uint32_t flags) { return -ENOSYS; }
 };
 
 uint16_t control_register = 0x3F6;
@@ -114,11 +113,30 @@ int ata_probe(pci_device_t *dev, pci_device_id table);
 void ata_remove(pci_device_t *dev);
 int ata_suspend(pci_device_t *dev, uint32_t state);
 int ata_resume(pci_device_t *dev);
-int ataIdentify(uint16_t data_port = 0x1F0, bool IsMaster = true);
+int ataIdentify(ata_identity &ident, uint16_t data_port = 0x1F0, bool IsMaster = true);
 
-int ata_blk_vnode::bread(ssize_t position, size_t size, char *data)
+int ata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 {
+	if (bytesRead)
+		*bytesRead = (size * 512);
 	return ataReadSectors(data_port, IsMaster, position, size, data);
+}
+
+int ata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
+{
+	switch (command)
+	{
+	case BLKGETSIZE64:
+	{
+		ata_identity ident = {};
+		ataIdentify(ident, data_port, IsMaster);
+		*((uint64_t *)data) = ident.MAX_LBA;
+	}
+	break;
+	default:
+		return EINVAL;
+	}
+	return 0;
 }
 
 pci_device_id supportedDevices[] = {
@@ -167,7 +185,8 @@ int ata_probe(pci_device_t *dev, pci_device_id table)
 	{
 		for (int master = 0; master <= 1; master++)
 		{
-			if (ataIdentify((uint16_t)BAR[bus * 2], !master))
+			ata_identity ident = {};
+			if (ataIdentify(ident, (uint16_t)BAR[bus * 2], !master))
 			{
 				continue;
 			}
@@ -202,55 +221,58 @@ int ata_resume(pci_device_t *dev)
 
 int ataReadSectors(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data)
 {
-	if (count > 0xff)
+	while (count > 0)
 	{
-		count = 0xff;
-	}
-	//LOGHEX(offset)
-	offset &= 0x0FFFFFFF;
-	uint32_t status = 0;
-	uint16_t porta = data_port + 6; //Where bit 24 to 27 are sent.
-	uint16_t portb = data_port + 2; //Where no of sectors is sent.
-	uint16_t portc = data_port + 3; //Where nit 0 to 7 are sent.
-	uint16_t portd = data_port + 4; //Where nit 8 to 15 are sent.
-	uint16_t porte = data_port + 5; //Where nit 16 to 23 are sent.
-	uint16_t command_port = data_port + 7;
+		auto size = min(count, 0xfful);
+		offset &= 0x0FFFFFFF;
+		uint32_t status = 0;
+		uint16_t porta = data_port + 6; //Where bit 24 to 27 are sent.
+		uint16_t portb = data_port + 2; //Where no of sectors is sent.
+		uint16_t portc = data_port + 3; //Where nit 0 to 7 are sent.
+		uint16_t portd = data_port + 4; //Where nit 8 to 15 are sent.
+		uint16_t porte = data_port + 5; //Where nit 16 to 23 are sent.
+		uint16_t command_port = data_port + 7;
 
-	uint8_t bits_0_to_7 = (uint8_t)(offset & 0xFF);
-	uint8_t bits_8_to_15 = (uint8_t)((offset >> 8) & 0xFF);
-	uint8_t bits_16_to_23 = (uint8_t)((offset >> 16) & 0xFF);
-	uint8_t bits_24_to_27 = (uint8_t)((offset >> 24) | 0xE0 | (IsMaster ? 0 : 16));
+		uint8_t bits_0_to_7 = (uint8_t)(offset & 0xFF);
+		uint8_t bits_8_to_15 = (uint8_t)((offset >> 8) & 0xFF);
+		uint8_t bits_16_to_23 = (uint8_t)((offset >> 16) & 0xFF);
+		uint8_t bits_24_to_27 = (uint8_t)((offset >> 24) | 0xE0 | (IsMaster ? 0 : 16));
 
-	//  Send no of sectors to get.
-	outb(portb, (uint8_t)count);
-	//  Send bit 0 to 7.
-	outb(portc, bits_0_to_7);
-	//  Send bit 8 to 15.
-	outb(portd, bits_8_to_15);
-	//  Send bit 0 to 7.
-	outb(porte, bits_16_to_23);
-	//  Send bit 24 to 27.
-	outb(porta, bits_24_to_27);
-	//  read with retry
-	outb(command_port, READ_PIO);
+		//  Send no of sectors to get.
+		outb(portb, (uint8_t)size);
+		//  Send bit 0 to 7.
+		outb(portc, bits_0_to_7);
+		//  Send bit 8 to 15.
+		outb(portd, bits_8_to_15);
+		//  Send bit 0 to 7.
+		outb(porte, bits_16_to_23);
+		//  Send bit 24 to 27.
+		outb(porta, bits_24_to_27);
+		//  read with retry
+		outb(command_port, READ_PIO);
 
-	//while (((status = inb(command_port)) & BSY) != BSY);
-	for (size_t c = 0; c < count; c++)
-	{
-		while (true)
+		//while (((status = inb(command_port)) & BSY) != BSY);
+		for (size_t c = 0; c < size; c++)
 		{
-			status = inb(command_port);
+			while (true)
+			{
+				status = inb(command_port);
+				assert(status & (ERR | DF));
+				if (status & DRQ)
+					break;
+			}
+			//printf("\nout of loop.YAY");
+			uint16_t *dst = ((uint16_t *)data);
 
-			assert(status & (ERR | DF)) if (status & DRQ) break;
+			for (int i = 0; i < 256; i++)
+			{
+				uint16_t tmp = inw(data_port);
+				dst[(c * 256) + i] = tmp;
+			}
 		}
-		//printf("\nout of loop.YAY");
-		uint16_t *dst = ((uint16_t *)data);
-
-		for (int i = 0; i < 256; i++)
-		{
-			uint16_t tmp = inw(data_port);
-			dst[(c * 256) + i] = tmp;
-		}
+		count -= size;
+		offset += size;
+		data = (void *)&((char *)data)[((512) * size)];
 	}
 	return 0;
 }
@@ -262,15 +284,13 @@ int ataSoftReset()
 	return 0;
 }
 
-int ataIdentify(uint16_t data_port, bool IsMaster)
+int ataIdentify(ata_identity &ident, uint16_t data_port, bool IsMaster)
 {
 	int ret = 0;
 	// (I) Select Drive:
 	outb(ATA_HDDEVSEL_PORT(data_port), 0xA0 | (IsMaster ? 0 : 16)); // Select Drive.
-
 	//  read with retry
 	outb(ATA_COMMAND_PORT(data_port), IDENTIFY);
-
 	while (true)
 	{
 		int status = inb(ATA_COMMAND_PORT(data_port));
@@ -281,13 +301,12 @@ int ataIdentify(uint16_t data_port, bool IsMaster)
 		if (status & DRQ)
 			break;
 	}
-
 	uint16_t dst[256] = {0};
-
 	for (int i = 0; i < 256; i++)
 	{
 		dst[i] = inw(data_port);
 	}
+	ident = *((ata_identity *)dst);
 	return ret;
 }
 MODULT_INIT(ata_init)

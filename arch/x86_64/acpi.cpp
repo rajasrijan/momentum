@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -24,18 +24,25 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <kernel/sys_info.h>
+
+extern "C"
+{
+#include <acpi.h>
+}
+
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
 
- /*
+/*
  void* find_rspd(void);
  void * ioapic_base;
   */
 
-  /*
-   * Fix memory referances.kernel is located in 2gb+ space. unreff lower mem stuff.
-   */
+/*
+* Fix memory referances.kernel is located in 2gb+ space. unreff lower mem stuff.
+*/
 
 void fix_refferances()
 {
@@ -50,12 +57,14 @@ void fix_refferances()
 static void default_apic_mapping(void)
 {
 	uint64_t msr_apicbase = 0;
-	__asm("rdmsr":"=a"(msr_apicbase) : "c"((uint64_t)IA32_APIC_BASE_MSR));
-	sys_info.local_apic = (local_apic_structure*)(msr_apicbase&APICBASE_ADDRESS);
+	__asm("rdmsr"
+		  : "=a"(msr_apicbase)
+		  : "c"((uint64_t)IA32_APIC_BASE_MSR));
+	sys_info.local_apic = (local_apic_structure *)(msr_apicbase & APICBASE_ADDRESS);
 	printf("local apic:[0x%x], enabled [%d], BSP [%d]\n",
-		sys_info.local_apic,
-		(msr_apicbase&APICBASE_ENABLED) == APICBASE_ENABLED,
-		(msr_apicbase&APICBASE_BSP) == APICBASE_BSP);
+		   sys_info.local_apic,
+		   (msr_apicbase & APICBASE_ENABLED) == APICBASE_ENABLED,
+		   (msr_apicbase & APICBASE_BSP) == APICBASE_BSP);
 	PageManager::getInstance()->IdentityMap2MBPages(((uint64_t)sys_info.local_apic) & 0xFFFFFFFFFFE00000);
 	sys_info.local_apic->lvt_timer = LVT_MASKED | 32;
 	sys_info.local_apic->lvt_thermal = LVT_MASKED | 33;
@@ -226,32 +235,32 @@ static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
  */
 uint8_t get_acpi_tables()
 {
-
 	default_apic_mapping();
 
 	default_ioapic_mapping();
 	for (uint64_t rsdptr = 0xE0000; rsdptr < 0xFFFFF; rsdptr += 2)
 	{
-		if (memcmp((void*)rsdptr, ACPI_RSDP_SIGNATURE, 8))
+		if (!memcmp((void *)rsdptr, ACPI_RSDP_SIGNATURE, 8))
 		{
-			sys_info.rsdp = (acpi_rsdp*)rsdptr;
+			sys_info.rsdp = (acpi_rsdp *)rsdptr;
 			break;
 		}
 	}
 	printf("RSD PTR [0x%x]\n", sys_info.rsdp);
 
-	acpi_rsdt *rsdt = (acpi_rsdt*)(uint64_t)(sys_info.rsdp->RsdtAddress);
+	acpi_rsdt *rsdt = (acpi_rsdt *)(uint64_t)(sys_info.rsdp->RsdtAddress);
 	printf("rsdt [0x%x]\n", rsdt);
-	if (checksum((uint8_t*)rsdt, rsdt->header.Length))
+	if (checksum((uint8_t *)rsdt, rsdt->header.Length))
 	{
 		printf("Non zero checksum.");
 		__asm__("cli;hlt;");
+		return 1;
 	}
 
 	uint32_t no_of_descriptors = ((rsdt->header.Length - (uint32_t)sizeof(acpi_description_header)) / 4);
 	printf("No of ACPI Descriptors 0x%x\n", no_of_descriptors);
 
-	uint32_t *adhtPtrTbl = (uint32_t*)((sys_info.rsdp->RsdtAddress) + sizeof(acpi_description_header));
+	uint32_t *adhtPtrTbl = (uint32_t *)((sys_info.rsdp->RsdtAddress) + sizeof(acpi_description_header));
 	madt_structure *madt = nullptr;
 	for (uint32_t i = 0; i < no_of_descriptors; i++)
 	{
@@ -261,7 +270,12 @@ uint8_t get_acpi_tables()
 			break;
 		}
 	}
-
+	if(!madt)
+	{
+		printf("madt struct not found.");
+		__asm__("cli;hlt;");
+		return 1;
+	}
 	madt_entry_structure *madt_entry = &(madt->apic_entries);
 	uint32_t len = (madt->header.Length - (uint32_t)offsetof(madt_structure, apic_entries));
 	printf("MADT [0x%lx], madt_entry [0x%lx], len [0x%x], madt_structure [0x%x]\n", madt, madt_entry, madt->header.Length, sizeof(madt_structure));
@@ -272,17 +286,119 @@ uint8_t get_acpi_tables()
 			printf("MADT entry length zero.");
 			__asm__("cli;hlt;");
 		}
+		printf("MADT Entry type [%x]\n",madt_entry->type);
 		switch (madt_entry->type)
 		{
 		case INTERRUPT_OVERRIDE:
 		{
-			interrupt_override * intovr = (interrupt_override*)madt_entry;
+			interrupt_override *intovr = (interrupt_override *)madt_entry;
 			override_interrupt(intovr->source, intovr->global_system_interrupt, intovr->flags);
 			break;
 		}
 		}
 		len -= madt_entry->length;
-		madt_entry = (madt_entry_structure*)((char*)madt_entry + (uint32_t)(madt_entry->length));
+		madt_entry = (madt_entry_structure *)((char *)madt_entry + (uint32_t)(madt_entry->length));
 	}
-	return 1;
+	return 0;
+}
+void NotifyHandler(ACPI_HANDLE Device, UINT32 Value, void *Context);
+void NotifyHandler(ACPI_HANDLE Device, UINT32 Value, void *Context)
+{
+	printf("Received a notify 0x%X", Value);
+}
+
+ACPI_STATUS InstallHandlers(void)
+{
+	ACPI_STATUS Status;
+
+	/* Install global notify handler */
+
+	Status = AcpiInstallNotifyHandler(ACPI_ROOT_OBJECT, ACPI_SYSTEM_NOTIFY,
+									  NotifyHandler, NULL);
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While installing Notify handler. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	return (AE_OK);
+}
+
+int InitializeFullAcpi(void)
+{
+	ACPI_STATUS Status;
+
+	/* Initialize the ACPICA subsystem */
+
+	Status = AcpiInitializeSubsystem();
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While initializing ACPICA. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	/* Initialize the ACPICA Table Manager and get all ACPI tables */
+
+	Status = AcpiInitializeTables(NULL, 16, FALSE);
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While initializing Table Manager. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	/* Create the ACPI namespace from ACPI tables */
+
+	Status = AcpiLoadTables();
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While loading ACPI tables. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	/* Install local handlers */
+
+	Status = InstallHandlers();
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While installing handlers. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	/* Initialize the ACPI hardware */
+
+	Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While enabling ACPICA. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	/* Complete the ACPI namespace object initialization */
+
+	Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
+	if (ACPI_FAILURE(Status))
+	{
+		printf("While initializing ACPICA objects. Error [%x]\n", Status);
+		return (Status);
+	}
+
+	/* Tell ACPI we are using ioapic */
+
+	ACPI_OBJECT_LIST ArgList;
+	ACPI_OBJECT Arg[1];
+	ACPI_BUFFER ReturnValue;
+	
+	ArgList.Count = 1;
+	ArgList.Pointer = Arg;
+	
+	ReturnValue.Pointer = 0;
+	ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
+	char pci_path[]= "\\_PIC";
+	Status = AcpiEvaluateObject(nullptr, pci_path, &ArgList, &ReturnValue);
+	if (ACPI_FAILURE(Status))
+	{
+		printf("Execute \\_PCI failed. Error [%x]\n", Status);
+		return Status;
+	}
+	return (AE_OK);
 }

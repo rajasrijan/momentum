@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -17,17 +17,17 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+namespace std
+{
 template <class T1, class T2>
 struct pair
 {
 	T1 first;
 	T2 second;
 	pair(T1 _first, T2 _second) : first(_first), second(_second) {}
-	pair(const pair &p)
-	{
-		first = p.first;
-		second = p.second;
-	}
+	pair(const pair &p) = default;
+	pair() : first(), second() {}
+	pair &operator=(const pair &p) = default;
 };
 
 template <class T1, class T2>
@@ -35,3 +35,4 @@ pair<T1, T2> make_pair(T1 x, T2 y)
 {
 	return (pair<T1, T2>(x, y));
 }
+} // namespace std

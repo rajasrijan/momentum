@@ -195,7 +195,6 @@ struct transfer_descriptor
 #define DESC_TYPE_OTHER_SPEED_CONFIGURATION 7
 #define DESC_TYPE_INTERFACE_POWER 8
 
-#pragma align(16)
 struct control_transfer
 {
     union {
@@ -243,7 +242,8 @@ class uhci_char_interface : public vnode
     uint32_t frame_list_base_address;
 
   public:
-    uhci_char_interface(uint32_t USBBASE, const string &_name) : vnode(nullptr), USBBASEPort(USBBASE)
+    uhci_char_interface(const uhci_char_interface &) = delete;
+    uhci_char_interface(uint32_t USBBASE, const string &_name) : vnode(nullptr), USBBASEPort(USBBASE), frame_list(nullptr), port_count(0), frame_list_base_address(0)
     {
         setName(_name.c_str());
         printf("creating interface for [%s]\n", getName().c_str());
@@ -252,7 +252,6 @@ class uhci_char_interface : public vnode
         sleep(50);
         if (inw(USBCMD(USBBASEPort)) & CMD_HC_RST)
             printf("CMD_HC_RST not completed yet!\n");
-
         //  disable interrupt
         outw(USBINTR(USBBASEPort), 0);
         outw(USBCMD(USBBASEPort), 0);
@@ -266,6 +265,8 @@ class uhci_char_interface : public vnode
             frame_list[i].reserved = 0;
         }
         frame_list_base_address = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)frame_list);
+        //  stop transfers
+        outw(USBCMD(USBBASEPort), 0);
         // set at 1ms
         outb(SOFMOD(USBBASEPort), SOF_DEFAULT);
         //  set DMA address
@@ -303,26 +304,26 @@ class uhci_char_interface : public vnode
         DEVICE_desc deviceDesc = {};
         get_descriptor(1, 0, deviceDesc);
         deviceDesc.print();
-        for (int confId = 0; confId < deviceDesc.bNumConfigurations; confId++)
-        {
-        }
     }
 
     ~uhci_char_interface()
     {
     }
-
+    uhci_char_interface &operator=(const uhci_char_interface &) = delete;
+    int open(uint32_t flags) { return -ENOSYS; }
     int get_descriptor(uint8_t address, uint8_t endpoint, DEVICE_desc &deviceDesc)
     {
+        printf("Get Descriptor\n");
         size_t transfer_size = 0;
-        control_transfer get_desc_pld = {0x80, GET_DESCRIPTOR, DESC_TYPE_DEVICE << 8, 0, sizeof(DEVICE_desc)};
+        alignas(16) control_transfer get_desc_pld = {0x80, GET_DESCRIPTOR, DESC_TYPE_DEVICE << 8, 0, sizeof(DEVICE_desc)};
         int ret = transfer<PACKET_TYPE_SETUP>(address, endpoint, &get_desc_pld, sizeof(control_transfer), transfer_size, (uint8_t *)&deviceDesc);
         return ret;
     }
 
     int set_address(uint8_t endpoint)
     {
-        control_transfer set_add_pld = {0, SET_ADDRESS, 1, 0, 0};
+        printf("Set Address\n");
+        alignas(16) control_transfer set_add_pld = {0, SET_ADDRESS, 1, 0, 0};
         size_t transfer_size = 0;
         return transfer<PACKET_TYPE_SETUP>(0, endpoint, &set_add_pld, sizeof(control_transfer), transfer_size, nullptr);
     }
@@ -370,12 +371,12 @@ class uhci_char_interface : public vnode
             pDataDesc->packet_header.data_toggle = 0;
             pDataDesc->packet_header.maximum_length = pPayload->wLength - 1;
             pDataDesc->buffer_address = virtual_addr_to_phy(pData);
-            link_td(pSetupDesc, pDataDesc);
-            link_td(pDataDesc, pStatusDesc);
+            link_td(pSetupDesc.get(), pDataDesc.get());
+            link_td(pDataDesc.get(), pStatusDesc.get());
         }
         else
         {
-            link_td(pSetupDesc, pStatusDesc);
+            link_td(pSetupDesc.get(), pStatusDesc.get());
         }
         //if (packet_type == PACKET_TYPE_SETUP)
         {
@@ -437,7 +438,10 @@ class uhci_char_interface : public vnode
                pDesc->status.low_speed, pDesc->status.error_counter,
                pDesc->status.short_packet_detect);
     }
-
+    int bread(ssize_t position, size_t size, char *data, int *bytesRead)
+    {
+        return ENOSYS;
+    }
     int read(size_t offset, size_t count, void *data)
     {
         printf("%s not implemented\n", __FUNCTION__);

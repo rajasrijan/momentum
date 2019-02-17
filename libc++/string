@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -36,14 +36,15 @@ class string
 	static const size_t npos = -1;
 
   public:
-	string()
+	string() : data(nullptr), count(0), _size(0)
 	{
 		_size = 32;
 		count = 0;
 		data = new char[_size];
+		memset(data, 0, _size);
 	}
 
-	string(const char *str)
+	string(const char *str) : data(nullptr), count(0), _size(0)
 	{
 		if (str != 0)
 		{
@@ -51,6 +52,7 @@ class string
 				;
 			_size = count + 32;
 			data = new char[_size];
+			memset(data, 0, _size);
 			copy(str, &str[count], data);
 			data[count] = 0;
 		}
@@ -59,10 +61,11 @@ class string
 			_size = 32;
 			count = 0;
 			data = new char[_size];
+			memset(data, 0, _size);
 		}
 	}
 
-	string(const char *str, size_t n)
+	string(const char *str, size_t n) : data(nullptr), count(0), _size(0)
 	{
 		if (str != 0)
 		{
@@ -71,6 +74,7 @@ class string
 			count = (n < count) ? n : count;
 			_size = count + 32;
 			data = new char[_size];
+			memset(data, 0, _size);
 			copy(str, &str[count], data);
 			data[count] = 0;
 		}
@@ -79,10 +83,11 @@ class string
 			_size = 32;
 			count = 0;
 			data = new char[_size];
+			memset(data, 0, _size);
 		}
 	}
 
-	string(const string &str)
+	string(const string &str) : data(nullptr), count(0), _size(0)
 	{
 		if (!str.empty())
 		{
@@ -96,11 +101,12 @@ class string
 			_size = 32;
 			count = 0;
 			data = new char[_size];
+			memset(data, 0, _size);
 		}
 		data[count] = 0;
 	}
 
-	string(const string &str, size_t pos, size_t len = npos)
+	string(const string &str, size_t pos, size_t len = npos) : data(nullptr), count(0), _size(0)
 	{
 		if (!str.empty())
 		{
@@ -121,7 +127,18 @@ class string
 			_size = 32;
 			count = 0;
 			data = new char[_size];
+			memset(data, 0, _size);
 		}
+	}
+
+	string(size_t n, char c) : data(nullptr), count(0), _size(0)
+	{
+		count = n;
+		_size = count + 32;
+		data = new char[_size];
+		memset(data, 0, _size);
+		for (size_t i = 0; i < n; i++)
+			data[i] = c;
 	}
 
 	~string()
@@ -132,7 +149,7 @@ class string
 		data = nullptr;
 	}
 
-	void operator=(const char *str)
+	string &operator=(const char *str)
 	{
 		// remove current
 		if (data != nullptr)
@@ -146,6 +163,7 @@ class string
 				;
 			_size = count + 32;
 			data = new char[_size];
+			memset(data, 0, _size);
 			copy(str, &str[count], data);
 			data[count] = 0;
 		}
@@ -154,10 +172,12 @@ class string
 			_size = 32;
 			count = 0;
 			data = new char[_size];
+			memset(data, 0, _size);
 		}
+		return *this;
 	}
 
-	void operator=(string s)
+	string &operator=(const string &s)
 	{
 		const char *str = s.c_str();
 
@@ -173,6 +193,7 @@ class string
 				;
 			_size = count + 32;
 			data = new char[_size];
+			memset(data, 0, _size);
 			copy(str, &str[count], data);
 			data[count] = 0;
 		}
@@ -181,7 +202,9 @@ class string
 			_size = 32;
 			count = 0;
 			data = new char[_size];
+			memset(data, 0, _size);
 		}
+		return *this;
 	}
 
 	size_t size() const
@@ -190,6 +213,11 @@ class string
 	}
 
 	const char *c_str() const
+	{
+		return data;
+	}
+
+	char *c_str()
 	{
 		return data;
 	}
@@ -232,8 +260,29 @@ class string
 		return true;
 	}
 
-	void operator+=(char c)
+	string operator+(const char *str) const
 	{
+		size_t m_szNewLen = size() + strlen(str);
+		string ret(m_szNewLen, ' ');
+		strcpy(strcpy(ret.c_str(), c_str()), str);
+		return ret;
+	}
+
+	string &operator+=(const std::string &str)
+	{
+		auto szNewLen = count + str.size();
+		if (szNewLen >= _size)
+		{
+			_size = szNewLen + 32;
+			auto tmp = new char[_size];
+			memset(tmp, 0, _size);
+			strcpy(tmp, c_str());
+			delete data;
+			data = tmp;
+		}
+		strcat(c_str(), str.c_str());
+		count = szNewLen;
+		return *this;
 	}
 
 	bool empty() const
@@ -287,7 +336,7 @@ inline string to_string(unsigned val)
 	sprintf(number, "%d", val);
 	return string(number);
 }
-}
+} // namespace std
 
 std::string operator+(const char *first, std::string second);
 

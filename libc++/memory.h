@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -162,7 +162,7 @@ class shared_ptr
 		return *this;
 	}
 
-	void operator=(T *data_ptr)
+	shared_ptr& operator=(T *data_ptr)
 	{
 		//	Relese old
 		{
@@ -203,6 +203,7 @@ class shared_ptr
 		mtx_init(lock, 0);
 		__refCount = new unsigned int;
 		__refCount[0]++;
+		return *this;
 	}
 
 	~shared_ptr()
@@ -243,6 +244,11 @@ class shared_ptr
 		return __data;
 	}
 
+	const T *get() const
+	{
+		return __data;
+	}
+
 	T *operator->()
 	{
 		return __data;
@@ -266,6 +272,10 @@ class shared_ptr
 	{
 		return __data != ptr;
 	}
+	// operator T *()
+	// {
+	// 	return __data;
+	// }
 };
 
 template <class T, class... Args>
@@ -273,6 +283,6 @@ shared_ptr<T> make_shared(Args &&... args)
 {
 	return shared_ptr<T>(new T(args...));
 }
-}
+} // namespace std
 
 #endif /* MEMORY_H */

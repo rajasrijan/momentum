@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -21,19 +21,20 @@
 #include "acpi.h"
 #include "timer.h"
 #include "interrupts.h"
+#include <kernel/sys_info.h>
 ioapic_t* ioapic;
-static void* find_rspd(void);
+//static void* find_rspd(void);
 
 /*
  * Very basic and file private memory compare(memcmp).
  */
-static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
-{
-	for (uint32_t i = 0; i < size; i++)
-		if ((src[i] - dst[i]) != 0)
-			return (uint8_t)(src[i] - dst[i]);
-	return 0;
-}
+// static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
+// {
+// 	for (uint32_t i = 0; i < size; i++)
+// 		if ((src[i] - dst[i]) != 0)
+// 			return (uint8_t)(src[i] - dst[i]);
+// 	return 0;
+// }
 
 /*
  * Initilize IO-APIC.
@@ -89,28 +90,28 @@ void init_apic_timer(uint32_t frequency)
 /*
  * Find ACPI rsdp.
  */
-static void* find_rspd()
-{
-	uint8_t* ptr;
-	ptr = (uint8_t*)0x40E;
-	ptr = (uint8_t*)((uint32_t*)(ptr));
-	for (uint32_t i = 0; i < 1024; i += 2)
-	{
-		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-		{
-			return (void*)(&ptr[i]);
-		}
-	}
-	ptr = (uint8_t*)0xE0000;
-	for (uint32_t i = 0; i < 0x20000; i += 2)
-	{
-		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-		{
-			return (void*)(&ptr[i]);
-		}
-	}
-	return 0;
-}
+// static void* find_rspd()
+// {
+// 	uint8_t* ptr;
+// 	ptr = (uint8_t*)0x40E;
+// 	ptr = (uint8_t*)((uint32_t*)(ptr));
+// 	for (uint32_t i = 0; i < 1024; i += 2)
+// 	{
+// 		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
+// 		{
+// 			return (void*)(&ptr[i]);
+// 		}
+// 	}
+// 	ptr = (uint8_t*)0xE0000;
+// 	for (uint32_t i = 0; i < 0x20000; i += 2)
+// 	{
+// 		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
+// 		{
+// 			return (void*)(&ptr[i]);
+// 		}
+// 	}
+// 	return 0;
+// }
 
 /*
  * Send End of interrupt to APIC. INCOMPLETE.

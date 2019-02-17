@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -19,6 +19,7 @@
 
 #include "global.h"
 #include "descriptor_tables.h"
+#include <kernel/sys_info.h>
 
 void set_gdt_gate(gdt_entry_t *gdt_entries, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran)
 {
@@ -111,9 +112,5 @@ void init_idt(void)
 	{
 		idt_set_gate(sys_info.idt.ie, (uint8_t)i, (uint64_t)isr64, 0x08, 0x8E);
 	}
-	__asm__ volatile (
-		"lidt [%0]\n"
-		"cli\n"
-		:
-	: "b"(&sys_info.idt.ip));
+	load_interrupt_descriptor_table(&(sys_info.idt.ip));
 }

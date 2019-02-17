@@ -34,7 +34,7 @@ class blockInterface
     blockInterface(const string &_name, size_t blkSz) : name(_name), blockSize(blkSz)
     {
     }
-    ~blockInterface() {}
+    virtual ~blockInterface() {}
     virtual int read(size_t offset, size_t count, void *data) = 0;
     virtual int write(size_t offset, size_t count, void *data) = 0;
 

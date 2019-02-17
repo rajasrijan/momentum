@@ -1,5 +1,5 @@
 ;
-; Copyright 2009-2017 Srijan Kumar Sharma
+; Copyright 2009-2018 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ;
@@ -108,12 +108,12 @@ loader:
     mov cr0, eax                 ; Set control register 0 to the A-register.
 .gdt64:
 	lgdt [GDT64.Pointer]
-	jmp GDT64.Code:Realm64
+	jmp GDT64.Code_ring0:Realm64
 ; Use 64-bit.
 [BITS 64]
  
 Realm64:
-    mov ax, GDT64.Data            ; Set the A-register to the data descriptor.
+    mov ax, GDT64.Data_ring0            ; Set the A-register to the data descriptor.
     mov ds, ax                    ; Set the data segment to the A-register.
     mov es, ax                    ; Set the extra segment to the A-register.
     mov fs, ax                    ; Set the F-segment to the A-register.
@@ -137,6 +137,15 @@ Realm64:
 ;
 ;	push stack magic marker.
 ;
+        ;now enable SSE and the like
+        mov RAX, cr0
+        and ax, 0xFFFB		;clear coprocessor emulation CR0.EM
+        or ax, 0x2			;set coprocessor monitoring  CR0.MP
+        mov cr0, RAX
+        mov RAX, cr4
+        or ax, 3 << 9		;set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+        mov cr4, RAX
+        
 	MOV RBP,0xDEADBEEFDEADBEEF
 	PUSH RBP
 	PUSH RBP
@@ -304,18 +313,32 @@ GDT64:                           ; Global Descriptor Table (64-bit).
     db 0                         ; Access.
     db 0                         ; Granularity.
     db 0                         ; Base (high).
-    .Code: equ $ - GDT64         ; The code descriptor.
+    .Code_ring0: equ $ - GDT64   ; The code descriptor.
     dw 0                         ; Limit (low).
     dw 0                         ; Base (low).
     db 0                         ; Base (middle)
     db 10011010b                 ; Access (exec/read).
     db 00100000b                 ; Granularity.
     db 0                         ; Base (high).
-    .Data: equ $ - GDT64         ; The data descriptor.
+    .Data_ring0: equ $ - GDT64   ; The data descriptor.
     dw 0                         ; Limit (low).
     dw 0                         ; Base (low).
     db 0                         ; Base (middle)
     db 10010010b                 ; Access (read/write).
+    db 00000000b                 ; Granularity.
+    db 0                         ; Base (high).
+    .Code_ring3: equ $ - GDT64   ; The code descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 11111010b                 ; Access (exec/read).
+    db 00100000b                 ; Granularity.
+    db 0                         ; Base (high).
+    .Data_ring3 : equ $ - GDT64   ; The data descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 11110010b                 ; Access (read/write).
     db 00000000b                 ; Granularity.
     db 0                         ; Base (high).
     .Pointer:                    ; The GDT-pointer.

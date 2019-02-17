@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -169,6 +169,7 @@ void printf(const char *format, ...)
 			break;
 		case '\n':
 			y += 1;
+		case '\r':
 			x = 0;
 			break;
 		case '\t':
@@ -204,8 +205,17 @@ char *gets_s(char *str, size_t sz)
 	do
 	{
 		ch = getchar();
-		str[it] = ch;
-		it++;
+		switch (ch)
+		{
+		case '\b':
+			it--;
+			str[it] = 0;
+			break;
+		default:
+			str[it] = ch;
+			it++;
+			break;
+		}
 	} while (it < sz && ch != '\n');
 	if (it >= 1)
 		str[it - 1] = 0;
@@ -435,11 +445,13 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 							kprint_number<uint64_t>(alpha_number, sizeof(alpha_number) / sizeof(alpha_number[0]), alpha_number_it, is_negative, arg, 0x10, number_representation);
 						}
 						str_to_print = alpha_number;
+						if (width_specified)
+							left_pad_with_zeros = true;
 					}
 					else if (*ch_it == 's')
 					{
 						str_to_print = va_arg(arg, char *);
-						alpha_number_it = strlen(str_to_print);
+						alpha_number_it = (width_specified) ? width : strlen(str_to_print);
 					}
 					int tmp_length = alpha_number_it + (int)((is_negative || insert_space_if_no_sign_is_present || force_sign) && (specifier != 'x' && specifier != 'X') && specifier != 's');
 
@@ -502,12 +514,12 @@ int vsprintf(char *buffer, const char *format, va_list arg)
 	return ret;
 }
 
-int sprintf(char *str, const char *format, ...)
-{
-	int ret = 0;
-	va_list arg;
-	va_start(arg, format);
-	ret = vsprintf(str, format, arg);
-	va_end(arg);
-	return ret;
-}
+// int sprintf(char *str, const char *format, ...)
+// {
+// 	int ret = 0;
+// 	va_list arg;
+// 	va_start(arg, format);
+// 	ret = vsprintf(str, format, arg);
+// 	va_end(arg);
+// 	return ret;
+// }

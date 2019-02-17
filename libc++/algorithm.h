@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -58,6 +58,26 @@ template <class T>
 const T &min(const T &a, const T &b)
 {
 	return (b < a) ? b : a;
+}
+
+template <class T, class... Args>
+const T &min(const T &a, const Args &... b)
+{
+	const T &tmp = min(b...);
+	return (tmp < a) ? tmp : a;
+}
+
+template <class T>
+const T &max(const T &a, const T &b)
+{
+	return (b > a) ? b : a;
+}
+
+template <class T, class... Args>
+const T &max(const T &a, const Args &... b)
+{
+	const auto &tmp = max(b...);
+	return (tmp > a) ? tmp : a;
 }
 
 template <class ForwardIt>

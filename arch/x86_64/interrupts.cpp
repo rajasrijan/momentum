@@ -20,6 +20,7 @@
 #include "global.h"
 #include "interrupts.h"
 #include "apic.h"
+#include <kernel/sys_info.h>
 
 isr_t interrupt_handlers[256] = {0};
 

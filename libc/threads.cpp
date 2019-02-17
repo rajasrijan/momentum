@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -17,29 +17,40 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "threads.h"
-#include "../arch/x86_64/global.h"
+#include <arch/x86_64/global.h>
+#include <arch/x86_64/timer.h>
 
-int mtx_init(mtx_t* mutex, int type)
+int mtx_init(mtx_t *mutex, int type)
 {
     *mutex = 0;
     return 0;
 }
 
-int mtx_lock(mtx_t* mutex)
+int mtx_lock(mtx_t *mutex)
 {
     if (!get_spin_lock(mutex))
         return thrd_success;
     return thrd_error;
 }
 
-int mtx_trylock(mtx_t *mutex)
+int mtx_trylock_notimeout(mtx_t *mutex)
 {
     if (!get_async_spin_lock(mutex))
         return thrd_success;
-    else
-        return thrd_busy;
-
     return thrd_busy;
+}
+
+int mtx_trylock(mtx_t *mutex, uint64_t timeout)
+{
+    auto start_time = getSystemTime();
+    do
+    {
+        if (!get_async_spin_lock(mutex))
+            return thrd_success;
+        //  system time is not going to change till next interrupt. hence halt.
+        asm("hlt");
+    } while (getSystemTime() - start_time >= timeout);
+    return thrd_timedout;
 }
 
 int mtx_unlock(mtx_t *mutex)
@@ -50,4 +61,13 @@ int mtx_unlock(mtx_t *mutex)
 
 void mtx_destroy(mtx_t *mutex)
 {
+}
+
+int sem_init(sem_t *semaphore, int64_t max_count, int64_t count)
+{
+    mtx_init(&(semaphore->lock),0);
+    sync(semaphore->lock);
+    semaphore->count = count;
+    semaphore->max_count = max_count;
+    return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -16,31 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include "stddef.h"
 #include "stdlib.h"
 
-inline void *operator new(size_t size)
-{
-    return malloc(size);
-}
-
-inline void *operator new[](size_t size)
-{
-    return malloc(size);
-}
-
-template <typename T>
-inline void *operator new(size_t size, T * t)
-{
-    return t;
-}
-
-inline void operator delete(void *p)
-{
-    free(p);
-}
-
-inline void operator delete[](void *p)
-{
-    free(p);
-}
+void *operator new(size_t size);
+void *operator new[](size_t size);
+void *operator new(size_t size, void *t);
+void operator delete(void *p);
+void operator delete[](void *p);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -129,7 +129,7 @@ struct Elf32_Ehdr{
 	uint16_t      e_shtrndx;
 	bool verifyHeader()
 	{
-		if (!memcmp(e_ident, "\x7f""ELF", 4))
+		if (memcmp(e_ident, "\x7f""ELF", 4))
 			return false;
 		printf("\nElf signature present");
 		switch (e_ident[EI_CLASS])

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -35,7 +35,7 @@ class vector
 	const size_t element_size = sizeof(T);
 
   public:
-	vector()
+	vector() : __data(nullptr), _size(0), _count(0), lock(0)
 	{
 		_size = 8;
 		_count = 0;
@@ -43,7 +43,7 @@ class vector
 		__data = (T *)calloc(_size, sizeof(T));
 	}
 
-	vector(int n)
+	vector(int n) : __data(nullptr), _size(0), _count(0), lock(0)
 	{
 		_size = n + 8;
 		_count = n;
@@ -51,10 +51,20 @@ class vector
 		__data = (T *)calloc(_size, sizeof(T));
 	}
 
+	vector(const vector &v) : __data(nullptr), _size(0), _count(0), lock(0)
+	{
+		_size = v._size;
+		_count = 0;
+		mtx_init(&lock, 0);
+		__data = (T *)calloc(_size, sizeof(T));
+		for (const auto &var : v)
+		{
+			push_back(var);
+		}
+	}
+
 	~vector()
 	{
-		_size = 0;
-		_count = 0;
 		if (__data != nullptr)
 		{
 			for (size_t index = 0; index < _count; index++)
@@ -64,6 +74,13 @@ class vector
 			free(__data);
 			__data = nullptr;
 		}
+		_size = 0;
+		_count = 0;
+	}
+
+	bool empty() const
+	{
+		return size() == 0;
 	}
 
 	size_t size() const
@@ -90,6 +107,12 @@ class vector
 
 	T &operator[](uint32_t index)
 	{
+
+		if (index >= _count)
+		{
+			//printf("OUT OF ORDER ACCESS!!!");
+			asm("cli;hlt;");
+		}
 		void *tmp = (void *)((char *)__data + (element_size * index));
 		return *((T *)tmp);
 	}
@@ -128,6 +151,20 @@ class vector
 	{
 		return __data;
 	}
+	void clear()
+	{
+		if (__data != nullptr)
+		{
+			for (size_t index = 0; index < _count; index++)
+			{
+				__data[index].~T();
+			}
+			free(__data);
+			__data = nullptr;
+		}
+		_size = 0;
+		_count = 0;
+	}
 	class iterator
 	{
 	  public:
@@ -138,6 +175,8 @@ class vector
 		~iterator()
 		{
 		}
+		iterator(const iterator &it) = default;
+		iterator &operator=(const iterator &it) = default;
 		size_t operator-(const iterator &it)
 		{
 			return m_index - it.m_index;
@@ -150,7 +189,7 @@ class vector
 		{
 			return m_index == it.m_index;
 		}
-		iterator operator++(/*int r*/)
+		iterator &operator++(/*int r*/)
 		{
 			m_index++;
 			return *this;
@@ -187,6 +226,7 @@ class vector
 	class const_iterator
 	{
 	  public:
+		const_iterator(const const_iterator &) = default;
 		const_iterator() : m_pdataStart(nullptr), m_count(0), m_index(0)
 		{
 		}
@@ -194,14 +234,15 @@ class vector
 		~const_iterator()
 		{
 		}
-
+		const_iterator& operator=(const const_iterator &) = default;
 		bool operator!=(const const_iterator &it)
 		{
 			return m_index != it.m_index;
 		}
-		void operator++(/*int r*/)
+		const_iterator &operator++(/*int r*/)
 		{
 			m_index++;
+			return *this;
 		}
 		T &operator*()
 		{
@@ -255,6 +296,30 @@ class vector
 		copy(position, position + (_count - 1), position + 1);
 		new ((void *)&(*position)) T(val);
 	}
+
+	template <class TargetIterator>
+	void insert(iterator position, TargetIterator first, TargetIterator last)
+	{
+		sync local_lock(lock);
+		size_t element_count = last - first;
+		size_t new_count = _count + element_count;
+		T *temp = __data;
+		if (new_count >= _size)
+		{
+			_size = std::max(new_count, (size_t)_size * 2);
+			temp = (T *)calloc(_size, sizeof(T));
+			copy(begin(), position, temp);
+		}
+		temp += position - begin();
+		copy(position, end(), temp + element_count);
+		_count = new_count;
+		for (auto it = first; it != last; ++it)
+		{
+			new ((void *)&(*position)) T(*it);
+			++position;
+		}
+	}
+
 	iterator erase(iterator position)
 	{
 		sync local_lock(lock);
@@ -264,6 +329,6 @@ class vector
 		return position;
 	}
 };
-}
+} // namespace std
 
 #endif /* VECTOR_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -21,17 +21,29 @@
 #define STRING_H
 
 #include <stddef.h>
+#ifdef __cplusplus
+extern "C"
+{
+#endif //  __cplusplus
+    void *memset(void *ptr, int value, size_t num);
+    void *memcpy(void *dst, const void *src, size_t len);
+    char *strcat(char *dst, const char *src);
+    size_t strlen(const char *str);
+    int memcmp(const void *ptr1, const void *ptr2, size_t num);
+    char *strdup(const char *s1);
+    char *strcpy(char *dst, const char *src);
 
-extern "C" void *memset(void *ptr, int value, size_t num);
-char *strdup(const char *s1);
-size_t strlen(const char *str);
-void strcpy(char *dst, const char *src);
-char *strcat(char *dst, const char *src);
-
-extern "C" void *memcpy(void *dst, const void *src, size_t len);
-int memcmp(const void *ptr1, const void *ptr2, size_t num);
-char strcmp(const char *s1, const char *s2);
-const char *strrchar(const char *s1, int character);
-const char *strchar(const char *s1, int character);
-const char *strstr(const char *str1, const char *str2);
+    char strcmp(const char *s1, const char *s2);
+    char stricmp(const char *s1, const char *s2);
+    const char *strrchar(const char *s1, int character);
+    const char *strchar(const char *s1, int character);
+    const char *strstr(const char *str1, const char *str2);
+    char *strncpy(char *dst, const char *src, size_t count);
+    int strncmp(const char *str1, const char *str2, size_t num);
+    char *strncat(char *destination, const char *source, size_t num);
+    char * strtok ( char * str, const char * delimiters);
+    unsigned long long to_uuid(const char *str);
+#ifdef __cplusplus
+}
+#endif //  __cplusplus
 #endif /* STRING_H */

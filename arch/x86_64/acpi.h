@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2017 Srijan Kumar Sharma
+ * Copyright 2009-2018 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -18,9 +18,9 @@
  */
 
 #ifndef ACPI_H
-#define	ACPI_H
+#define ACPI_H
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C"
 {
 #endif
@@ -128,15 +128,14 @@ extern "C"
 		LOCAL_APICX2_NMI,
 	};
 
-	extern void* apic_base;
+	extern void *apic_base;
 	void parse_acpi(void);
 	void fix_refferances(void);
 	uint8_t get_acpi_tables(void);
+	int InitializeFullAcpi(void);
 
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* ACPI_H */
-
+#endif /* ACPI_H */
