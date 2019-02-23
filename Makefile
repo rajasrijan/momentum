@@ -9,7 +9,7 @@ CFLAGS := $(TARGET) -m64 -Wshadow\
 CXXFLAGS := $(TARGET) -m64 -Wshadow -Wpointer-arith -mno-red-zone -Werror\
 	    -Wwrite-strings -fno-exceptions -fno-rtti -fstack-protector-all -Weffc++\
 	    -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel\
-	    -ffreestanding -std=c++11  -D_MOMENTUM_ \
+	    -ffreestanding -std=c++17  -D_MOMENTUM_ \
 	    -I libc/ -I libc++/ -I .  -I acpica/include $(CXXINCLUDE) -g -O0 -fno-function-sections
 
 LDFLAGS:= -T x86_64.ld -z max-page-size=0x1000
@@ -31,8 +31,8 @@ OBJECT := libc/string.o libc++/string.o arch/x86_64/loader.o arch/x86_64/arch_ha
 	driver/usb/uhci.o kernel/acpica_glue.o $(acpica_objects) \
 	main.o cxxglue.o stack_protector.o
 
-#CC := clang-7
-#CXX := clang++-7
+CC := clang-7
+CXX := clang++-7
 AS := nasm
 LD := ld
 
@@ -50,8 +50,8 @@ clean:
 
 backup:
 	tar -cf momentum.tar $(shell find -name '*.s') $(shell find -name '*.asm') $(shell find -name '*.c') $(shell find -name '*.h') $(shell find -name '*.cpp')
-
-install:kernel.elf
+	
+install:kernel.elf tools/hello_world.elf
 	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M kernel.elf ::kernel.elf
 	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/hello_world.elf ::hello_world.elf
 

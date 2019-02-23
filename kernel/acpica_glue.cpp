@@ -177,12 +177,17 @@ extern "C"
 
     void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
     {
-        uint64_t addr = ((Where / PageManager::PAGESIZE) * PageManager::PAGESIZE);
-        uint64_t length = PageManager::roundToPageSize(Length + Where) - addr;
+        uint64_t paddr = ((Where / PageManager::PAGESIZE) * PageManager::PAGESIZE);
+        uint64_t length = PageManager::roundToPageSize(Length + Where) - paddr;
+        uint64_t offset = Where - paddr;
         uint64_t vaddr = 0;
-        PageManager::getInstance()->findFreeVirtualMemory(vaddr, length);
-        PageManager::getInstance()->setPageAllocation(vaddr, length);
-        return (void *)vaddr;
+        if (PageManager::getInstance()->findFreeVirtualMemory(vaddr, length,0x40000000))
+        {
+            printf("Virtual Memory Full");
+            asm("cli;hlt");
+        }
+        PageManager::getInstance()->setVirtualToPhysicalMemory(vaddr, paddr, length);
+        return (void *)(vaddr + offset);
     }
 
     void AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Size)

@@ -30,6 +30,7 @@ uint64_t process_id_counter = 0;
 
 //	TODO: remove hardcoding
 const retStack_t defaultThreadContext = {
+	0,	// padding
 	0,	//interruptNumber
 	0,	// err;
 	0,	//rip
@@ -106,7 +107,6 @@ int multitask::allocateStack(uint64_t &stackSize, uint64_t &stackPtr)
 	stackSize = PageManager::roundToPageSize(stackSize);
 	//	Find free space after 4GB mark.
 	PageManager::getInstance()->findFreeVirtualMemory(stackPtr, stackSize, 0x100000000);
-	stackPtr += stackSize;
 	PageManager::getInstance()->setPageAllocation(stackPtr, stackSize);
 	stackPtr += stackSize;
 	return 0;

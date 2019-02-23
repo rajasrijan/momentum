@@ -34,11 +34,13 @@ SECTIONS
 	{
 		__CTOR_LIST__ = .;
 		*(.ctors)
+		*(.init_array)
 	}
     __CTOR_END__ = .;
     .dtors ALIGN (0x1000) : AT(ADDR(.dtors) - 0xC0000000)
 	{
 		*(.dtors)
+		*(.fini_array)
 	}
 	.bss : AT(ADDR(.bss) - 0xC0000000)
 	{

@@ -248,7 +248,7 @@ void stage2(multiboot_info *mbi)
 	create_kernel_heap();
 	initilize_memorymanager(mbi);
 	//fix_refferances();;
-	if (!get_acpi_tables())
+	if (get_acpi_tables())
 	{
 		printf("ACPI table failed\n");
 		__asm__("cli;hlt;");

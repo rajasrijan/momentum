@@ -92,6 +92,7 @@ void pci_init_devices()
 			printf("PCI:%x\\", device.address);
 			pci_print_info(&config);
 			printf("\n");
+			device.bIsProcessed = false;
 			pci_devices.push_back(device);
 		}
 	}

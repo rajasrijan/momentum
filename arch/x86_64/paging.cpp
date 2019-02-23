@@ -99,24 +99,34 @@ int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 			{
 				if (lvl4 == 0)
 				{
+					if (size >= BIGBIGPAGESIZE)
+					{
+						PML4T[lvl4] &= 0xFFFFFFFFFFFFFFFE;
+						size -= BIGBIGPAGESIZE;
+						vaddr += BIGBIGPAGESIZE;
+					}
+					else if (size >= BIGPAGESIZE)
+					{
+						PDPT[lvl3] &= 0xFFFFFFFFFFFFFFFE;
+						size -= BIGPAGESIZE;
+						vaddr += BIGPAGESIZE;
+					}
+					else if (size >= PAGESIZE)
+					{
+						PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
+						size -= PAGESIZE;
+						vaddr += PAGESIZE;
+					}
+					else
+					{
+						printf("Invalid page size [%x]\n", size);
+						asm("cli;hlt");
+					}
 				}
-				else if (size >= BIGBIGPAGESIZE)
+				else
 				{
-					PML4T[lvl4] &= 0xFFFFFFFFFFFFFFFE;
-					size -= BIGBIGPAGESIZE;
-					vaddr += BIGBIGPAGESIZE;
-				}
-				else if (size >= BIGPAGESIZE)
-				{
-					PDPT[lvl3] &= 0xFFFFFFFFFFFFFFFE;
-					size -= BIGPAGESIZE;
-					vaddr += BIGPAGESIZE;
-				}
-				else if (size >= PAGESIZE)
-				{
-					PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
-					size -= PAGESIZE;
-					vaddr += PAGESIZE;
+					printf("lvl4 pages shouldnt exist\n");
+					asm("cli;hlt");
 				}
 			}
 			else if (size >= BIGPAGESIZE)
@@ -161,7 +171,7 @@ int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr)
 	PML4T[lvl4] = ((uint64_t)&PDPT[0] - 0xC0000000) | 0x3;
 	PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | 0x3;
 	PDT[(lvl3 * 512) + lvl2] = paddr | 0x83;
-	__asm__ volatile("invlpg %0" ::"m"(*(char *)(paddr)));
+	asm volatile ( "invlpg (%0)" : : "b"(vaddr) : "memory" );
 	return 0;
 }
 
@@ -198,30 +208,34 @@ int PageManager::findVirtualMemory(uint64_t paddr, uint64_t &vaddr)
 int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset)
 {
 	offset = roundToPageSize(offset);
-	int lvl4 = (offset >> 39) & 0x1FF;
-	int lvl3 = (offset >> 30) & 0x1FF;
-	int lvl2 = (offset >> 21) & 0x1FF;
+	uint64_t lvl4 = (offset >> 39) & 0x1FF;
+	uint64_t lvl3 = (offset >> 30) & 0x1FF;
+	uint64_t lvl2 = (offset >> 21) & 0x1FF;
 	uint64_t foundSize = 0;
-	do
+	for (; lvl4 < 1 && foundSize < sz; lvl4++)
 	{
-		if (!(PDT[(lvl3 * 512) + lvl2] & 1))
+		for (; lvl3 < 512 && foundSize < sz; lvl3++)
 		{
-			foundSize += PAGESIZE;
+			//	TODO: perform lvl3 checks
+			for (; lvl2 < 512 && foundSize < sz; lvl2++)
+			{
+				if ((PDT[(lvl3 * 512) + lvl2] & 1) == 0)
+				{
+					if (foundSize == 0)
+					{
+						vaddr = ((lvl4 << 39) | (lvl3 << 30) | (lvl2 << 21));
+					}
+					foundSize += PAGESIZE;
+				}
+				else
+				{
+					foundSize = 0;
+					vaddr = 0;
+				}
+			}
 		}
-		else
-		{
-			offset += PAGESIZE;
-		}
-		lvl4 = (offset >> 39) & 0x1FF;
-		lvl3 = (offset >> 30) & 0x1FF;
-		lvl2 = (offset >> 21) & 0x1FF;
-	} while ((lvl4 < 1) && foundSize < sz);
-	if (foundSize >= sz)
-	{
-		vaddr = offset-foundSize;
-		return 0;
 	}
-	else
+	if (foundSize < sz)
 	{
 		return 1;
 	}

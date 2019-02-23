@@ -59,12 +59,13 @@ extern "C" size_t strlen(const char *str)
 extern "C" char stricmp(const char *s1, const char *s2)
 {
     char diff = 0;
-    for (size_t i = 0; s1[i] != 0 && s2[i] != 0; i++)
+    size_t i = 0;
+    do
     {
         diff = tolower(s1[i]) - tolower(s2[i]);
         if (diff)
             break;
-    }
+    } while (s1[i] != 0 && s2[i++]);
     return diff;
 }
 
@@ -206,7 +207,7 @@ extern "C" char *strtok(char *str, const char *delimiters)
     {
         ptr = str;
     }
-    if (!ptr)
+    if (!ptr || *ptr == 0)
     {
         return nullptr;
     }
@@ -226,7 +227,7 @@ extern "C" char *strtok(char *str, const char *delimiters)
         ++ptr;
     }
 
-    if (!delimFound)
+    if (!delimFound && *ptr != 0)
     {
         return nullptr;
     }
