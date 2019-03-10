@@ -104,7 +104,12 @@ class vector
 		new (tmp) T(val);
 		_count++;
 	}
-
+	void pop_back()
+	{
+		sync local_lock(lock);
+		_count--;
+		__data[_count].~T();
+	}
 	T &operator[](uint32_t index)
 	{
 
@@ -234,7 +239,7 @@ class vector
 		~const_iterator()
 		{
 		}
-		const_iterator& operator=(const const_iterator &) = default;
+		const_iterator &operator=(const const_iterator &) = default;
 		bool operator!=(const const_iterator &it)
 		{
 			return m_index != it.m_index;

@@ -176,30 +176,35 @@ int mount_root(vnode *vn)
 	return 0;
 }
 
-void clone_path(shared_ptr<vnode> &dst, shared_ptr<vnode> &src)
+int clone_path(shared_ptr<vnode> &dst, shared_ptr<vnode> &src)
 {
+	int result = 0;
 	vector<shared_ptr<vnode>> children;
 	src->doreaddir(children);
 	for (auto &child : children)
 	{
-		auto name = child->getName();
+		std::string name = child->getName();
 		if (child->isDirectory())
 		{
 			shared_ptr<vnode> dst_child;
-			if (dst->dolookup(name.c_str(), dst_child))
+			result = dst->dolookup(name.c_str(), dst_child);
+			if (result)
 			{
-				if (dst->mkdir(name, dst_child))
-				{
-					return;
-				}
+				return result;
 			}
-			clone_path(dst_child, child);
+			result = clone_path(dst_child, child);
+			if (result)
+			{
+				return result;
+			}
 		}
 		else if (child->isBlockDevice())
 		{
 			dst->mknod(dst, child);
+			src->rmnod(src, child);
 		}
 	}
+	return 0;
 }
 
 int auto_mount_partition(shared_ptr<vnode> blk_dev)
@@ -438,10 +443,21 @@ int vnode::bmap(void) { return -ENOSYS; }
 int vnode::strategy(void) { return -ENOSYS; }
 int vnode::bwrite(void) { return -ENOSYS; }
 int vnode::brelse(void) { return -ENOSYS; }
-int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> pNode)
+int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
 	special_nodes.push_back(pNode);
 	pNode->addRef(current_node);
+	return 0;
+}
+int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
+{
+	auto result = find(special_nodes.begin(), special_nodes.end(), pNode);
+	if (result == special_nodes.end())
+	{
+		return ENOENT;
+	}
+	special_nodes.erase(result);
+	pNode->removeRef(current_node);
 	return 0;
 }
 void vnode::setName(const char *name)
@@ -715,8 +731,9 @@ int lookup(const char *path, shared_ptr<vnode> &node)
 
 int chdir(const char *path)
 {
+	int errCode = 0;
 	shared_ptr<vnode> cdir;
-	vector<shared_ptr<vnode>> complete_path;
+	vector<shared_ptr<vnode>> backup_path = path_history;
 	if (path[0] == '/')
 	{
 		cdir = rnode;
@@ -730,14 +747,27 @@ int chdir(const char *path)
 	auto path_components = split_path(path);
 	for (auto &path_component : path_components)
 	{
-		if (cdir->dolookup(path_component.c_str(), cdir) != 0)
+		if (path_component == ".")
 		{
-			printf("Invalid path\n");
-			return -1;
+			continue;
 		}
-		complete_path.push_back(cdir);
+		else if (path_component == "..")
+		{
+			path_history.pop_back();
+			cdir = path_history.back();
+		}
+		else
+		{
+			if (cdir->dolookup(path_component.c_str(), cdir) != 0)
+			{
+				printf("Invalid path\n");
+				return -1;
+			}
+			path_history.push_back(cdir);
+		}
 	}
-	path_history.insert(path_history.end(), complete_path.begin(), complete_path.end());
+	if (errCode)
+		path_history = backup_path;
 	return 0;
 }
 

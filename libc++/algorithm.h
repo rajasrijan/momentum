@@ -26,7 +26,10 @@ template <class InputIterator, class OutputIterator>
 OutputIterator copy(InputIterator first, InputIterator last, OutputIterator result)
 {
 	for (InputIterator it = first; it != last; it++)
-		*result++ = *it;
+	{
+		*result = *it;
+		result++;
+	}
 	return result;
 }
 
@@ -114,6 +117,6 @@ ForwardIt lower_bound(ForwardIt first, ForwardIt last, const T &value, Compare c
 	}
 	return first;
 }
-}
+} // namespace std
 
 #endif /* ALGORITHM_H */

@@ -25,6 +25,7 @@
 #include <memory>
 #include <stddef.h>
 #include <functional>
+#include <errno.h>
 
 #define SEEK_SET 0
 #define SEEK_CUR 1
@@ -192,7 +193,8 @@ class vnode
 	virtual int inactive(void);
 	virtual int link(void);
 	virtual int mkdir(std::string name, shared_ptr<vnode> &pDir);
-	int mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> pNode);
+	int mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode);
+	int rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode);
 	virtual int rdwr(void);
 	virtual int rename(string name);
 	virtual int rmdir(void);
@@ -203,7 +205,17 @@ class vnode
 	virtual int symlink(void);
 	virtual int strategy(void);
 	virtual bool namecmp(const string &name) const;
-	void addRef(shared_ptr<vnode> node) { ref_nodes.push_back(node); }
+	void addRef(shared_ptr<vnode> &node) { ref_nodes.push_back(node); }
+	int removeRef(shared_ptr<vnode> &node)
+	{
+		auto result = find(ref_nodes.begin(), ref_nodes.end(), node);
+		if (result == ref_nodes.end())
+		{
+			return ENOENT;
+		}
+		ref_nodes.erase(result);
+		return 0;
+	}
 	bool isDirectory() { return (v_type == VDIR); }
 	bool isFile() { return (v_type == VREG); }
 	bool isBlockDevice() { return (v_type == VBLK); }

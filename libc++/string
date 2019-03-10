@@ -250,13 +250,14 @@ class string
 		return data[count];
 	}
 
-	bool operator==(string str2) const
+	bool operator==(const string &str2) const
 	{
-		for (int i = 0; data[i] != 0 && str2[i] != 0; i++)
+		int i = 0;
+		do
 		{
 			if (data[i] != str2[i])
 				return false;
-		}
+		} while (data[i] != 0 && str2[i++] != 0);
 		return true;
 	}
 

@@ -21,6 +21,8 @@ PART_UUID=$(lsblk -f -n -o uuid "$LOPART")
 mkdir tmpdir
 echo 'mounting to ./tmpdir'
 sudo mount $LOPART ./tmpdir -o umask=000
+mkdir ./tmpdir/dev
+mkdir ./tmpdir/mnt
 echo 'Installing GRUB'
 sudo grub-install --target=i386-pc --boot-directory=./tmpdir/boot --no-floppy --modules="normal part_msdos ext2 multiboot" $LODRIVE
 echo 'unmounting ./tmpdir'

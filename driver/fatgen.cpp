@@ -214,6 +214,21 @@ class fat : public vfs
 	{
 		return fatlist.get()[N];
 	}
+	uint32_t nextFreeCluster(uint32_t N)
+	{
+		auto fatlist_ptr = fatlist.get();
+		uint32_t freeCluster = N;
+		for (; fatlist_ptr[freeCluster] != 0; freeCluster++)
+		{
+		}
+		if (fatlist_ptr[freeCluster] == 0)
+		{
+			fatlist_ptr[freeCluster] = 0x0FFFFFFF;
+			return freeCluster;
+		}
+		else
+			return -1;
+	}
 };
 vfs *vfat_new_vfs() { return new fat; }
 void vfat_delete_vfs(vfs *fs) { delete fs; }
@@ -343,6 +358,11 @@ int fat_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
 
 int fat_vnode::mkdir(std::string name, shared_ptr<vnode> &pDir)
 {
+	//	1.find next free cluster
+	auto freeCluster = ((fat *)v_vfsp)->nextFreeCluster(start_cluster);
+	//	2.find free diretory entry
+	fat32dir dentry = {};
+	//	3.associate directory entry to cluster
 	return ENOSYS;
 }
 MODULT_INIT(fat_init)

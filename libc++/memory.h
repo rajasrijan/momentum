@@ -162,7 +162,7 @@ class shared_ptr
 		return *this;
 	}
 
-	shared_ptr& operator=(T *data_ptr)
+	shared_ptr &operator=(T *data_ptr)
 	{
 		//	Relese old
 		{
@@ -264,10 +264,16 @@ class shared_ptr
 		return *(shared_ptr<char> *)this;
 	}
 
-	bool operator==(const T *ptr)
+	bool operator==(const T *ptr) const
 	{
 		return __data == ptr;
 	}
+
+	bool operator==(const shared_ptr &ptr) const
+	{
+		return __data == ptr.__data;
+	}
+
 	bool operator!=(const T *ptr)
 	{
 		return __data != ptr;
