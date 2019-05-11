@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -104,7 +104,7 @@ void create_kernel_heap()
 {
 	g_qKernelEnd = (void *)((((uint64_t)g_qKernelEnd + 0x200000 - 1) / 0x200000) * 0x200000);
 	uint64_t heapSize = 0x8000000;
-	PageManager::getInstance()->setVirtualToPhysicalMemory((uint64_t)KERNEL_HEAP_PTR, (uint64_t)g_qKernelEnd, 0x8000000);
+	PageManager::getInstance()->setVirtualToPhysicalMemory((uint64_t)KERNEL_HEAP_PTR, (uint64_t)g_qKernelEnd, 0x8000000, PageManager::Supervisor, PageManager::Read_Write);
 	g_qKernelEnd = (char *)g_qKernelEnd + 0x8000000;
 	pHeap = (heap_t *)KERNEL_HEAP_PTR;
 	pHeap->flags = HEAP_EMPTY;
@@ -131,9 +131,9 @@ int IsMemoryReserved(uint32_t mem_addr)
 }
 
 /*
- * ALigned allocate memory in kernel heap.
+ * Aligned allocate memory in kernel heap.
  */
-void *_aligned_malloc(uint32_t len, int n)
+extern "C" void *_aligned_malloc(uint32_t len, int n)
 {
 	heap_t *heap_ptr = pHeap;
 	volatile void *ptr = 0;

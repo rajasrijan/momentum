@@ -181,12 +181,12 @@ extern "C"
         uint64_t length = PageManager::roundToPageSize(Length + Where) - paddr;
         uint64_t offset = Where - paddr;
         uint64_t vaddr = 0;
-        if (PageManager::getInstance()->findFreeVirtualMemory(vaddr, length,0x40000000))
+        if (PageManager::getInstance()->findFreeVirtualMemory(vaddr, length, 0x40000000))
         {
             printf("Virtual Memory Full");
             asm("cli;hlt");
         }
-        PageManager::getInstance()->setVirtualToPhysicalMemory(vaddr, paddr, length);
+        PageManager::getInstance()->setVirtualToPhysicalMemory(vaddr, paddr, length, PageManager::Supervisor, PageManager::Read_Write);
         return (void *)(vaddr + offset);
     }
 

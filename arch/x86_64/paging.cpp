@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -42,7 +42,7 @@ uint64_t PageManager::roundToPageSize(uint64_t sz)
 	return ((sz + 0x1FFFFF) & 0xFFFFFFFFFFE00000);
 }
 
-int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size)
+int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType)
 {
 	if (size % PAGESIZE)
 	{
@@ -53,16 +53,16 @@ int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size)
 	{
 		uint64_t memory_slab = get_2mb_block();
 		printf("SLAB addr [%x]\n", memory_slab);
-		setVirtualToPhysicalMemory(vaddr, memory_slab, PAGESIZE);
+		setVirtualToPhysicalMemory(vaddr, memory_slab, PAGESIZE, privilege, pageType);
 	}
 	return 0;
 }
 
-int PageManager::setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size)
+int PageManager::setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType)
 {
 	for (uint64_t i = 0; i < size; i += PAGESIZE)
 	{
-		set2MBPage(vaddr, paddr);
+		set2MBPage(vaddr, paddr, privilege, pageType);
 		vaddr += PAGESIZE;
 		paddr += PAGESIZE;
 	}
@@ -152,13 +152,14 @@ int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 	return 0;
 }
 
-int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr)
+int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType)
 {
 	if (paddr % PAGESIZE)
 	{
 		printf("Physical address not correctly aligned\n");
 		__asm("cli;hlt");
 	}
+	uint8_t flags = privilege << 2 | pageType << 1 | 1;
 	int lvl4 = (vaddr >> 39) & 0x1FF;
 	int lvl3 = (vaddr >> 30) & 0x1FF;
 	int lvl2 = (vaddr >> 21) & 0x1FF;
@@ -168,16 +169,19 @@ int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr)
 		printf("Not supported yet.\n");
 		__asm("cli;hlt");
 	}
-	PML4T[lvl4] = ((uint64_t)&PDPT[0] - 0xC0000000) | 0x3;
-	PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | 0x3;
-	PDT[(lvl3 * 512) + lvl2] = paddr | 0x83;
-	asm volatile ( "invlpg (%0)" : : "b"(vaddr) : "memory" );
+	PML4T[lvl4] = ((uint64_t)&PDPT[0] - 0xC0000000) | flags;
+	PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | flags;
+	PDT[(lvl3 * 512) + lvl2] = paddr | 0x80 | flags;
+	asm volatile("invlpg (%0)"
+				 :
+				 : "b"(vaddr)
+				 : "memory");
 	return 0;
 }
 
 int PageManager::IdentityMap2MBPages(uint64_t paddr)
 {
-	return set2MBPage(paddr, paddr);
+	return set2MBPage(paddr, paddr, PageManager::Supervisor, PageManager::Read_Write);
 }
 
 int PageManager::initialize()

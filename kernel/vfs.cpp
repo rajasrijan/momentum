@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -255,6 +255,7 @@ int auto_mount_partition(shared_ptr<vnode> blk_dev)
 			mnt_node->mkdir(mount_point_name.c_str(), mnt_pt);
 			mnt_pt->v_vfsmountedhere = fs_vfs;
 		}
+		fs_root_vnode->v_vfsp = fs_vfs;
 	}
 	return ret;
 }
@@ -330,7 +331,7 @@ vnode::vnode(class vfs *vfsp) : v_shlockc(0),
 								v_exlockc(0),
 								v_type(0),
 								v_vfsmountedhere(nullptr),
-								v_vfsp(nullptr),
+								v_vfsp(vfsp),
 								v_flag(0),
 								v_name(),
 								v_count(0),

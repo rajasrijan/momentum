@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -40,6 +40,8 @@
 #include <map>
 #include <driver/binary_loader.h>
 #include "descriptor_tables.h"
+#include <arch/x86_64/video.h>
+#include <arch/x86_64/rtc.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -79,6 +81,7 @@ int ls(char *args);
 int cd(char *args);
 int cat(char *filename);
 int exec(char *filename);
+int top(char *filename);
 int poweroff(char *args);
 
 cmd_t cmdMapping[] = {
@@ -90,6 +93,7 @@ cmd_t cmdMapping[] = {
 	{"lsmem", lsmem},
 	{"echo", echo},
 	{"poweroff", poweroff},
+	{"top", top},
 	{"version", ver},
 	{"help", help}};
 
@@ -182,6 +186,15 @@ int echo(char *args)
 	return 0;
 }
 
+int top(char *args)
+{
+	for (auto process : multitask::getInstance()->ListProcesses())
+	{
+		printf("%s\n", process->getName());
+	}
+	return 0;
+}
+
 int poweroff(char *args)
 {
 	AcpiEnterSleepStatePrep(5);
@@ -220,11 +233,10 @@ void decode_cmdline(char *cmdLine)
 	auto arg = strtok(cmdLine, "= ");
 	while (arg != nullptr)
 	{
-		printf(arg);
 		if (!stricmp("uuid", arg))
 		{
 			arg = strtok(nullptr, "= ");
-			sys_info.root_drive_uuid = to_uuid(arg);
+			sys_info.root_drive_uuid = std::to_uuid(arg);
 		}
 		arg = strtok(nullptr, "= ");
 	}
@@ -232,18 +244,21 @@ void decode_cmdline(char *cmdLine)
 
 void stage2(multiboot_info *mbi)
 {
+	//	IDT and Paging initialized before anything else
+	init_idt();
+	if (PageManager::getInstance()->initialize())
+	{
+		printf("Paging initialize failed\n");
+		__asm__("cli;hlt;");
+	}
+	//	initialize video
+	init_video(mbi);
 	if ((mbi->flags & MULTIBOOT_INFO_CMDLINE) && mbi->cmdline != 0)
 	{
 		char *cmdLine = (char *)(uint64_t)mbi->cmdline;
 		strcpy(kernel_cmdline, cmdLine);
 		printf("Multiboot CMDLINE [%s]\n", cmdLine);
 		decode_cmdline(cmdLine);
-	}
-	init_idt();
-	if (PageManager::getInstance()->initialize())
-	{
-		printf("Paging initialize failed\n");
-		__asm__("cli;hlt;");
 	}
 	create_kernel_heap();
 	initilize_memorymanager(mbi);
@@ -253,7 +268,7 @@ void stage2(multiboot_info *mbi)
 		printf("ACPI table failed\n");
 		__asm__("cli;hlt;");
 	}
-	//init_timer();
+	//init_rtc();
 	__asm__("cli;");
 	init_apic_timer(0x001FFFFF);
 	init_keyboard();
@@ -327,7 +342,7 @@ void state_c0()
 	thread_t pnp_hotplug_thread = nullptr;
 	multitask::getInstance()->createKernelThread(pnp_hotplug_thread, "pnp_hotplug_thread", &t1, (void *)0);
 	char input[4096];
-	sleep(100);
+	sleep(10);
 	printf(copyright);
 	while (true)
 	{

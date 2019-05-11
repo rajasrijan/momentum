@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -35,9 +35,21 @@ struct MemPage
 
 class PageManager
 {
+  public:
+	enum Privilege
+	{
+		Supervisor = 0,
+		User = 1
+	};
+	enum PageType
+	{
+		Read_Only = 0,
+		Read_Write = 1
+	};
+
   private:
 	PageManager();
-	int set2MBPage(uint64_t vaddr, uint64_t paddr);
+	int set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType);
 	/*
 		handle page faults
 	*/
@@ -49,8 +61,8 @@ class PageManager
 	const static uint64_t BIGBIGPAGESIZE = 0x8000000000;
 	static PageManager *getInstance();
 	static uint64_t roundToPageSize(uint64_t sz);
-	int setPageAllocation(uint64_t vaddr, uint64_t size);
-	int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size);
+	int setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType);
+	int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType);
 	uint64_t getPhysicalAddress(uint64_t virtual_address);
 	uint64_t getVirtualAddress(uint64_t physical_address, uint64_t length);
 	int freeVirtualMemory(uint64_t vaddr, uint64_t size);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -337,6 +337,7 @@ inline string to_string(unsigned val)
 	sprintf(number, "%d", val);
 	return string(number);
 }
+unsigned long long to_uuid(const char *str);
 } // namespace std
 
 std::string operator+(const char *first, std::string second);

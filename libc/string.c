@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <ctype.h>
 
-extern "C" void *memset(void *ptr, int value, size_t num)
+void *memset(void *ptr, int value, size_t num)
 {
     for (size_t i = 0; i < num; i++)
     {
@@ -32,7 +32,7 @@ extern "C" void *memset(void *ptr, int value, size_t num)
     return ptr;
 }
 
-extern "C" void *memcpy(void *dst, const void *src, size_t len)
+void *memcpy(void *dst, const void *src, size_t len)
 {
     for (size_t i = 0; i < len; i++)
     {
@@ -48,7 +48,7 @@ char *strdup(const char *s1)
     return ret;
 }
 
-extern "C" size_t strlen(const char *str)
+size_t strlen(const char *str)
 {
     size_t i;
     for (i = 0; str[i] != 0; i++)
@@ -56,7 +56,7 @@ extern "C" size_t strlen(const char *str)
     return i;
 }
 
-extern "C" char stricmp(const char *s1, const char *s2)
+char stricmp(const char *s1, const char *s2)
 {
     char diff = 0;
     size_t i = 0;
@@ -69,7 +69,7 @@ extern "C" char stricmp(const char *s1, const char *s2)
     return diff;
 }
 
-char strcmp(const char *s1, const char *s2)
+int strcmp(const char *s1, const char *s2)
 {
     size_t i = 0;
     do
@@ -80,19 +80,19 @@ char strcmp(const char *s1, const char *s2)
     return 0;
 }
 
-extern "C" const char *strstr(const char *str1, const char *str2)
+char *strstr(const char *str1, const char *str2)
 {
     for (int i = 0; str1[i] != 0; i++)
     {
         if (strcmp(&str1[i], str2) == 0)
         {
-            return &str1[i];
+            return (char *)&str1[i];
         }
     }
-    return nullptr;
+    return NULL;
 }
 
-extern "C" int memcmp(const void *ptr1, const void *ptr2, size_t num)
+int memcmp(const void *ptr1, const void *ptr2, size_t num)
 {
     int ret = 0;
     for (size_t i = 0; i < num; i++)
@@ -106,7 +106,7 @@ extern "C" int memcmp(const void *ptr1, const void *ptr2, size_t num)
     return ret;
 }
 
-extern "C" char *strcpy(char *dst, const char *src)
+char *strcpy(char *dst, const char *src)
 {
     int i = 0;
     for (i = 0; src[i] != 0; i++)
@@ -117,7 +117,7 @@ extern "C" char *strcpy(char *dst, const char *src)
     return &dst[i];
 }
 
-extern "C" char *strcat(char *dst, const char *src)
+char *strcat(char *dst, const char *src)
 {
     for (; dst[0] != 0; dst++)
         ;
@@ -130,7 +130,7 @@ extern "C" char *strcat(char *dst, const char *src)
     return &dst[i];
 }
 
-extern "C" const char *strrchar(const char *s1, int character)
+const char *strrchar(const char *s1, int character)
 {
     for (size_t len = strlen(s1); len >= 0; len--)
     {
@@ -139,10 +139,10 @@ extern "C" const char *strrchar(const char *s1, int character)
             return &s1[len];
         }
     }
-    return nullptr;
+    return NULL;
 }
 
-extern "C" const char *strchar(const char *s1, int character)
+const char *strchar(const char *s1, int character)
 {
     for (size_t len = 0; s1[len]; len++)
     {
@@ -151,12 +151,12 @@ extern "C" const char *strchar(const char *s1, int character)
             return &s1[len];
         }
     }
-    return nullptr;
+    return NULL;
 }
 
-extern "C" char *strncpy(char *dst, const char *src, size_t count)
+char *strncpy(char *dst, const char *src, size_t count)
 {
-    bool srcEnded = false;
+    int srcEnded = 0;
     for (size_t i = 0; i < count; i++)
     {
         if (srcEnded)
@@ -167,7 +167,7 @@ extern "C" char *strncpy(char *dst, const char *src, size_t count)
         {
             *dst = *src;
             if (*src == 0)
-                srcEnded = true;
+                srcEnded = 1;
             else
                 src++;
         }
@@ -176,7 +176,7 @@ extern "C" char *strncpy(char *dst, const char *src, size_t count)
     return dst;
 }
 
-extern "C" int strncmp(const char *str1, const char *str2, size_t num)
+int strncmp(const char *str1, const char *str2, size_t num)
 {
     for (size_t i = 0; i < num; i++)
     {
@@ -188,7 +188,7 @@ extern "C" int strncmp(const char *str1, const char *str2, size_t num)
     return 0;
 }
 
-extern "C" char *strncat(char *destination, const char *source, size_t num)
+char *strncat(char *destination, const char *source, size_t num)
 {
     for (; *destination; destination++)
         ;
@@ -200,19 +200,19 @@ extern "C" char *strncat(char *destination, const char *source, size_t num)
     return destination;
 }
 
-extern "C" char *strtok(char *str, const char *delimiters)
+char *strtok(char *str, const char *delimiters)
 {
-    static char *ptr = nullptr;
-    if (str != nullptr)
+    static char *ptr = NULL;
+    if (str != NULL)
     {
         ptr = str;
     }
     if (!ptr || *ptr == 0)
     {
-        return nullptr;
+        return NULL;
     }
-    auto result = ptr;
-    bool delimFound = false;
+    char *result = ptr;
+    int delimFound = 0;
     while (*ptr != 0 && !delimFound)
     {
         for (size_t i = 0; delimiters[i] != 0; i++)
@@ -220,7 +220,7 @@ extern "C" char *strtok(char *str, const char *delimiters)
             if (*ptr == delimiters[i])
             {
                 *ptr = 0;
-                delimFound = true;
+                delimFound = 1;
                 break;
             }
         }
@@ -229,39 +229,8 @@ extern "C" char *strtok(char *str, const char *delimiters)
 
     if (!delimFound && *ptr != 0)
     {
-        return nullptr;
+        return NULL;
     }
 
-    return result;
-}
-
-extern "C" unsigned long long to_uuid(const char *str)
-{
-    unsigned long long result = 0;
-    auto char_to_hex = [](char c) -> int {
-        return (c >= '0' && c <= '9') ? (int)(c - '0') : (c >= 'a' && c <= 'f') ? (int)(c - 'a' + 10) : -1;
-    };
-
-    if (strlen(str) == 9)
-    {
-        /* fat32 uuid format */
-        for (size_t i = 0; str[i] != 0; i++)
-        {
-            if (str[i] == '-')
-                continue;
-            int hex = char_to_hex(tolower(str[i]));
-            if (hex == -1)
-            {
-                return 0;
-            }
-            result = (result << 4) | hex;
-        }
-        result <<= 48;
-    }
-    else if (strlen(str) == 36)
-    {
-        /* standard uuid format */
-        asm("cli;hlt;");
-    }
     return result;
 }

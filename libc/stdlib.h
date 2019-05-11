@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -34,7 +34,7 @@ extern "C"
     void free(void *ptr);
     void *realloc(void *ptr, size_t size);
     void *calloc(size_t blocks, size_t size);
-
+    void exit(int status);
 #ifdef __cplusplus
 }
 #endif

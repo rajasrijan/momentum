@@ -83,7 +83,7 @@ void binary_loader::load(shared_ptr<vnode> &node)
         {
             auto v_start = (pheader[i].vaddr / PageManager::PAGESIZE) * PageManager::PAGESIZE;
             auto v_end = ((pheader[i].vaddr + pheader[i].memsz + PageManager::PAGESIZE - 1) / PageManager::PAGESIZE) * PageManager::PAGESIZE;
-            if (PageManager::getInstance()->setPageAllocation(v_start, v_end - v_start))
+            if (PageManager::getInstance()->setPageAllocation(v_start, v_end - v_start, PageManager::User, PageManager::Read_Write))
             {
                 printf("Failed to allocate pages for program header:\n");
                 printElfProgramHeader(pheader + i);
@@ -102,7 +102,7 @@ void binary_loader::load(shared_ptr<vnode> &node)
         }
     }
     process_t process = nullptr;
-    multitask::getInstance()->createProcess(process, "process", 3, program, header.entry);
+    multitask::getInstance()->createProcess(process, node->getName().c_str(), 3, program, header.entry);
     delete[] pheader;
     pheader = nullptr;
     delete[] sheader;

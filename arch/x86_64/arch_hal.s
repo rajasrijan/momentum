@@ -1,5 +1,5 @@
 ;
-; Copyright 2009-2018 Srijan Kumar Sharma
+; Copyright 2009-2019 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ; 
@@ -18,6 +18,7 @@
 ;
 [bits 64]
 [EXTERN isr_handler]
+[extern syscall]
 [GLOBAL irq_common_stub]
 [GLOBAL get_rflags]
 [GLOBAL get_cpl]
@@ -36,6 +37,7 @@
 [GLOBAL atomic_increment]
 [GLOBAL load_interrupt_descriptor_table]
 [GLOBAL get_gdt]
+[GLOBAL system_call]
 
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
 	[GLOBAL isr%1]        ; %1 accesses the first parameter.
@@ -169,6 +171,12 @@ ISR_NOERRCODE 64
 ; and finally restores the stack frame.
 isr_common_stub:
 	PUSH_ALL_REGISTERS
+	mov rax,0x10
+	mov ds,ax
+	mov es,ax
+	mov ss,ax
+	mov fs,ax
+	mov gs,ax
 	mov rdi,rsp
 	add rdi,0x280
 	mov rsi,rsp
@@ -186,11 +194,21 @@ get_rflags:
 	ret
 	
 switch_context:
+	mov rax,rsi
+	mov ds,ax
 	mov rsp,rdi
 	POP_ALL_REGISTERS
 	add rsp,0x18
 	iretq
-	
+
+system_call:
+	push rcx
+	push r11
+	call syscall
+	pop r11
+	pop rcx
+	o64 sysret
+
 atomic_exchange:
 	mov rbx,[rsp+4]
 	mov rax,[rsp+8]

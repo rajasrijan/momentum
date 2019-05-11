@@ -1,5 +1,5 @@
 #!/bin/sh
-# This file is part of momentum project Copyright 2009-2018 Srijan Kumar Sharma
+# This file is part of momentum project Copyright 2009-2019 Srijan Kumar Sharma
 # Check LICENSE file
 echo 'Deleting old image..'
 rm momentum.raw

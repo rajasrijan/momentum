@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -21,59 +21,81 @@
 #include "stdint.h"
 #include "string.h"
 #include "stdio.h"
-
+#include <kernel/syscall.h>
+#if __STDC_HOSTED__ == 0
 extern void *_malloc(uint32_t length);
 extern void _free(void *ptr);
 extern void *_aligned_malloc(uint32_t len, int n);
+#else
+void *_malloc(uint32_t length)
+{
+    __asm__("int3");
+    return NULL;
+}
+void _free(void *ptr) { __asm__("int3"); }
+void *_aligned_malloc(uint32_t len, int n)
+{
+    __asm__("int3");
+    return NULL;
+}
+__attribute__((noreturn)) void exit(int status)
+{
+    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status));
+    while (1)
+    {
+        __asm__("pause");
+    }
+}
+#endif
 size_t mem_used = 0;
 
-extern "C" void *aligned_malloc(size_t size, int n)
+void *aligned_malloc(size_t size, int n)
 {
     volatile void *ptr = _aligned_malloc(size, n);
     if (!ptr)
     {
         printf("\nmm error.");
         __asm__("cli;hlt");
-        return nullptr;
+        return NULL;
     }
     mem_used += size;
     memset((void *)ptr, 0xcc, size);
     return (void *)ptr;
 }
 
-extern "C" void *malloc(size_t size)
+void *malloc(size_t size)
 {
     volatile void *ptr = _malloc(size);
     if (!ptr)
     {
         printf("\nmm error.");
         __asm__("cli;hlt");
-        return nullptr;
+        return NULL;
     }
     mem_used += size;
     memset((void *)ptr, 0xcc, size);
     return (void *)ptr;
 }
 
-extern "C" void free(void *ptr)
+void free(void *ptr)
 {
     _free(ptr);
 }
 
-extern "C" void *realloc(void *ptr, size_t size)
+void *realloc(void *ptr, size_t size)
 {
     _free(ptr);
     return _malloc(size);
 }
 
-extern "C" void *calloc(size_t blocks, size_t size)
+void *calloc(size_t blocks, size_t size)
 {
     void *ptr = _malloc(size * blocks);
     if (!ptr)
     {
         printf("\nmm error.");
         __asm__("cli;hlt");
-        return nullptr;
+        return NULL;
     }
     memset(ptr, 0, size * blocks);
     mem_used += (size * blocks);

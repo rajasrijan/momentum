@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
+#if __STDC_HOSTED__ == 0
 #include "threads.h"
 #include <arch/x86_64/global.h>
 #include <arch/x86_64/timer.h>
@@ -65,9 +66,10 @@ void mtx_destroy(mtx_t *mutex)
 
 int sem_init(sem_t *semaphore, int64_t max_count, int64_t count)
 {
-    mtx_init(&(semaphore->lock),0);
+    mtx_init(&(semaphore->lock), 0);
     sync(semaphore->lock);
     semaphore->count = count;
     semaphore->max_count = max_count;
     return 0;
 }
+#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -47,7 +47,7 @@ typedef class process_info *process_t;
 
 class process_info
 {
-  private:
+private:
     uint64_t m_uiProcessId;
     char p_szProcessName[256];
     uint64_t uiEntry;
@@ -55,7 +55,7 @@ class process_info
     std::vector<std::pair<uint64_t, uint64_t>> program;
     int ring;
 
-  public:
+public:
     process_info(const char *processName);
     ~process_info();
     uint64_t getProcessId() { return m_uiProcessId; }
@@ -65,36 +65,36 @@ class process_info
     void setRing(int _ring) { ring = _ring; }
     uint64_t get_cs();
     uint64_t get_ss();
+    const char *getName() { return p_szProcessName; }
 };
 
 /*
 *	Thread info structure.
 */
-
 class thread_info
 {
-  public:
+public:
     mtx_t mtx;
     uint64_t flags;
-    uint64_t isactive;
     uint64_t stackSize;
     retStack_t context;
     general_registers_t regs;
 
-  private:
+private:
     process_t parentProcess;
     uint64_t uiThreadId;
     char p_sThreadName[256];
     void *(*pfnStartRoutine)(void *);
 
-  public:
+public:
     thread_info &operator=(const thread_info &t);
-    thread_info(const thread_info& t)=delete;
+    thread_info(const thread_info &t) = delete;
     thread_info(const char *threadName, process_t parentProcess);
     ~thread_info();
     uint64_t getThreadID() const;
+    void release();
 
-  private:
+private:
     friend class multitask;
     static void thread_start_point(thread_info *thread);
     void *arg;
@@ -115,11 +115,11 @@ thread_info *getNextThreadInQueue(void);
 
 class multitask
 {
-  public:
+public:
     ~multitask();
     static multitask *getInstance();
     int initilize();
-    int allocateStack(uint64_t &stackSize, uint64_t &stackPtr);
+    int allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManager::Privilege privilege);
     const thread_t getKernelThread();
     //const thread_t getKernelProcess();
     int createProcess(process_t &prs, const char *processName, int ring, std::vector<std::pair<uint64_t, uint64_t>> program, uint64_t entry);
@@ -127,15 +127,18 @@ class multitask
     int createThread(process_t prs, thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     const thread_t getNextThread(retStack_t *stack, general_registers_t *regs);
     int fork() { return ENOSYS; }
+    void destroyProcess(int status);
+    const std::vector<process_t> &ListProcesses() { return processList; }
 
-  private:
+private:
     mtx_t multitaskMutex;
     uint32_t uiThreadIterator;
     uint32_t uiCurrentThreadIndex;
     std::vector<thread_t> threadList;
     std::vector<process_t> processList;
+    thread_t current_thread;
 
-  private:
+private:
     multitask();
 };
 #endif /* MULTITASK_H */

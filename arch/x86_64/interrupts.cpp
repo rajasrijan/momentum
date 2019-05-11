@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -39,7 +39,11 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
 	{
 		printf("RSP [0x%x]\n", stack);
 		printf("Interrupt No [0x%x], RSP [0x%x], RIP [0x%x]\n", stack->interruptNumber, regs->rsp, stack->rip);
-		if (stack->interruptNumber == 14)
+		if (stack->interruptNumber == 6)
+		{
+			printf("Invalid Opcode\n");
+		}
+		else if (stack->interruptNumber == 14)
 		{
 			printf("PF addr [0x%x], Error code [0x%x]\n", get_cr2(), stack->err);
 		}
@@ -48,19 +52,19 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
 			printf("GP Error code [0x%x]\n", stack->err);
 		}
 		//print call stack.
-		printf("Call stack:\n");
-		uint64_t rsp = regs->rsp, rbp = regs->rbp, rip = stack->rip;
-		for (size_t i = 0; i < 3; i++)
-		{
-			printf("RIP [0x%lx], RSP [0x%lx], RBP [0x%lx]\n", rip, rsp, rbp);
-			rsp = rbp;
-			rbp = ((uint64_t *)rsp)[0];
-			rip = ((uint64_t *)rsp)[1];
-			if (rip == 0xDEADBEEFDEADBEEF || rbp == 0xDEADBEEFDEADBEEF)
-			{
-				break;
-			}
-		}
+		// printf("Call stack:\n");
+		// uint64_t rsp = regs->rsp, rbp = regs->rbp, rip = stack->rip;
+		// for (size_t i = 0; i < 3; i++)
+		// {
+		// 	printf("RIP [0x%lx], RSP [0x%lx], RBP [0x%lx]\n", rip, rsp, rbp);
+		// 	rsp = rbp;
+		// 	rbp = ((uint64_t *)rsp)[0];
+		// 	rip = ((uint64_t *)rsp)[1];
+		// 	if (rip == 0xDEADBEEFDEADBEEF || rbp == 0xDEADBEEFDEADBEEF)
+		// 	{
+		// 		break;
+		// 	}
+		// }
 		__asm__("cli");
 		__asm__("hlt");
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -38,7 +38,7 @@ void create_kernel_heap(void);
 uint64_t get_2mb_block(void);
 int IsMemoryReserved(uint32_t mem_addr);
 extern "C" void* g_qKernelEnd;
-#ifndef __cplusplus
+#ifdef __cplusplus
 extern "C"
 {
 #endif
@@ -50,7 +50,7 @@ extern "C"
 	 * ptr == pointer to memory to be freed.
 	 */
 	void _free(void *ptr);
-#ifndef __cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif /* MM_H */

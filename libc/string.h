@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -33,16 +33,15 @@ extern "C"
     char *strdup(const char *s1);
     char *strcpy(char *dst, const char *src);
 
-    char strcmp(const char *s1, const char *s2);
+    int strcmp(const char *s1, const char *s2);
     char stricmp(const char *s1, const char *s2);
     const char *strrchar(const char *s1, int character);
     const char *strchar(const char *s1, int character);
-    const char *strstr(const char *str1, const char *str2);
+    char *strstr(const char *str1,const char *str2);
     char *strncpy(char *dst, const char *src, size_t count);
     int strncmp(const char *str1, const char *str2, size_t num);
     char *strncat(char *destination, const char *source, size_t num);
     char * strtok ( char * str, const char * delimiters);
-    unsigned long long to_uuid(const char *str);
 #ifdef __cplusplus
 }
 #endif //  __cplusplus

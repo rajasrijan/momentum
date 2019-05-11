@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2018 Srijan Kumar Sharma
+ * Copyright 2009-2019 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -61,7 +61,19 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
 		res = (uint8_t)(res + ptr[i]);
 	return (uint8_t)(-res);
 }
+static inline void rdmsr(uint32_t msr, uint32_t *lo, uint32_t *hi)
+{
+	asm volatile("rdmsr"
+				 : "=a"(*lo), "=d"(*hi)
+				 : "c"(msr));
+}
 
+static inline void wrmsr(uint32_t msr, uint64_t val)
+{
+	asm volatile("wrmsr"
+				 :
+				 : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
+}
 /*Functions defined in asm*/
 extern "C"
 {
@@ -70,7 +82,7 @@ extern "C"
 	uint32_t release_spin_lock(void *lock_ptr);
 
 	void stage2(multiboot_info *mbi);
-	void switch_context(uint64_t esp);
+	void switch_context(uint64_t rsp, uint64_t ss);
 	/*
 	 * gets the current previlage leval.
 	 */
