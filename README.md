@@ -29,6 +29,10 @@ If build is successful "kernel.elf" will be generated. "kernel.elf" is multiboot
 #### Basic Shell
 ![Shell](/images/termanal.PNG)
 
+## To do:
+1. Multi-process support
+2. User Interface
+
 ## Author
 
 * **Srijan Kumar Sharma** - [rajasrijan](https://github.com/rajasrijan)
