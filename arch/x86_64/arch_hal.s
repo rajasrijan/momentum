@@ -202,11 +202,13 @@ switch_context:
 	iretq
 
 system_call:
+	push rdx
 	push rcx
 	push r11
 	call syscall
 	pop r11
 	pop rcx
+	pop rdx
 	o64 sysret
 
 atomic_exchange:

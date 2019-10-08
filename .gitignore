@@ -4,3 +4,7 @@
 *.elf
 .vscode/**
 kernel.s
+bochsrc.txt
+objdump.txt
+hosted_libc/libc.a
+images/.directory

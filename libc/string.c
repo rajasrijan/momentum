@@ -173,6 +173,7 @@ char *strncpy(char *dst, const char *src, size_t count)
         }
         dst++;
     }
+    *dst = 0;
     return dst;
 }
 

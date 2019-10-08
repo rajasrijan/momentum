@@ -299,7 +299,6 @@ int lookup(const char *path, shared_ptr<vnode> &node);
 int open(const string &name);
 void close(int fd);
 int openat(int dirfd, const string &pathname, int flags, mode_t mode);
-int chdir(const char *path);
 
 int read(int fd, char *dst, size_t size);
 int fseek(int fd, long int offset, int origin);

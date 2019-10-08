@@ -40,7 +40,8 @@ void *_aligned_malloc(uint32_t len, int n)
 }
 __attribute__((noreturn)) void exit(int status)
 {
-    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status));
+    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)
+                     : "rcx", "r11");
     while (1)
     {
         __asm__("pause");

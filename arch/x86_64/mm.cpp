@@ -183,6 +183,8 @@ void *_malloc(uint32_t length)
 void _free(void *ptr)
 {
 #pragma message("compact heap.")
+	if (!ptr)
+		return;
 	heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));
 	if (heap_ptr->flags == HEAP_EMPTY)
 	{

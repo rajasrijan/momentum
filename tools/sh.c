@@ -17,9 +17,38 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int main()
 {
-    printf("Hello World!\n");
+    char cmdline[4096] = {0};
+    char path[256] = {0};
+    while (1)
+    {
+        getcwd(path, sizeof(path));
+        printf("%s$", path);
+        gets_s(cmdline, sizeof(cmdline));
+        char *cmd = cmdline;
+        char *args = NULL;
+        for (size_t i = 0; cmdline[i] != 0; i++)
+        {
+            if (cmdline[i] == ' ')
+            {
+                cmdline[i] = 0;
+                args = &cmdline[i + 1];
+                break;
+            }
+        }
+        if (!strcmp("cd", cmd))
+        {
+            chdir(args);
+        }
+        else if (!strcmp("exit", cmd))
+        {
+            exit(0);
+        }
+    }
     return 0;
 }

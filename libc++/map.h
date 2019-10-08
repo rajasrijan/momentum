@@ -24,18 +24,24 @@
 
 namespace std
 {
-template <typename Key, // map::key_type
-          typename T    // map::mapped_type
+template <typename Key>
+uint64_t default_hash_map(Key key)
+{
+    return 0;
+}
+template <typename Key,                             //  map::key_type
+          typename T,                               //  map::mapped_type
+          uint64_t(hash_fn)(Key) = default_hash_map //  hash function to use
           >
 class map
 {
-  public:
+public:
     class iterator
     {
         friend class map;
         typename vector<pair<Key, T>>::iterator mapIt;
 
-      public:
+    public:
         iterator() {}
         ~iterator() {}
         bool operator==(const iterator &it) const
@@ -49,10 +55,10 @@ class map
         }
     };
 
-  private:
+private:
     vector<pair<Key, T>> k;
 
-  public:
+public:
     map() : k() {}
     T &operator[](const Key &_k)
     {
@@ -82,6 +88,10 @@ class map
         if (where_it == end())
             return;
         k.erase(where_it.mapIt);
+    }
+    size_t size()
+    {
+        return k.size();
     }
 };
 } // namespace std

@@ -34,6 +34,8 @@
 #include <DDI/partition_table.h>
 #include <arch/x86_64/arch_hal.h>
 #include <kernel/sys_info.h>
+#include <kernel/multitask.h>
+
 using namespace std;
 std::vector<pair<fileSystem, string>> fs_list; //	List of all fs in system.
 std::vector<shared_ptr<vfs>> vfs_list;		   //	List of all vfs in system.
@@ -50,7 +52,7 @@ class root_vnode : public vnode
 {
 	vector<shared_ptr<vnode>> children;
 
-  public:
+public:
 	root_vnode(const char *name /*, root_vnode *root*/) : vnode(nullptr), children()
 	{
 		if (name)
@@ -108,7 +110,7 @@ class partition_vnode : public vnode
 	shared_ptr<vnode> v_parent;
 	size_t v_start_blk, v_size_blk;
 
-  public:
+public:
 	partition_vnode(const char *name, shared_ptr<vnode> parent_vnode, size_t start_blk, size_t size_blk) : vnode(nullptr), v_parent(parent_vnode), v_start_blk(0), v_size_blk(0)
 	{
 		if (name)
@@ -156,7 +158,7 @@ int mount_root(void)
 	}
 	return 0;
 }
-vector<shared_ptr<vnode>> path_history;
+
 void init_vfs(void)
 {
 	printf("Creating vfs.\n");
@@ -164,7 +166,7 @@ void init_vfs(void)
 	{
 		printf("Failed to mount root vfs\n");
 	}
-	path_history.push_back(rnode);
+	multitask::getInstance()->getKernelProcess()->path_history.push_back(rnode);
 }
 int mount_root(vnode *vn)
 {
@@ -240,7 +242,7 @@ int auto_mount_partition(shared_ptr<vnode> blk_dev)
 			// root is mounted at '/'
 			clone_path(fs_root_vnode, rnode);
 			rnode = fs_root_vnode;
-			path_history[0] = rnode;
+			multitask::getInstance()->getKernelProcess()->path_history[0] = rnode;
 		}
 		else
 		{
@@ -288,7 +290,7 @@ int create_partition_dev(shared_ptr<vnode> blk_dev)
 			printf("Partition [%d]\n", i);
 			char partition_name[256] = {0};
 			no_of_partitions++;
-			sprintf(partition_name, "%sp%d", blk_dev->getName().c_str(), i + 1);
+			snprintf(partition_name,256, "%sp%d", blk_dev->getName().c_str(), i + 1);
 			shared_ptr<vnode> partition_node = nullptr;
 			create_blockdevice_subview(blk_dev, partition_name, pTable.partition[i].startLBA, pTable.partition[i].count, partition_node);
 			if (partition_node == nullptr)
@@ -643,11 +645,12 @@ int mknod(const char *pathname, shared_ptr<vnode> dev)
 
 shared_ptr<vnode> getCurrentDirectory()
 {
-	return path_history.back();
+	return multitask::getInstance()->getCurrentProcess()->path_history.back();
 }
 string getCurrentPath()
 {
 	string completePath = "";
+	auto &path_history = multitask::getInstance()->getCurrentProcess()->path_history;
 	for (int i = 0; i < path_history.size(); i++)
 	{
 		completePath += path_history[i]->getName() + "/";
@@ -734,6 +737,7 @@ int chdir(const char *path)
 {
 	int errCode = 0;
 	shared_ptr<vnode> cdir;
+	auto &path_history = multitask::getInstance()->getCurrentProcess()->path_history;
 	vector<shared_ptr<vnode>> backup_path = path_history;
 	if (path[0] == '/')
 	{

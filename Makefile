@@ -15,7 +15,7 @@ acpica_objects := $(patsubst %.c,%.o,$(wildcard acpica/*/*.c))
 OBJECT := libc/string.o libc++/string.o arch/x86_64/loader.o arch/x86_64/arch_hal.o arch/x86_64/interrupts.o \
 	arch/x86_64/stage2.o arch/x86_64/descriptor_tables.o arch/x86_64/paging.o arch/x86_64/global.o arch/x86_64/acpi.o arch/x86_64/mm.o \
 	arch/x86_64/video.o arch/x86_64/timer.o arch/x86_64/apic.o arch/x86_64/pci.o arch/x86_64/font.o \
-	arch/x86_64/multiboot2.o arch/x86_64/keyboard.o arch/x86_64/rtc.o libc/stdio.o libc/stdlib.o libc/threads.o libc++/new.o \
+	arch/x86_64/multiboot2.o arch/x86_64/keyboard.o arch/x86_64/rtc.o libc/stdio.o libc/vsprintf.o libc/stdlib.o libc/threads.o libc++/new.o \
 	kernel/vfs.o kernel/vfsops.o kernel/ELFLoader.o kernel/ELFFile.o kernel/sys_info.o kernel/multitask.o\
 	DDI/driver.o DDI/ddi.o DDI/pci_driver.o DDI/block_driver.o driver/ata.o driver/ramdrive.o driver/fatgen.o driver/binary_loader.o\
 	driver/usb/uhci.o kernel/acpica_glue.o $(acpica_objects) main.o cxxglue.o stack_protector.o
@@ -29,12 +29,14 @@ all: kernel.elf
 
 kernel.elf:$(OBJECT)
 	$(LD) $(LDFLAGS) -o $@ $^
+	$(MAKE) -C hosted_libc
+	$(MAKE) -C tools
 	# objdump -x kernel.elf > objdump.txt
 	objdump -d -M intel -S kernel.elf -j .text -j .text0> kernel.s
 	
 clean:
-	#$(MAKE) -C hosted_libc clean
-	#$(MAKE) -C tools clean
+	$(MAKE) -C hosted_libc clean
+	$(MAKE) -C tools clean
 	$(RM) $(OBJECT)
 	$(RM) kernel.elf
 
@@ -43,7 +45,7 @@ backup:
 	
 install:kernel.elf
 	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M kernel.elf ::kernel.elf
-	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/hello_world.elf ::hello_world.elf
+	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/sh.elf ::sh.elf
 
 tools/%:
 	$(MAKE) -C tools

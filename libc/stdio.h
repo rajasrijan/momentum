@@ -31,8 +31,8 @@
 #endif
 extern EXT_TYP char getchar(void);
 extern EXT_TYP int printf(const char *format, ...);
-extern EXT_TYP int vsprintf(char *buffer, const char *format, va_list arg);
-extern EXT_TYP int sprintf(char *str, const char *format, ...);
+extern EXT_TYP int vsnprintf(char *buffer, size_t n, const char *format, va_list arg);
+extern EXT_TYP int snprintf(char *str, size_t n, const char *format, ...);
 
 extern EXT_TYP char *gets_s(char *str, size_t sz);
 extern EXT_TYP int putchar(int c);

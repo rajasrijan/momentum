@@ -32,10 +32,10 @@ class string
 	size_t count;
 	size_t _size;
 
-  public:
+public:
 	static const size_t npos = -1;
 
-  public:
+public:
 	string() : data(nullptr), count(0), _size(0)
 	{
 		_size = 32;
@@ -322,7 +322,7 @@ class string
 		return string(*this, pos, len);
 	}
 
-  protected:
+protected:
 	int add_bytes(unsigned int len)
 	{
 		return 0;
@@ -334,7 +334,7 @@ class string
 inline string to_string(unsigned val)
 {
 	char number[256] = {0};
-	sprintf(number, "%d", val);
+	snprintf(number, 256, "%d", val);
 	return string(number);
 }
 unsigned long long to_uuid(const char *str);

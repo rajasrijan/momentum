@@ -422,7 +422,7 @@ extern "C"
         char buffer[1024];
         va_list arg;
         va_start(arg, Format);
-        vsprintf(buffer, Format, arg);
+        vsnprintf(buffer,1024, Format, arg);
         printf(buffer);
         va_end(arg);
     }
@@ -430,7 +430,7 @@ extern "C"
     void AcpiOsVprintf(const char *Format, va_list Args)
     {
         char buffer[1024];
-        vsprintf(buffer, Format, Args);
+        vsnprintf(buffer,1024, Format, Args);
         printf(buffer);
     }
 

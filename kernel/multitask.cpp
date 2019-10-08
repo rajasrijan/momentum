@@ -16,13 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include <kernel/vfs.h>
 #include "multitask.h"
 #include <arch/x86_64/global.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <kernel/syscall.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -159,13 +160,37 @@ int multitask::initilize()
 	processList.push_back(kernel_process);
 	threadList.push_back(kernel_thread);
 	uiCurrentThreadIndex = 0;
+	setActiveProcess(kernel_process);
 	extern void (*system_call)();
 	//	set system call function pointer
 	wrmsr(0xC0000082, (uint64_t)&system_call);
-	wrmsr(0xC0000084, 0x200);
+	//wrmsr(0xC0000084, 0x200);
 	//	set cs
 	wrmsr(0xC0000081, (0x08l << 32) | (0x10l << 48));
 	return 0;
+}
+
+process_t multitask::getCurrentProcess()
+{
+	return threadList[uiCurrentThreadIndex]->parentProcess;
+}
+
+process_t multitask::getKernelProcess()
+{
+	return threadList[0]->parentProcess;
+}
+
+process_t multitask::getActiveProcess()
+{
+	sync lock(multitaskMutex);
+	return active_process;
+}
+
+void multitask::setActiveProcess(process_t prs)
+{
+	//	freeze multitasking
+	sync lock(multitaskMutex);
+	active_process = prs;
 }
 
 int multitask::createProcess(process_t &prs, const char *processName, int ring, vector<pair<uint64_t, uint64_t>> program, uint64_t entry)
@@ -177,6 +202,7 @@ int multitask::createProcess(process_t &prs, const char *processName, int ring, 
 		sync lock(multitaskMutex);
 		processList.push_back(new process_info(processName));
 		prs = processList.back();
+		prs->path_history.push_back(rnode);
 		// create main thread
 		strcpy(threadName, processName);
 		strcat(threadName, "-MainThread");
@@ -185,6 +211,7 @@ int multitask::createProcess(process_t &prs, const char *processName, int ring, 
 		prs->setRing(ring);
 	}
 	createThread(prs, thd, threadName, (void *(*)(void *))entry, nullptr);
+	setActiveProcess(prs);
 	return 0;
 }
 
@@ -379,14 +406,33 @@ uint64_t process_info::get_ss()
 	}
 }
 
-extern "C" void syscall(int64_t callid, int64_t arg)
+extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
 {
-	if (callid == SYSCALL_PUTCHAR)
+	if (callid == SYSCALL_EXIT)
 	{
-		putchar(arg);
+		multitask::getInstance()->destroyProcess(arg0);
 	}
-	else if (callid == SYSCALL_EXIT)
+	else if (callid == SYSCALL_PUTCHAR)
 	{
-		multitask::getInstance()->destroyProcess(arg);
+		return putchar(arg0);
 	}
+	else if (callid == SYSCALL_GETCHAR)
+	{
+		return getchar();
+	}
+	else if (callid == SYSCALL_GETCWD)
+	{
+		std::string curDir = getCurrentPath();
+		strncpy((char *)arg0, curDir.c_str(), min((unsigned long)arg1, curDir.size() + 1));
+		return arg0;
+	}
+	else if (callid == SYSCALL_CHDIR)
+	{
+		return chdir((const char *)arg0);
+	}
+	else
+	{
+		printf("Unknown syscall\n");
+	}
+	return 0;
 }

@@ -1,0 +1,38 @@
+#ifndef _RING_BUFFER_
+#define _RING_BUFFER_
+#include <stdint.h>
+#include <stddef.h>
+
+template <typename T, size_t buffer_size>
+class ring_buffer
+{
+private:
+    T buffer[buffer_size];
+    uint64_t ullBufferWriteIndex;
+    uint64_t ullBufferReadIndex;
+
+public:
+    ring_buffer() : buffer{}, ullBufferWriteIndex(0), ullBufferReadIndex(0)
+    {
+    }
+    void write(T &t)
+    {
+        buffer[ullBufferWriteIndex] = t;
+        ullBufferWriteIndex = (ullBufferWriteIndex + 1) % buffer_size;
+    }
+    T &read()
+    {
+        while (true)
+            if (((ullBufferWriteIndex - ullBufferReadIndex) % buffer_size) > 0)
+            {
+                T &tmp = buffer[ullBufferReadIndex];
+                ullBufferReadIndex = (ullBufferReadIndex + 1) % buffer_size;
+                return tmp;
+            }
+            else
+            {
+                asm("pause;hlt");
+            }
+    }
+};
+#endif

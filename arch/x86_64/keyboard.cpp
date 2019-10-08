@@ -21,12 +21,10 @@
 #include "apic.h"
 #include "interrupts.h"
 #include "global.h"
+#include <kernel/multitask.h>
 
 #define max_key (256)
 uint8_t key_grid[max_key] = {};
-const int key_buffer_size = 1024;
-uint8_t key_buffer[key_buffer_size];
-volatile uint64_t g_ullKeyBufferIndex = 0;
 
 static void keyboard_handler(retStack_t *regs, general_registers_t *context)
 {
@@ -35,33 +33,32 @@ static void keyboard_handler(retStack_t *regs, general_registers_t *context)
     bool IsKeyUp = scan_code & 0x80;
     uint8_t keyCode = scan_code & 0x7F;
     char ch = 0;
-    
+
     if (IsKeyUp)
         key_grid[keyCode] = 0;
     else
         key_grid[keyCode] = 1;
-    
-    if (keyCode==SC_RSHIFT||keyCode==SC_LSHIFT)
+
+    if (keyCode == SC_RSHIFT || keyCode == SC_LSHIFT)
     {
-        keyProcessed=true;
+        keyProcessed = true;
     }
     else if (keyCode >= 0x1 && keyCode <= 0x39)
     {
         const char rowDOWN[] = " 1234567890-=\b\tqwertyuiop[]\n asdfghjkl;'` \\zxcvbnm,./    ";
         const char rowUP[] = " !@#$%^&*()_+\b\tQWERTYUIOP{}\n ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
         if (key_grid[SC_RSHIFT] || key_grid[SC_LSHIFT])
-            ch = rowUP[keyCode-1];
+            ch = rowUP[keyCode - 1];
         else
-            ch = rowDOWN[keyCode-1];
+            ch = rowDOWN[keyCode - 1];
         keyProcessed = true;
     }
 
     if (IsKeyUp && ch)
     {
-        key_buffer[g_ullKeyBufferIndex % key_buffer_size] = ch;
-        g_ullKeyBufferIndex = ((g_ullKeyBufferIndex + 1) % key_buffer_size);
+        multitask::getInstance()->getActiveProcess()->key_buffer.write(ch);
     }
-    else if(!keyProcessed)
+    else if (!keyProcessed)
     {
         printf("^%x", keyCode);
     }
@@ -83,13 +80,9 @@ void init_keyboard()
 
 char getchar()
 {
+    auto prs = multitask::getInstance()->getCurrentProcess();
     char c = 0;
-    uint64_t localIndex = g_ullKeyBufferIndex;
-    while (localIndex == g_ullKeyBufferIndex)
-    {
-        __asm__("hlt;");
-    }
-    c = key_buffer[localIndex % key_buffer_size];
+    c = prs->key_buffer.read();
     putchar(c);
     return c;
 }

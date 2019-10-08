@@ -38,6 +38,7 @@
 #include "../../DDI/block_driver.h"
 #include <list>
 #include <map>
+#include <unistd.h>
 #include <driver/binary_loader.h>
 #include "descriptor_tables.h"
 #include <arch/x86_64/video.h>
@@ -48,6 +49,14 @@ extern "C"
 {
 #endif
 #include <acpi.h>
+#include <platform/acenv.h>
+#include <actypes.h>
+#include <actbl.h>
+#include <aclocal.h>
+#include <acexcep.h>
+#include <acobject.h>
+#include <acstruct.h>
+#include <acnamesp.h>
 #ifdef __cplusplus
 }
 #endif
@@ -75,6 +84,7 @@ struct cmd_t
 int echo(char *args);
 int ver(char *args);
 int help(char *args);
+int intn(char *args);
 int lspci(char *args);
 int lsmem(char *args);
 int ls(char *args);

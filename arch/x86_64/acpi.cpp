@@ -23,22 +23,30 @@
 #include "global.h"
 #include <stdint.h>
 #include <string.h>
+#include <string>
+#include <vector>
 #include <ctype.h>
+#include <map>
 #include <kernel/sys_info.h>
 
 extern "C"
 {
 #include <acpi.h>
+#include <platform/acenv.h>
+#include <actypes.h>
+#include <actbl.h>
+#include <aclocal.h>
+#include <acexcep.h>
+#include <acobject.h>
+#include <acstruct.h>
+#include <acnamesp.h>
 }
 
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
 
-/*
- void* find_rspd(void);
- void * ioapic_base;
-  */
+std::map<uint64_t, uint32_t> routing_table;
 
 /*
 * Fix memory referances.kernel is located in 2gb+ space. unreff lower mem stuff.
@@ -270,7 +278,7 @@ uint8_t get_acpi_tables()
 			break;
 		}
 	}
-	if(!madt)
+	if (!madt)
 	{
 		printf("madt struct not found.");
 		__asm__("cli;hlt;");
@@ -286,7 +294,7 @@ uint8_t get_acpi_tables()
 			printf("MADT entry length zero.");
 			__asm__("cli;hlt;");
 		}
-		printf("MADT Entry type [%x]\n",madt_entry->type);
+		printf("MADT Entry type [%x]\n", madt_entry->type);
 		switch (madt_entry->type)
 		{
 		case INTERRUPT_OVERRIDE:
@@ -321,6 +329,40 @@ ACPI_STATUS InstallHandlers(void)
 		return (Status);
 	}
 
+	return (AE_OK);
+}
+
+static ACPI_STATUS
+AcpiNsFindPrtMethods(
+	ACPI_HANDLE ObjHandle,
+	UINT32 NestingLevel,
+	void *Context,
+	void **ReturnValue)
+{
+	char name[5] = {};
+	std::vector<ACPI_HANDLE> *device_list = (std::vector<ACPI_HANDLE> *)Context;
+	ACPI_NAMESPACE_NODE *Node;
+	ACPI_NAMESPACE_NODE *ParentNode;
+	Node = ACPI_CAST_PTR(ACPI_NAMESPACE_NODE, ObjHandle);
+	if (!ACPI_COMPARE_NAME(Node->Name.Ascii, METHOD_NAME__PRT))
+	{
+		return (AE_OK);
+	}
+	/*
+     * The only _PRT methods that we care about are those that are
+     * present under Device.
+     */
+	ParentNode = Node->Parent;
+	switch (ParentNode->Type)
+	{
+	case ACPI_TYPE_DEVICE:
+		memcpy((void *)name, (void *)ParentNode->Name.Ascii, 4);
+		printf("ACPI %s\n", name);
+		device_list->push_back((ACPI_HANDLE)ParentNode);
+		break;
+	default:
+		break;
+	}
 	return (AE_OK);
 }
 
@@ -381,24 +423,59 @@ int InitializeFullAcpi(void)
 		printf("While initializing ACPICA objects. Error [%x]\n", Status);
 		return (Status);
 	}
-
 	/* Tell ACPI we are using ioapic */
 
 	ACPI_OBJECT_LIST ArgList;
 	ACPI_OBJECT Arg[1];
 	ACPI_BUFFER ReturnValue;
-	
+
 	ArgList.Count = 1;
 	ArgList.Pointer = Arg;
-	
+
+	Arg[0].Type = ACPI_TYPE_INTEGER;
+	Arg[0].Integer.Value = 1;
+
 	ReturnValue.Pointer = 0;
 	ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
-	char pci_path[]= "\\_PIC";
+
+	char pci_path[] = "_PIC";
 	Status = AcpiEvaluateObject(nullptr, pci_path, &ArgList, &ReturnValue);
 	if (ACPI_FAILURE(Status))
 	{
-		printf("Execute \\_PCI failed. Error [%x]\n", Status);
+		printf("Execute \\_PIC failed. Error [%x]\n", Status);
+		//	assuming this is a soft error
+		//	asm("cli;hlt;");
+		//	return Status;
+	}
+	AcpiOsFree(ReturnValue.Pointer);
+	ReturnValue.Pointer = 0;
+	ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
+	/*	print all ACPI methods*/
+	std::vector<ACPI_HANDLE> device_list;
+	Status = AcpiNsWalkNamespace(ACPI_TYPE_METHOD, ACPI_ROOT_OBJECT, ACPI_UINT32_MAX, FALSE, AcpiNsFindPrtMethods, NULL, &device_list, NULL);
+	if (ACPI_FAILURE(Status))
+	{
 		return Status;
 	}
-	return (AE_OK);
+	printf("There are %d devices with _PRT methods\n", device_list.size());
+	for (const auto acpi_device : device_list)
+	{
+		Status = AcpiGetIrqRoutingTable(acpi_device, &ReturnValue);
+		if (ACPI_FAILURE(Status))
+		{
+			printf("Execute ._PRT failed. Error [%x]\n", Status);
+			return Status;
+		}
+		ACPI_PCI_ROUTING_TABLE *pci_routing = ((ACPI_PCI_ROUTING_TABLE *)ReturnValue.Pointer);
+		while (pci_routing->Length > 0 && (char *)pci_routing < (char *)ReturnValue.Pointer + ReturnValue.Length)
+		{
+			routing_table[pci_routing->Address] = pci_routing->Pin;
+			pci_routing = (ACPI_PCI_ROUTING_TABLE *)(((char *)pci_routing) + pci_routing->Length);
+		}
+		AcpiOsFree(ReturnValue.Pointer);
+		ReturnValue.Pointer = 0;
+		ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
+	}
+	printf("Read %d routing entries from table.\n", routing_table.size());
+	return AE_OK;
 }

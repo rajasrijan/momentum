@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <memory>
 #include <utility>
+#include <ring_buffer>
 
 /*
   *	Thread flags.
@@ -47,6 +48,10 @@ typedef class process_info *process_t;
 
 class process_info
 {
+public:
+    ring_buffer<char, 256> key_buffer;
+    std::vector<std::shared_ptr<class vnode>> path_history;
+
 private:
     uint64_t m_uiProcessId;
     char p_szProcessName[256];
@@ -126,6 +131,10 @@ public:
     int createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     int createThread(process_t prs, thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     const thread_t getNextThread(retStack_t *stack, general_registers_t *regs);
+    void setActiveProcess(process_t prs);
+    process_t getActiveProcess();
+    process_t getCurrentProcess();
+    process_t getKernelProcess();
     int fork() { return ENOSYS; }
     void destroyProcess(int status);
     const std::vector<process_t> &ListProcesses() { return processList; }
@@ -137,6 +146,7 @@ private:
     std::vector<thread_t> threadList;
     std::vector<process_t> processList;
     thread_t current_thread;
+    process_t active_process;
 
 private:
     multitask();
