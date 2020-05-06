@@ -20,6 +20,20 @@
 #ifndef ACPI_H
 #define ACPI_H
 
+extern "C"
+{
+#include <acpi.h>
+#include <platform/acenv.h>
+#include <actypes.h>
+#include <actbl.h>
+#include <aclocal.h>
+#include <acexcep.h>
+#include <acobject.h>
+#include <acstruct.h>
+#include <acnamesp.h>
+#include <acresrc.h>
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -133,9 +147,27 @@ extern "C"
 	void fix_refferances(void);
 	uint8_t get_acpi_tables(void);
 	int InitializeFullAcpi(void);
-
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+#include <vector>
+
+std::vector<struct pci_routing> &get_pci_routing_table();
+
+namespace Acpi
+{
+
+	inline ACPI_STATUS Evaluate(const char *method_name, ACPI_BUFFER ReturnValue)
+	{
+		ACPI_STATUS status = AE_OK;
+		ACPI_EVALUATE_INFO info = {};
+		info.RelativePathname = method_name;
+		status = AcpiNsEvaluate(&info);
+		return status;
+	}
+} // namespace Acpi
 #endif
 
 #endif /* ACPI_H */

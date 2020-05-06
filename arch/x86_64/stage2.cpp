@@ -291,7 +291,6 @@ void stage2(multiboot_info *mbi)
 		constructor_fn();
 	}
 	init_multitask();
-	pci_init_devices();
 	auto kthread = multitask::getInstance()->getKernelThread();
 	change_thread(kthread, true);
 }
@@ -338,6 +337,7 @@ void state_c0()
 {
 	printf("Kernal thread started\n");
 	InitializeFullAcpi();
+	pci_init_devices();
 	init_vfs();
 	init_drivers();
 	printf("Checking for PnP devices\n");

@@ -20,8 +20,16 @@
 #include "pci.h"
 #include "string.h"
 #include "paging.h"
+#include "acpi.h"
+#include <map>
+#include <vector>
+#include <DDI/pci_driver.h>
 
-std::vector<pci_device_t> pci_devices;
+using namespace std;
+
+//	WARNING: pointer values may change after resize.
+vector<pci_device_t> pci_devices;
+map<uint32_t, vector<pci_device_t *>> irq_pci_lookup;
 
 static void pci_print_info(PCI_COMMON_CONFIG *config)
 {
@@ -75,16 +83,44 @@ static void pci_print_info(PCI_COMMON_CONFIG *config)
 	printf(info_str[index]);
 }
 
+void pci_interrupt_handler(retStack_t *ret, general_registers_t *regs)
+{
+	printf("PCI IRQ %d fired\n", ret->interruptNumber);
+	auto device_bkt_it = irq_pci_lookup.find(ret->interruptNumber);
+	if (device_bkt_it == irq_pci_lookup.end())
+	{
+		printf("Critical failure, IRQ should be in list\n");
+		asm("cli;hlt");
+	}
+	for (auto &pci_dev : device_bkt_it->second)
+	{
+		auto status = pci_read_status(pci_dev);
+		if (status & PCI_STATUS_INTERRUPT)
+		{
+			if (pci_dev->pDriver && pci_dev->pDriver->name)
+			{
+				printf("IRQ For [%s]", pci_dev->pDriver->name);
+				if (pci_dev->pDriver->interrupt != nullptr)
+				{
+					pci_dev->pDriver->interrupt(pci_dev);
+				}
+			}
+		}
+	}
+}
+
 void pci_init_devices()
 {
-	pci_device_t device;
+	pci_device_t device = {};
+	const auto &pci_irq_routing = get_pci_routing_table();
+
 	printf("Searching for PCI devices....\n");
 	for (device.address = 0; device.address < 0x00FFFF00; device.address += 0x100)
 	{
 		uint32_t vendor = pci_readRegister(&device, 0) & 0xffff;
 		if (vendor != 0xffff)
 		{
-			PCI_COMMON_CONFIG config;
+			PCI_COMMON_CONFIG config = {};
 			for (uint32_t index = 0; index < sizeof(PCI_COMMON_CONFIG); index += 4)
 			{
 				((uint32_t *)&config)[(index / 4)] = pci_readRegister(&device, index);
@@ -92,32 +128,63 @@ void pci_init_devices()
 			printf("PCI:%x\\", device.address);
 			pci_print_info(&config);
 			printf("\n");
+			device.has_irq = false;
+			if (config.type0.InterruptPin != 0)
+			{
+				//	find IRQ from routing table
+				for (const auto &pci_routing : pci_irq_routing)
+				{
+					//	match filter. ACPI INTA starts at 0 but PCI config space INTA starts at 1.
+					if ((((pci_routing.address >> 16) & 0xFF) == device.slot) && (config.type0.InterruptPin == (pci_routing.pin + 1)))
+					{
+						device.ioapic_pin = pci_routing.irq;
+						device.irq_no = IRQ(pci_routing.irq);
+						device.has_irq = true;
+					}
+				}
+				if (!device.has_irq)
+				{
+					printf("Route not found\n");
+					asm("cli;hlt");
+				}
+			}
 			device.bIsProcessed = false;
 			pci_devices.push_back(device);
 		}
 	}
+	for (auto &pci_device : pci_devices)
+	{
+		if (irq_pci_lookup.find(pci_device.irq_no) == irq_pci_lookup.end())
+			register_interrupt_handler(pci_device.irq_no, pci_interrupt_handler);
+		irq_pci_lookup[pci_device.irq_no].push_back(&pci_device);
+	}
+
 	printf("Search completed\n");
 }
 
 uint32_t pci_readRegister(const pci_device_t *device, uint32_t offset)
 {
+	if (offset & 0x03)
+	{
+		printf("Offset has to be 4 byte aligned\n");
+		asm("cli;hlt");
+	}
 	uint32_t address = device->address;
 
-	/* create configuration address as per Figure 1 */
+	/* create configuration address */
 	address |= ((offset & 0xfc) | ((uint32_t)0x80000000));
 
 	/* write out the address */
 	outl(0xCF8, address);
 	/* read in the data */
-	/* (offset & 2) * 8) = 0 will choose the fisrt word of the 32 bits register */
-	return ((uint32_t)((inl(0xCFC) >> ((offset & 2) * 8))));
+	return inl(0xCFC);
 }
 
 void pci_writeRegister(const pci_device_t *device, uint32_t offset, uint32_t value)
 {
 	uint32_t address = device->address;
 
-	/* create configuration address as per Figure 1 */
+	/* create configuration address */
 	address |= ((offset & 0xfc) | ((uint32_t)0x80000000));
 
 	/* write out the address */
@@ -147,20 +214,26 @@ void pci_device_t::getDeviceId(pci_device_id *devID) const
 uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar)
 {
 	uint32_t addr = pci_readRegister(dev, 0x10 + (bar * 4));
-	pci_writeRegister(dev, 0x10 + (bar * 4), 0xFFFFFFFF);
-	uint32_t size = (pci_readRegister(dev, 0x10 + (bar * 4)) & 0xFFFFFFF0);
-	pci_writeRegister(dev, 0x10 + (bar * 4), addr);
-	size = ((~size) + 1);
-	/*if ((addr % 2) == 0)
+	if (addr != 0 && (addr % 2) == 0)
 	{
-		DBG_OUTPUT
-		printf("\nMapping %x size %x", addr, size);
-		force_map(addr, addr, (size + 4096 - 1) / 4096);
-	}*/
+		pci_writeRegister(dev, 0x10 + (bar * 4), 0xFFFFFFFF);
+		uint32_t size = (pci_readRegister(dev, 0x10 + (bar * 4)) & 0xFFFFFFF0);
+		pci_writeRegister(dev, 0x10 + (bar * 4), addr);
+		size = ((~size) + 1);
+		printf("Mapping %x size %x\n", addr, size);
+		for (size_t paddr = (addr / PageManager::PAGESIZE) * PageManager::PAGESIZE; paddr < addr + size; paddr += PageManager::PAGESIZE)
+			PageManager::getInstance()->IdentityMap2MBPages(paddr);
+		return addr & 0xFFFFFFF0;
+	}
 	return addr;
 }
 
 bool pci_device_id::IsMatching(const pci_device_id &in) const
 {
 	return (VendorID == in.VendorID || VendorID == 0xFFFF) && (DeviceID == in.DeviceID || DeviceID == 0xFFFF) && (SubVendorID == in.SubVendorID || SubVendorID == 0xFFFF) && (SubSystemID == in.SubSystemID || SubSystemID == 0xFFFF) && (Class == in.Class || Class == 0xFF) && (SubClass == in.SubClass || SubClass == 0xFF) && (ProgIf == in.ProgIf || ProgIf == 0xFF);
+}
+
+uint16_t pci_read_status(const pci_device_t *device)
+{
+	return (uint16_t)(pci_readRegister(device, 4) >> 16);
 }

@@ -21,6 +21,7 @@
 #include "apic.h"
 #include "paging.h"
 #include "global.h"
+#include "pci.h"
 #include <stdint.h>
 #include <string.h>
 #include <string>
@@ -29,24 +30,16 @@
 #include <map>
 #include <kernel/sys_info.h>
 
-extern "C"
-{
-#include <acpi.h>
-#include <platform/acenv.h>
-#include <actypes.h>
-#include <actbl.h>
-#include <aclocal.h>
-#include <acexcep.h>
-#include <acobject.h>
-#include <acstruct.h>
-#include <acnamesp.h>
-}
-
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
 
-std::map<uint64_t, uint32_t> routing_table;
+std::vector<pci_routing> routing_table;
+
+std::vector<pci_routing> &get_pci_routing_table()
+{
+	return routing_table;
+}
 
 /*
 * Fix memory referances.kernel is located in 2gb+ space. unreff lower mem stuff.
@@ -197,7 +190,13 @@ static void default_ioapic_mapping(void)
 }
 
 /*
- * Override the default interrupt pin.Configure a IO-APIC pin to a IRQ number.
+ * Override the default interrupt pin. Configure a IO-APIC pin to a IRQ number.
+ * @param:	source - The IRQ source.
+ * 			pin	-	the interrupt pin
+ * 			flags - Bit 0-1 - 01 Active High
+ * 							- 11 Active Low
+ * 					BIt 2-3 - 01 Edge Sensitive
+ * 							- 11 Level Sensitive
  */
 static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
 {
@@ -232,7 +231,7 @@ static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
 	}
 	}
 	write_ioapic(hi_pin, 0x00000000 | flags_hi);
-	write_ioapic(lo_pin, 0x00010000 | IRQ(source) | flags_lo);
+	write_ioapic(lo_pin, 0x00010000 | source | flags_lo);
 }
 
 /*
@@ -300,7 +299,7 @@ uint8_t get_acpi_tables()
 		case INTERRUPT_OVERRIDE:
 		{
 			interrupt_override *intovr = (interrupt_override *)madt_entry;
-			override_interrupt(intovr->source, intovr->global_system_interrupt, intovr->flags);
+			override_interrupt(IRQ(intovr->source), intovr->global_system_interrupt, intovr->flags);
 			break;
 		}
 		}
@@ -438,7 +437,7 @@ int InitializeFullAcpi(void)
 	ReturnValue.Pointer = 0;
 	ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
 
-	char pci_path[] = "_PIC";
+	char pci_path[] = "\\_PIC";
 	Status = AcpiEvaluateObject(nullptr, pci_path, &ArgList, &ReturnValue);
 	if (ACPI_FAILURE(Status))
 	{
@@ -469,7 +468,65 @@ int InitializeFullAcpi(void)
 		ACPI_PCI_ROUTING_TABLE *pci_routing = ((ACPI_PCI_ROUTING_TABLE *)ReturnValue.Pointer);
 		while (pci_routing->Length > 0 && (char *)pci_routing < (char *)ReturnValue.Pointer + ReturnValue.Length)
 		{
-			routing_table[pci_routing->Address] = pci_routing->Pin;
+			if (pci_routing->SourceIndex == 0) // its a referance
+			{
+				ACPI_BUFFER ret = {};
+				ret.Pointer = 0;
+				ret.Length = ACPI_ALLOCATE_BUFFER;
+				ACPI_HANDLE device_handle = nullptr;
+				Status = AcpiNsGetNode(nullptr, pci_routing->Source, 0, (ACPI_NAMESPACE_NODE **)&device_handle);
+				if (ACPI_FAILURE(Status))
+				{
+					printf("Failed to get device handle for [%s]. Error [%x]\n", pci_routing->Source, Status);
+					return Status;
+				}
+				Status = AcpiGetCurrentResources(device_handle, &ret);
+				if (ACPI_FAILURE(Status))
+				{
+					printf("Failed to get resource for [%s]. Error [%x]\n", pci_routing->Source, Status);
+					return Status;
+				}
+				printf("PCI device [%x]  IRQ:", pci_routing->Address);
+				ACPI_RESOURCE *resource = (ACPI_RESOURCE *)ret.Pointer;
+				while (resource->Length > 0)
+				{
+					if (resource->Type == ACPI_RESOURCE_TYPE_EXTENDED_IRQ)
+					{
+						uint32_t interrupt_flags = 0;
+						for (size_t i = 0; i < resource->Data.ExtendedIrq.InterruptCount; i++)
+						{
+							printf(" %d,", resource->Data.ExtendedIrq.Interrupts[i]);
+						}
+						if (resource->Data.ExtendedIrq.Polarity == 0)
+						{
+							interrupt_flags |= 0x1;
+						}
+						else
+						{
+							interrupt_flags |= 0x3;
+						}
+						if (resource->Data.ExtendedIrq.Triggering == 0)
+						{
+							interrupt_flags |= 0x4;
+						}
+						else
+						{
+							interrupt_flags |= 0xc;
+						}
+
+						routing_table.push_back({pci_routing->Address, pci_routing->Pin, resource->Data.ExtendedIrq.Interrupts[0], interrupt_flags});
+						printf("\n");
+					}
+					resource = ACPI_NEXT_RESOURCE(resource);
+				}
+				AcpiOsFree(ret.Pointer);
+				ret.Pointer = 0;
+				ret.Length = ACPI_ALLOCATE_BUFFER;
+			}
+			else
+			{
+				routing_table.push_back({pci_routing->Address, pci_routing->Pin, pci_routing->SourceIndex, 0});
+			}
 			pci_routing = (ACPI_PCI_ROUTING_TABLE *)(((char *)pci_routing) + pci_routing->Length);
 		}
 		AcpiOsFree(ReturnValue.Pointer);
@@ -477,5 +534,24 @@ int InitializeFullAcpi(void)
 		ReturnValue.Length = ACPI_ALLOCATE_BUFFER;
 	}
 	printf("Read %d routing entries from table.\n", routing_table.size());
+	std::vector<uint32_t> irqs;
+	for (const auto &route : routing_table)
+	{
+		auto resultIt = std::find(irqs.begin(), irqs.end(), route.irq);
+		if (resultIt == irqs.end())
+		{
+			irqs.push_back(route.irq);
+		}
+	}
+	for (uint32_t irq : irqs)
+	{
+		printf("Enabling IOAPIC pin %d\n", irq);
+		auto resultIt = std::find_if(routing_table.begin(), routing_table.end(), [irq](const pci_routing &route) { return route.irq == irq; });
+		//	map ioapic pin to interrupt vector
+		override_interrupt(IRQ(irq), irq, resultIt->flags);
+		//	enable pin
+		apic_pin_enable(irq);
+	}
+
 	return AE_OK;
 }

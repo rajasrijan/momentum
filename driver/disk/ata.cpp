@@ -16,110 +16,55 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "ata.h"
 #include <arch/x86_64/pci.h>
 #include <arch/x86_64/timer.h>
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
 #include <DDI/block_driver.h>
 #include <errno.h>
+#include "ide.h"
+#include "ata.h"
 
 #define ATA_HDDEVSEL_PORT(x) (x + 6)
 #define ATA_COMMAND_PORT(x) (x + 7)
 
-enum ATA_STATUS
+ata_blk_vnode::ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name) : vnode(nullptr), data_port(dataPort), IsMaster(isMaster)
 {
-	ERR = 1,
-	DRQ = 8,
-	SRV = 16,
-	DF = 32,
-	RDY = 64,
-	BSY = 128
-};
-
-enum ATA_CONTROL
+	setName(name.c_str());
+	v_type = VBLK;
+	printf("creating interface for [%s]\n", getName().c_str());
+}
+ata_blk_vnode::~ata_blk_vnode()
 {
-	nIEN = 2,
-	SRST = 4,
-	HOB = 0x80
-};
-
-enum ATA_COMMAND
+}
+int ata_blk_vnode::write(size_t offset, size_t count, void *data)
 {
-	READ_PIO = 0x20,
-	READ_PIO_EXT = 0x24,
-	READ_DMA = 0xC8,
-	READ_DMA_EXT = 0x25,
-	WRITE_PIO = 0x30,
-	WRITE_PIO_EXT = 0x34,
-	WRITE_DMA = 0xCA,
-	WRITE_DMA_EXT = 0x35,
-	CACHE_FLUSH = 0xE7,
-	CACHE_FLUSH_EXT = 0xEA,
-	PACKET = 0xA0,
-	IDENTIFY_PACKET = 0xA1,
-	IDENTIFY = 0xEC
-};
-
-#pragma pack(1)
-struct ata_identity
+	printf("%s not implemented\n", __FUNCTION__);
+	__asm__("cli;hlt");
+	return -ENOSYS;
+}
+int ata_blk_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
 {
-	uint16_t DEVICETYPE;  //0
-	char pad1[118];		  //2
-	uint32_t MAX_LBA;	 //120
-	char pad2[76];		  //124
-	uint32_t MAX_LBA_EXT; //200
-};
-
-class ata_blk_vnode : public vnode
-{
-  private:
-	uint16_t data_port;
-	bool IsMaster;
-
-  public:
-	ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name) : vnode(nullptr), data_port(dataPort), IsMaster(isMaster)
-	{
-		setName(name.c_str());
-		v_type = VBLK;
-		printf("creating interface for [%s]\n", getName().c_str());
-	}
-	~ata_blk_vnode()
-	{
-	}
-	int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-	int write(size_t offset, size_t count, void *data)
-	{
-		printf("%s not implemented\n", __FUNCTION__);
-		__asm__("cli;hlt");
-		return -ENOSYS;
-	}
-	int readdir(vector<shared_ptr<vnode>> &vnodes)
-	{
-		printf("Not implemented");
-		asm("cli;hlt;");
-		return 0;
-	}
-	int ioctl(uint32_t command, void *data, int fflag);
-	int open(uint32_t flags) { return -ENOSYS; }
-};
+	printf("Not implemented");
+	asm("cli;hlt;");
+	return 0;
+}
 
 uint16_t control_register = 0x3F6;
-static uint8_t disk_no = 0;
 
-int ataReadSectors(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data);
+int ataReadSectors_pio(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data);
+int ataReadSectors_dma(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data);
 int ataSoftReset();
 int ata_probe(pci_device_t *dev, pci_device_id table);
 void ata_remove(pci_device_t *dev);
 int ata_suspend(pci_device_t *dev, uint32_t state);
 int ata_resume(pci_device_t *dev);
-int ataIdentify(ata_identity &ident, uint16_t data_port = 0x1F0, bool IsMaster = true);
 
 int ata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 {
 	if (bytesRead)
 		*bytesRead = (size * 512);
-	return ataReadSectors(data_port, IsMaster, position, size, data);
+	return ataReadSectors_pio(data_port, IsMaster, position, size, data);
 }
 
 int ata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
@@ -139,7 +84,7 @@ int ata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
 	return 0;
 }
 
-pci_device_id supportedDevices[] = {
+static pci_device_id supportedDevices[] = {
 	{(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_IDE, (uint8_t)PCI_ANY_ID},
 	{(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_ATA, (uint8_t)PCI_ANY_ID},
 };
@@ -167,41 +112,9 @@ int ata_probe(pci_device_t *dev, pci_device_id table)
 		return 1;
 	}
 	printf("Device probed\n");
-	pci_device_id devID;
-	dev->getDeviceId(&devID);
-	uint32_t standard_bars[] = {0x1F0, 0x3F6, 0x170, 0x376};
-	uint32_t BAR[6] = {0};
-	for (uint32_t j = 0; j < 6; j++)
-	{
-		BAR[j] = pci_resource_start(dev, j);
-		if (j < 4)
-		{
-			//  Replace BAR[j] with standard bars if it is 0x0 or 0x1
-			BAR[j] = ((BAR[j] == 0) || (BAR[j] == 1)) ? standard_bars[j] : BAR[j];
-		}
-		//printf("BAR[%d]=0x%x\n", j, BAR[j]);
-	}
-	for (int bus = 0; bus < 2; bus++)
-	{
-		for (int master = 0; master <= 1; master++)
-		{
-			ata_identity ident = {};
-			if (ataIdentify(ident, (uint16_t)BAR[bus * 2], !master))
-			{
-				continue;
-			}
-			printf("IDE drive at [%s] [%s]\n", !bus ? "primary" : "secondry", !master ? "master" : "slave");
-			string disk_name = "hda";
-			disk_name.back() += disk_no++;
-			auto ataBlkInterface = new ata_blk_vnode(BAR[bus * 2], !master, disk_name);
-			ret = mknod(("/dev/" + disk_name).c_str(), ataBlkInterface);
-			if (ret)
-			{
-				printf("Failed to register block device\n");
-				ret = 0; // non fatal.
-			}
-		}
-	}
+	// pci_device_id devID;
+	// dev->getDeviceId(&devID);
+	ret = ide_probe(dev);
 	return ret;
 }
 
@@ -219,7 +132,13 @@ int ata_resume(pci_device_t *dev)
 	return 0;
 }
 
-int ataReadSectors(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data)
+int ataReadSectors_dma(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data)
+{
+	assert("Not Implemented");
+	return 0;
+}
+
+int ataReadSectors_pio(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data)
 {
 	while (count > 0)
 	{

@@ -122,6 +122,8 @@ class multitask
 {
 public:
     ~multitask();
+    multitask(const multitask &) = delete;
+    multitask& operator=(const multitask &) = delete;
     static multitask *getInstance();
     int initilize();
     int allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManager::Privilege privilege);

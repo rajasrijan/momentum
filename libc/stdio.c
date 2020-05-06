@@ -135,6 +135,11 @@ static void print_num64(uint64_t arg, uint32_t base)
 
 int printf(const char *format, ...)
 {
+#if __STDC_HOSTED__ == 0
+	static mtx_t lock = 0;
+	mtx_lock(&lock);
+#endif
+
 	int ret = 0;
 	va_list arg;
 	char buffer[1024];
@@ -145,6 +150,9 @@ int printf(const char *format, ...)
 		putchar(buffer[i]);
 	}
 	va_end(arg);
+#if __STDC_HOSTED__ == 0
+	mtx_unlock(&lock);
+#endif
 	return 0;
 }
 

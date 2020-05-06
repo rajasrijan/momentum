@@ -165,6 +165,7 @@ ISR_NOERRCODE 61
 ISR_NOERRCODE 62
 ISR_NOERRCODE 63
 ISR_NOERRCODE 64
+ISR_NOERRCODE 65
 
 ; This is our common ISR stub. It saves the processor state, sets
 ; up for kernel mode segments, calls the C-level fault handler,

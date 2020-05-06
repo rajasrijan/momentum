@@ -22,6 +22,8 @@
 
 #include "global.h"
 
+#define PCI_STATUS_INTERRUPT (0x08)
+
 struct _PCI_HEADER_TYPE_0
 {
     uint32_t BaseAddresses[6];
@@ -32,7 +34,7 @@ struct _PCI_HEADER_TYPE_0
     uint32_t Reserved2[2];
 
     uint8_t InterruptLine;
-    uint8_t InterruptPin;
+    uint8_t InterruptPin; //  1 = INTA
     uint8_t MinimumGrant;
     uint8_t MaximumLatency;
 };
@@ -128,7 +130,6 @@ struct PCI_COMMON_CONFIG
         struct _PCI_HEADER_TYPE_2 type2;
     };
     uint8_t DeviceSpecific[108];
-
 };
 
 struct pci_device_id
@@ -140,12 +141,13 @@ struct pci_device_id
     uint8_t Class;
     uint8_t SubClass;
     uint8_t ProgIf;
-    bool IsMatching(const pci_device_id& in) const;
+    bool IsMatching(const pci_device_id &in) const;
 } __attribute__((packed));
 
 struct pci_device_t
 {
-    union {
+    union
+    {
         struct
         {
             uint8_t resv1;
@@ -158,8 +160,19 @@ struct pci_device_t
         uint32_t address;
     };
     bool bIsProcessed;
+    uint32_t ioapic_pin;
+    uint32_t irq_no;
+    bool has_irq;
     struct pci_driver_t *pDriver;
     void getDeviceId(pci_device_id *devID) const;
+};
+
+struct pci_routing
+{
+    uint64_t address; // it's more of a address filter
+    uint32_t pin;     //  0 = INTA
+    uint32_t irq;
+    uint32_t flags;
 };
 
 uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar);
@@ -167,6 +180,7 @@ uint32_t pci_resource_end(pci_device_t *dev, uint32_t bar);
 uint32_t pci_resource_flags(pci_device_t *dev, uint32_t bar);
 uint32_t pci_readRegister(const pci_device_t *device, uint32_t offset);
 void pci_writeRegister(const pci_device_t *device, uint32_t offset, uint32_t value);
-std::vector<pci_device_t>& pci_getDevices(void);
+std::vector<pci_device_t> &pci_getDevices(void);
 void pci_init_devices(void);
+uint16_t pci_read_status(const pci_device_t *device);
 #endif /* PCI_H */

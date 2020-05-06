@@ -20,17 +20,17 @@
 #ifndef _DESCRIPTOR_TABLE_H_
 #define _DESCRIPTOR_TABLE_H_
 #include <stdint.h>
- // This structure contains the value of one GDT entry.
- // We use the attribute 'packed' to tell GCC not to change
- // any of the alignment in the structure.
+// This structure contains the value of one GDT entry.
+// We use the attribute 'packed' to tell GCC not to change
+// any of the alignment in the structure.
 #define GDT_COUNT (8)
 
 struct gdt_entry_struct
 {
-	uint16_t limit_low; // The lower 16 bits of the limit.
-	uint16_t base_low; // The lower 16 bits of the base.
+	uint16_t limit_low;	 // The lower 16 bits of the limit.
+	uint16_t base_low;	 // The lower 16 bits of the base.
 	uint8_t base_middle; // The next 8 bits of the base.
-	uint8_t access; // Access flags, determine what ring this segment can be used in.
+	uint8_t access;		 // Access flags, determine what ring this segment can be used in.
 	uint8_t granularity;
 	uint8_t base_high; // The last 8 bits of the base.
 } __attribute__((packed));
@@ -38,12 +38,12 @@ struct gdt_entry_struct
 struct gdt_ptr_struct
 {
 	uint16_t limit; // The upper 16 bits of all selector limits.
-	uint64_t base; // The address of the first gdt_entry_t struct.
+	uint64_t base;	// The address of the first gdt_entry_t struct.
 } __attribute__((packed));
 
 struct gdt_struct
 {
-	struct gdt_ptr_struct gp; // The upper 16 bits of all selector limits.
+	struct gdt_ptr_struct gp;			   // The upper 16 bits of all selector limits.
 	struct gdt_entry_struct ge[GDT_COUNT]; // The address of the first gdt_entry_t struct.
 } __attribute__((packed));
 
@@ -56,12 +56,12 @@ typedef struct gdt_struct gdt_t;
 struct idt_entry_struct
 {
 	uint16_t base_lo_lo; // The lower 16 bits of the address to jump to when this interrupt fires.
-	uint16_t sel; // Kernel segment selector.
-	uint8_t ist; // bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.
-	uint8_t flags; // More flags. See documentation.
+	uint16_t sel;		 // Kernel segment selector.
+	uint8_t ist;		 // bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.
+	uint8_t flags;		 // More flags. See documentation.
 	uint16_t base_lo_hi; // The upper 16 bits of the address to jump to.
-	uint32_t base_hi; // offset bits 32..63
-	uint32_t zero;     // reserved
+	uint32_t base_hi;	 // offset bits 32..63
+	uint32_t zero;		 // reserved
 } __attribute__((packed));
 typedef volatile struct idt_entry_struct idt_entry_t;
 
@@ -82,8 +82,7 @@ struct idt_struct
 } __attribute__((packed));
 typedef struct idt_struct idt_t;
 
-#define IRQ(x) (38+((uint32_t)(x)))
-
+#define IRQ(x) (38 + ((uint32_t)(x)))
 
 void init_idt(void);
 void idt_set_gate(idt_entry_t *idt_entries, uint8_t num, uint64_t base, uint16_t sel, uint8_t flags);

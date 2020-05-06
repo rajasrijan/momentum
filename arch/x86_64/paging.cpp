@@ -75,10 +75,10 @@ uint64_t PageManager::getPhysicalAddress(uint64_t virtual_address)
 	uint64_t lvl4 = (virtual_address >> 39) & 0x1FF;
 	uint64_t lvl3 = (virtual_address >> 30) & 0x1FF;
 	uint64_t lvl2 = (virtual_address >> 21) & 0x1FF;
-	uint64_t lvl1 = virtual_address & 0x3FFFFF;
-	uint64_t tmp4 = (PML4T[lvl4] & (~0xFF)) + 0xC0000000;
-	uint64_t tmp3 = (((uint64_t *)tmp4)[lvl3] & (~0xFF)) + 0xC0000000;
-	paddr = (((uint64_t *)tmp3)[lvl2] & (~0xFF)) + lvl1;
+	uint64_t lvl1 = virtual_address & 0x1FFFFF;
+	uint64_t tmp4 = (PML4T[lvl4] & (~0xFFull)) + 0xC0000000;
+	uint64_t tmp3 = (((uint64_t *)tmp4)[lvl3] & (~0xFFull)) + 0xC0000000;
+	paddr = (((uint64_t *)tmp3)[lvl2] & (~0xFFull)) + lvl1;
 	return paddr;
 }
 
@@ -159,7 +159,7 @@ int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege,
 		printf("Physical address not correctly aligned\n");
 		__asm("cli;hlt");
 	}
-	uint8_t flags = privilege << 2 | pageType << 1 | 1;
+	uint8_t flags = 16 | privilege << 2 | pageType << 1 | 1;
 	int lvl4 = (vaddr >> 39) & 0x1FF;
 	int lvl3 = (vaddr >> 30) & 0x1FF;
 	int lvl2 = (vaddr >> 21) & 0x1FF;
@@ -169,13 +169,10 @@ int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege,
 		printf("Not supported yet.\n");
 		__asm("cli;hlt");
 	}
-	PML4T[lvl4] = ((uint64_t)&PDPT[0] - 0xC0000000) | flags;
+	PML4T[lvl4] = ((uint64_t)&PDPT[lvl3] - 0xC0000000) | flags;
 	PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | flags;
 	PDT[(lvl3 * 512) + lvl2] = paddr | 0x80 | flags;
-	asm volatile("invlpg (%0)"
-				 :
-				 : "b"(vaddr)
-				 : "memory");
+	asm volatile("invlpg (%0)" ::"r"(vaddr));
 	return 0;
 }
 

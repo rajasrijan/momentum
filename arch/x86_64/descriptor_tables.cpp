@@ -107,9 +107,18 @@ void init_idt(void)
 	idt_set_gate(sys_info.idt.ie, 53, (uint64_t)isr53, 0x08, 0x8E | 0x60);
 	idt_set_gate(sys_info.idt.ie, 54, (uint64_t)isr54, 0x08, 0x8E | 0x60);
 	idt_set_gate(sys_info.idt.ie, 55, (uint64_t)isr55, 0x08, 0x8E | 0x60);
-	for (uint64_t i = 56; i < 256; i++)
+	idt_set_gate(sys_info.idt.ie, 56, (uint64_t)isr56, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 57, (uint64_t)isr57, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 58, (uint64_t)isr58, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 59, (uint64_t)isr59, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 60, (uint64_t)isr60, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 61, (uint64_t)isr61, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 62, (uint64_t)isr62, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 63, (uint64_t)isr63, 0x08, 0x8E | 0x60);
+	idt_set_gate(sys_info.idt.ie, 64, (uint64_t)isr64, 0x08, 0x8E | 0x60);
+	for (uint64_t i = 65; i < 256; i++)
 	{
-		idt_set_gate(sys_info.idt.ie, (uint8_t)i, (uint64_t)isr64, 0x08, 0x8E);
+		idt_set_gate(sys_info.idt.ie, (uint8_t)i, (uint64_t)isr65, 0x08, 0x8E);
 	}
 	load_interrupt_descriptor_table(&(sys_info.idt.ip));
 }

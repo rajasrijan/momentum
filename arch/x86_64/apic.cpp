@@ -22,7 +22,7 @@
 #include "timer.h"
 #include "interrupts.h"
 #include <kernel/sys_info.h>
-ioapic_t *ioapic;
+ioapic_t volatile *ioapic;
 //static void* find_rspd(void);
 
 /*

@@ -45,7 +45,7 @@ mtx_t openFileMutex = 0;
 mtx_t vfsMtx = 0;
 shared_ptr<vnode> rnode;	  //	Pointer to root vnode.
 shared_ptr<vnode> root_devfs; //	Pointer to root devfs vnode.
-shared_ptr<vnode> root_mnt;   //	Pointer to root mount vnode.
+shared_ptr<vnode> root_mnt;	  //	Pointer to root mount vnode.
 int64_t handle_value = 1;
 std::map<int64_t, shared_ptr<vnode>> handles;
 class root_vnode : public vnode
@@ -278,6 +278,7 @@ int create_partition_dev(shared_ptr<vnode> blk_dev)
 	ret = blk_dev->ioctl(BLKGETSIZE64, &disk_size, 0);
 	if (ret)
 	{
+		printf("Failed to BLKGETSIZE64. error(%d)\n", ret);
 		return ret;
 	}
 	ret = blk_dev->bread(0, 1, (char *)&pTable, nullptr);
@@ -290,7 +291,7 @@ int create_partition_dev(shared_ptr<vnode> blk_dev)
 			printf("Partition [%d]\n", i);
 			char partition_name[256] = {0};
 			no_of_partitions++;
-			snprintf(partition_name,256, "%sp%d", blk_dev->getName().c_str(), i + 1);
+			snprintf(partition_name, 256, "%sp%d", blk_dev->getName().c_str(), i + 1);
 			shared_ptr<vnode> partition_node = nullptr;
 			create_blockdevice_subview(blk_dev, partition_name, pTable.partition[i].startLBA, pTable.partition[i].count, partition_node);
 			if (partition_node == nullptr)

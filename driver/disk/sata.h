@@ -16,44 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/* 
- * File:   ata.h
- * Author: srijan
- *
- * Created on 1 April, 2014, 5:56 PM
- */
 
-#ifndef ATA_H
-#define ATA_H
-
-#include <stdint.h>
 #include <kernel/vfs.h>
+#include "sata3.0.h"
 
-#ifdef __cplusplus
-extern "C"
+class sata_blk_vnode : public vnode
 {
-#endif
-
-    void ata_init(void);
-
-#ifdef __cplusplus
-}
-#endif
-
-int ataIdentify(ata_identity &ident, uint16_t data_port = 0x1F0, bool IsMaster = true);
-class ata_blk_vnode : public vnode
-{
-private:
-    uint16_t data_port;
-    bool IsMaster;
+    HBA_MEM volatile *abar;
+    HBA_PORT volatile *port;
+    size_t portId;
+    HBA_CMD_HEADER volatile *command_list;
+    HBA_FIS volatile *fis_list;
+    mtx_t port_lock;
+    mtx_t slot_event[32];
 
 public:
-    ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name);
-    ~ata_blk_vnode();
+    mtx_t cmd_notify;
+
+    sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const string &_name);
+    ~sata_blk_vnode();
     int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int write(size_t offset, size_t count, void *data);
     int readdir(vector<shared_ptr<vnode>> &vnodes);
+    int open(uint32_t flags);
     int ioctl(uint32_t command, void *data, int fflag);
-    int open(uint32_t flags) { return -ENOSYS; }
+    int getCommandSlot();
+    int identify(ata_identity &ident);
+    int disableFISReceive();
+    int enableFISReceive();
+    int disableCommand();
+    int enableCommand();
 };
-#endif /* ATA_H */
