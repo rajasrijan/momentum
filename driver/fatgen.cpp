@@ -33,7 +33,7 @@ using namespace std;
 
 class fat32dir
 {
-  public:
+public:
 	char DIR_Name[11];
 	uint8_t DIR_Attr;
 #define ATTR_READ_ONLY 0x01
@@ -108,7 +108,7 @@ class fat_vnode : public vnode
 	uint32_t sectorSize;
 	uint32_t sectorsPerCluster;
 
-  public:
+public:
 	fat_vnode(vfs *vfsp, shared_ptr<vnode> dev, const bpb &fat, uint32_t sclus, uint32_t _sectorSize, uint32_t _sectorsPerCluster, fat32dir *dir) : vnode(vfsp), dev_node(dev), bfat(fat), start_cluster(sclus), sectorSize(_sectorSize), sectorsPerCluster(_sectorsPerCluster), _dir{0}
 	{
 		if (dir)
@@ -154,7 +154,7 @@ class fat : public vfs
 {
 	shared_ptr<uint32_t> fatlist;
 
-  public:
+public:
 	fat() : fatlist() {}
 
 	int unmount(void) { return ENOSYS; }

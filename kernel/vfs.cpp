@@ -318,6 +318,7 @@ int create_partition_dev(shared_ptr<vnode> blk_dev)
 	}
 	return ret;
 }
+
 int add_blk_dev(shared_ptr<vnode> blk_dev)
 {
 	return create_partition_dev(blk_dev);

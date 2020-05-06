@@ -28,7 +28,6 @@
 #include "sata.h"
 #include "sata3.0.h"
 
-
 static int disk_no = 0;
 
 int sata_probe(pci_device_t *dev, pci_device_id table);
@@ -213,7 +212,7 @@ sata_blk_vnode::~sata_blk_vnode()
 int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 {
     mtx_lock(&cmd_notify);
-    mtx_unlock(&cmd_notify);
+    port->is = -1;
     uint64_t physical_address = 0;
 
     int spin = 0; // Spin lock timeout counter
@@ -231,11 +230,9 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)cmdtbl);
     Save_64BitPtr(cmdheader->ctba, physical_address);
 
-    for (size_t i = 0, total_size = (512 * size); i < cmdheader->prdtl;
-         i++, total_size -= 0x800000)
+    for (size_t i = 0, total_size = (512 * size); i < cmdheader->prdtl; i++, total_size -= 0x800000)
     {
-        physical_address = PageManager::getInstance()->getPhysicalAddress(
-            (uint64_t)data + (i * 0x800000));
+        physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)data + (i * 0x800000));
         Save_64BitPtr(cmdtbl->prdt_entry[i].dba, physical_address);
         cmdtbl->prdt_entry[i].dbc = min(0x800000ul, total_size) - 1;
         cmdtbl->prdt_entry[i].i = 1;
@@ -253,8 +250,8 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     cmdfis->device = 1 << 6; // LBA mode
 
     cmdfis->lba3 = (uint8_t)(position >> 24);
-    cmdfis->lba4 = (uint8_t)position;
-    cmdfis->lba5 = (uint8_t)(position >> 8);
+    cmdfis->lba4 = (uint8_t)(position >> 32);
+    cmdfis->lba5 = (uint8_t)(position >> 40);
 
     cmdfis->countl = size & 0xFF;
     cmdfis->counth = (size >> 8) & 0xFF;
@@ -275,7 +272,6 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     // Wait for completion
 
     mtx_lock(&cmd_notify);
-    mtx_unlock(&cmd_notify);
     mtx_unlock(&cmd_notify);
 
     // Check again
@@ -330,7 +326,7 @@ int sata_blk_vnode::getCommandSlot()
 int sata_blk_vnode::identify(ata_identity &ident)
 {
     mtx_lock(&cmd_notify);
-    mtx_unlock(&cmd_notify);
+    port->is = -1;
     ata_identity *identify_data = (ata_identity *)aligned_malloc(sizeof(ata_identity), 12);
     memset(identify_data, 0, sizeof(ata_identity));
     uint64_t physical_address = 0;
@@ -373,8 +369,8 @@ int sata_blk_vnode::identify(ata_identity &ident)
     cmdfis->device = 1 << 6; // LBA mode
 
     cmdfis->lba3 = (uint8_t)(position >> 24);
-    cmdfis->lba4 = (uint8_t)position;
-    cmdfis->lba5 = (uint8_t)(position >> 8);
+    cmdfis->lba4 = (uint8_t)(position >> 32);
+    cmdfis->lba5 = (uint8_t)(position >> 40);
 
     cmdfis->countl = 1;
     cmdfis->counth = 0;

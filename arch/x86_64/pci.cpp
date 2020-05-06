@@ -85,7 +85,6 @@ static void pci_print_info(PCI_COMMON_CONFIG *config)
 
 void pci_interrupt_handler(retStack_t *ret, general_registers_t *regs)
 {
-	printf("PCI IRQ %d fired\n", ret->interruptNumber);
 	auto device_bkt_it = irq_pci_lookup.find(ret->interruptNumber);
 	if (device_bkt_it == irq_pci_lookup.end())
 	{
@@ -97,13 +96,9 @@ void pci_interrupt_handler(retStack_t *ret, general_registers_t *regs)
 		auto status = pci_read_status(pci_dev);
 		if (status & PCI_STATUS_INTERRUPT)
 		{
-			if (pci_dev->pDriver && pci_dev->pDriver->name)
+			if (pci_dev->pDriver && pci_dev->pDriver->interrupt != nullptr)
 			{
-				printf("IRQ For [%s]", pci_dev->pDriver->name);
-				if (pci_dev->pDriver->interrupt != nullptr)
-				{
-					pci_dev->pDriver->interrupt(pci_dev);
-				}
+				pci_dev->pDriver->interrupt(pci_dev);
 			}
 		}
 	}
