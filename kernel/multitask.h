@@ -49,6 +49,7 @@ typedef class process_info *process_t;
 class process_info
 {
 public:
+    std::vector<MemPage> memory_map;
     ring_buffer<char, 256> key_buffer;
     std::vector<std::shared_ptr<class vnode>> path_history;
 
@@ -57,7 +58,6 @@ private:
     char p_szProcessName[256];
     uint64_t uiEntry;
     std::vector<thread_t> threads;
-    std::vector<std::pair<uint64_t, uint64_t>> program;
     int ring;
 
 public:
@@ -65,7 +65,7 @@ public:
     ~process_info();
     uint64_t getProcessId() { return m_uiProcessId; }
     void addThread(thread_t thd) { threads.push_back(thd); }
-    void setProgram(std::vector<std::pair<uint64_t, uint64_t>> p) { program = p; }
+    void setMemoryMap(std::vector<MemPage> &p) { memory_map = p; }
     void setEntry(uint64_t entry) { uiEntry = entry; }
     void setRing(int _ring) { ring = _ring; }
     uint64_t get_cs();
@@ -123,13 +123,13 @@ class multitask
 public:
     ~multitask();
     multitask(const multitask &) = delete;
-    multitask& operator=(const multitask &) = delete;
+    multitask &operator=(const multitask &) = delete;
     static multitask *getInstance();
     int initilize();
     int allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManager::Privilege privilege);
     const thread_t getKernelThread();
     //const thread_t getKernelProcess();
-    int createProcess(process_t &prs, const char *processName, int ring, std::vector<std::pair<uint64_t, uint64_t>> program, uint64_t entry);
+    int createProcess(process_t &prs, const char *processName, int ring, std::vector<MemPage> &mem_map, uint64_t entry);
     int createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     int createThread(process_t prs, thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     const thread_t getNextThread(retStack_t *stack, general_registers_t *regs);
@@ -149,6 +149,7 @@ private:
     std::vector<process_t> processList;
     thread_t current_thread;
     process_t active_process;
+    static std::vector<MemPage> *kernel_memory_map;
 
 private:
     multitask();

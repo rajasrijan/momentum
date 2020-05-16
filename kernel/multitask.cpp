@@ -29,16 +29,17 @@ using namespace std;
 
 uint64_t thread_id_counter = 0;
 uint64_t process_id_counter = 0;
+vector<MemPage> *multitask::kernel_memory_map = nullptr;
 
 //	TODO: remove hardcoding
 const retStack_t defaultThreadContext = {
-	0,	// padding
-	0,	//interruptNumber
-	0,	// err;
-	0,	//rip
+	0,	  // padding
+	0,	  //interruptNumber
+	0,	  // err;
+	0,	  //rip
 	0x08, // cs
-	0,	// rflags
-	0,	// rsp
+	0,	  // rflags
+	0,	  // rsp
 	0x10  // ss
 };
 
@@ -68,7 +69,6 @@ void init_multitask()
 __attribute__((noreturn)) void change_thread(const thread_t thread, bool enable_interrupts)
 {
 	retStack_t context = thread->context;
-	//uint64_t rsp = context.rsp;
 	uint64_t rsp = ((context.rsp) / 0x10) * 0x10;
 	//set maskable interrupt flag.
 	if (enable_interrupts)
@@ -143,6 +143,7 @@ int multitask::initilize()
 
 	printf("Creating kernel ProcessID [%d]\n", kernel_process->getProcessId());
 	printf("Creating kernel ThreadID [%d]\n", kernel_thread->getThreadID());
+	kernel_memory_map = &(kernel_process->memory_map);
 	kernel_thread->context.ss = kernel_process->get_ss();
 	kernel_thread->stackSize = KERNEL_STACK_SZ;
 	errCode = allocateStack(kernel_thread->stackSize, kernel_thread->context.rsp, PageManager::Supervisor);
@@ -193,7 +194,7 @@ void multitask::setActiveProcess(process_t prs)
 	active_process = prs;
 }
 
-int multitask::createProcess(process_t &prs, const char *processName, int ring, vector<pair<uint64_t, uint64_t>> program, uint64_t entry)
+int multitask::createProcess(process_t &prs, const char *processName, int ring, vector<MemPage> &mem_map, uint64_t entry)
 {
 	thread_t thd = nullptr;
 	char threadName[256] = {};
@@ -206,7 +207,7 @@ int multitask::createProcess(process_t &prs, const char *processName, int ring, 
 		// create main thread
 		strcpy(threadName, processName);
 		strcat(threadName, "-MainThread");
-		prs->setProgram(program);
+		prs->setMemoryMap(mem_map);
 		prs->setEntry(entry);
 		prs->setRing(ring);
 	}
@@ -234,6 +235,7 @@ void multitask::destroyProcess(int status)
 		delete prs;
 	}
 }
+
 int multitask::createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg)
 {
 	process_t kernelProcess = processList[0];
@@ -355,7 +357,7 @@ void thread_info::release()
 	flags = THREAD_STOP;
 }
 
-process_info::process_info(const char *processName) : ring(0), m_uiProcessId(0), uiEntry(0), threads(), program()
+process_info::process_info(const char *processName) : ring(0), m_uiProcessId(0), uiEntry(0), threads(), memory_map()
 {
 	m_uiProcessId = ++process_id_counter;
 	strcpy(p_szProcessName, processName);

@@ -28,7 +28,7 @@ int main()
     while (1)
     {
         getcwd(path, sizeof(path));
-        printf("%s$", path);
+        printf("%s>", path);
         gets_s(cmdline, sizeof(cmdline));
         char *cmd = cmdline;
         char *args = NULL;

@@ -16,23 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
+#ifndef type_traits_h
+#define type_traits_h
 
-template <typename>
-class function; // no definition
+template< class T > struct remove_reference      {typedef T type;};
+template< class T > struct remove_reference<T&>  {typedef T type;};
+template< class T > struct remove_reference<T&&> {typedef T type;};
 
-template <typename ReturnValue, typename... Args>
-class function<ReturnValue(Args...)>
-{
-private:
-  ReturnValue (*_fn)(Args...);
-
-public:
-  function() {}
-  function(const function &f) : _fn(f._fn) {}
-  function(ReturnValue (*fn)(Args...)) : _fn(fn) {}
-  ReturnValue operator()(Args... args) const
-  {
-    return _fn(args...);
-  }
-};
+#endif //   type_traits_h

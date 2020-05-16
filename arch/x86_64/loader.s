@@ -402,9 +402,11 @@ IDT64:
     dd 0x0000FFFF,0x00CF9200
 .end:
 
+section .data0
 align 0x1000
 stack:
     resb STACKSIZE
+
 section .data
 ;
 ; Pointer to end of kernel.

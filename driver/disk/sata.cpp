@@ -107,6 +107,7 @@ public:
             register_interrupt_handler(dev->irq_no, nullptr);
         return ret;
     }
+
     int handle_interrupt()
     {
         auto is = abar->is;
@@ -115,12 +116,12 @@ public:
         {
             if (is & (1 << i))
             {
+                abar->ports[i].is = -1;
                 if (!sata_blk_root_node[i])
                     return -EFAULT;
                 mtx_unlock(&(sata_blk_root_node[i]->cmd_notify));
             }
         }
-        abar->is = is;
         return 0;
     }
 };
@@ -197,6 +198,7 @@ sata_blk_vnode::sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const st
     }
     // clear error
     port->serr = 0xFFFFFFFF;
+    port->is = 0xFFFFFFFF;
     // enable all interrupts
     port->ie = 0xFFFFFFFF;
 }
@@ -212,7 +214,6 @@ sata_blk_vnode::~sata_blk_vnode()
 int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 {
     mtx_lock(&cmd_notify);
-    port->is = -1;
     uint64_t physical_address = 0;
 
     int spin = 0; // Spin lock timeout counter
@@ -235,8 +236,9 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
         physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)data + (i * 0x800000));
         Save_64BitPtr(cmdtbl->prdt_entry[i].dba, physical_address);
         cmdtbl->prdt_entry[i].dbc = min(0x800000ul, total_size) - 1;
-        cmdtbl->prdt_entry[i].i = 1;
+        cmdtbl->prdt_entry[i].i = 0;
     }
+    //cmdtbl->prdt_entry[cmdheader->prdtl - 1].i = 1;
     // Setup command
     FIS_REG_H2D *cmdfis = (FIS_REG_H2D *)(&cmdtbl->cfis);
 
@@ -326,7 +328,6 @@ int sata_blk_vnode::getCommandSlot()
 int sata_blk_vnode::identify(ata_identity &ident)
 {
     mtx_lock(&cmd_notify);
-    port->is = -1;
     ata_identity *identify_data = (ata_identity *)aligned_malloc(sizeof(ata_identity), 12);
     memset(identify_data, 0, sizeof(ata_identity));
     uint64_t physical_address = 0;
@@ -350,7 +351,7 @@ int sata_blk_vnode::identify(ata_identity &ident)
     physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)identify_data);
     Save_64BitPtr(cmdtbl->prdt_entry[0].dba, physical_address);
     cmdtbl->prdt_entry[0].dbc = 0x200 - 1; // 512 bytes per sector
-    cmdtbl->prdt_entry[0].i = 1;
+    cmdtbl->prdt_entry[0].i = 0;
 
     physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)cmdtbl);
     Save_64BitPtr(cmdheader->ctba, physical_address);
@@ -388,6 +389,7 @@ int sata_blk_vnode::identify(ata_identity &ident)
 
         return -EAGAIN;
     }
+
     port->ci = 1 << slot; // Issue command
     // Wait for completion
     mtx_lock(&cmd_notify);

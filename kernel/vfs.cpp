@@ -329,7 +329,7 @@ vfs::vfs(void) : vfs_vnodecovered(nullptr), flag(0)
 }
 vfs::~vfs(void)
 {
-	printf("\nde-Initialisint vfs");
+	printf("de-Initialisint vfs\n");
 }
 vnode::vnode(class vfs *vfsp) : v_shlockc(0),
 								v_exlockc(0),
@@ -390,7 +390,7 @@ int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
 	if (runOnce && !dnode_cache.empty())
 	{
 		vnodes = dnode_cache;
-		return ret;
+		goto exit;
 	}
 	if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
 		ret = v_vfsmountedhere->vfs_vnodecovered->doreaddir(vnodes);
@@ -409,6 +409,7 @@ int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
 		}
 	}
 	runOnce = true;
+exit:
 	for (auto &var : special_nodes)
 	{
 		vnodes.push_back(var);
@@ -427,7 +428,6 @@ int vnode::doopen(shared_ptr<vnode> &node, uint32_t flags, vfile **file)
 	return 0;
 }
 int vnode::lookup(char const *, shared_ptr<vnode> &) { return -ENOSYS; }
-//int vnode::bread(ssize_t, size_t, char *, int *) { return -ENOSYS; }
 int vnode::mkdir(std::string name, shared_ptr<vnode> &pDir) { return -ENOSYS; }
 int vnode::rename(string name) { return -ENOSYS; }
 int vnode::close(void) { return -ENOSYS; }
@@ -448,12 +448,14 @@ int vnode::bmap(void) { return -ENOSYS; }
 int vnode::strategy(void) { return -ENOSYS; }
 int vnode::bwrite(void) { return -ENOSYS; }
 int vnode::brelse(void) { return -ENOSYS; }
+
 int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
 	special_nodes.push_back(pNode);
 	pNode->addRef(current_node);
 	return 0;
 }
+
 int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
 	auto result = find(special_nodes.begin(), special_nodes.end(), pNode);
@@ -465,6 +467,7 @@ int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 	pNode->removeRef(current_node);
 	return 0;
 }
+
 void vnode::setName(const char *name)
 {
 	if (strchar(name, '/') != nullptr)
@@ -474,6 +477,7 @@ void vnode::setName(const char *name)
 	}
 	v_name = name;
 }
+
 vnode *open_bdev(string dev_path)
 {
 	vnode *device = dev_list[dev_path];
@@ -484,15 +488,18 @@ vnode *open_bdev(string dev_path)
 	}
 	return NULL;
 }
+
 //  vfile implementation
 vfile::vfile(shared_ptr<vnode> parent) : _parent(parent), posP(0), posG(0), fileIOLock()
 {
 	//_parent->v_count++;
 }
+
 vfile::~vfile()
 {
 	_parent = 0;
 }
+
 int vfile::read(char *data, size_t sz)
 {
 	ssize_t position = posG;
@@ -504,6 +511,7 @@ int vfile::read(char *data, size_t sz)
 	posG += bytesRead;
 	return bytesRead;
 }
+
 int vfile::seekg(long int offset, int origin)
 {
 	switch (origin)
@@ -521,10 +529,12 @@ int vfile::seekg(long int offset, int origin)
 	}
 	return 0;
 }
+
 int mount(string mountPoint, string mountSource)
 {
 	return 0;
 }
+
 int open(const string &name)
 {
 	int errorCode = 0;
@@ -544,6 +554,7 @@ int open(const string &name)
 	}
 	return fd;
 }
+
 int read(int fd, char *dst, size_t size)
 {
 	vfile *file = 0;
@@ -555,6 +566,7 @@ int read(int fd, char *dst, size_t size)
 	}
 	return file->read(dst, size);
 }
+
 int fseek(int fd, long int offset, int origin)
 {
 	vfile *file = 0;
@@ -566,16 +578,19 @@ int fseek(int fd, long int offset, int origin)
 	}
 	return file->seekg(offset, origin);
 }
+
 void register_filesystem(fileSystem fs, string fsName)
 {
 	sync lock(vfsMtx);
 	fs_list.push_back(make_pair<fileSystem, string>(fs, fsName));
 }
+
 void unregister_filesystem(fileSystem fs)
 {
 	sync lock(vfsMtx);
 	//vfs_list.remove(fs);
 }
+
 int get_vnode_from_abspath(const char *pathname, shared_ptr<vnode> &pathNode)
 {
 	char path[256] = {0};

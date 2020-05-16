@@ -28,14 +28,23 @@ extern "C" uint64_t PML4T[2];
 extern "C" uint64_t PDPT[512];
 extern "C" uint64_t PDT[512 * 512];
 
+struct PageDirectory
+{
+	uint64_t PML4T[512];
+	uint64_t PDPT[512];
+	uint64_t PDT[512 * 512];
+};
+
 struct MemPage
 {
 	uint64_t vaddr, paddr, size;
+	uint64_t vend() const { return vaddr + size; }
+	bool vinside(uint64_t addr) const { return (addr >= vaddr) && (addr < vend()); }
 };
 
 class PageManager
 {
-  public:
+public:
 	enum Privilege
 	{
 		Supervisor = 0,
@@ -47,7 +56,7 @@ class PageManager
 		Read_Write = 1
 	};
 
-  private:
+private:
 	PageManager();
 	int set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType);
 	/*
@@ -55,12 +64,13 @@ class PageManager
 	*/
 	static void interruptHandler(retStack_t *stack, general_registers_t *regs);
 
-  public:
+public:
 	const static uint64_t PAGESIZE = 0x200000;
 	const static uint64_t BIGPAGESIZE = 0x40000000;
 	const static uint64_t BIGBIGPAGESIZE = 0x8000000000;
 	static PageManager *getInstance();
 	static uint64_t roundToPageSize(uint64_t sz);
+	static uint64_t roundToPageBoundry(uint64_t addr);
 	int setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType);
 	int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType);
 	uint64_t getPhysicalAddress(uint64_t virtual_address);

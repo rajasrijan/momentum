@@ -53,4 +53,4 @@ tools/%:
 	$(MAKE) -C tools
 
 analyze:
-	scan-build-8 --use-cc=$(CC) --use-c++=$(CXX) --analyzer-target=$(TARGET) make -j12
+	scan-build --use-cc=$(CC) --use-c++=$(CXX) --analyzer-target=$(TARGET) make -j12

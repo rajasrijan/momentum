@@ -104,12 +104,32 @@ namespace std
 			new (tmp) T(val);
 			_count++;
 		}
+
+		template <class... Args>
+		void emplace_back(Args &&... args)
+		{
+			sync local_lock(lock);
+			if (_count >= _size)
+			{
+				_size += 8;
+				T *temp = (T *)calloc(_size, sizeof(T));
+				copy(__data, &__data[_count], temp);
+				if (__data != 0)
+					free(__data);
+				__data = temp;
+			}
+			void *tmp = (void *)&__data[_count];
+			new (tmp) T(args...);
+			_count++;
+		}
+
 		void pop_back()
 		{
 			sync local_lock(lock);
 			_count--;
 			__data[_count].~T();
 		}
+
 		T &operator[](uint32_t index)
 		{
 
@@ -182,23 +202,38 @@ namespace std
 			}
 			iterator(const iterator &it) = default;
 			iterator &operator=(const iterator &it) = default;
+
 			size_t operator-(const iterator &it)
 			{
 				return m_index - it.m_index;
 			}
+
 			bool operator!=(const iterator &it)
 			{
 				return m_index != it.m_index;
 			}
+
 			bool operator==(const iterator &it) const
 			{
 				return m_index == it.m_index;
 			}
+
+			bool operator<=(const iterator &it) const
+			{
+				return m_index <= it.m_index;
+			}
+
+			bool operator<(const iterator &it) const
+			{
+				return m_index < it.m_index;
+			}
+
 			iterator &operator++(/*int r*/)
 			{
 				m_index++;
 				return *this;
 			}
+
 			iterator operator++(int r)
 			{
 				m_index++;
@@ -212,21 +247,25 @@ namespace std
 			{
 				return &(*m_pdataStart)[m_index];
 			}
-			iterator operator+(uint32_t n)
+			iterator operator+(ssize_t n)
 			{
 				return iterator(m_pdataStart, m_count, (m_index + n > m_count) ? m_count : m_index + n);
+			}
+			iterator operator-(ssize_t n)
+			{
+				return iterator(m_pdataStart, m_count, m_index - n);
 			}
 
 		protected:
 			friend vector;
-			iterator(vector<T> *dataPtr, uint32_t sz, uint32_t index) : m_pdataStart(dataPtr), m_count(sz), m_index(index)
+			iterator(vector<T> *dataPtr, ssize_t sz, ssize_t index) : m_pdataStart(dataPtr), m_count(sz), m_index(index)
 			{
 			}
 
 		private:
 			vector<T> *m_pdataStart;
-			uint32_t m_count;
-			uint32_t m_index;
+			ssize_t m_count;
+			ssize_t m_index;
 		};
 		class const_iterator
 		{
@@ -285,7 +324,7 @@ namespace std
 		{
 			return const_iterator(__data, _count, _count);
 		}
-		void insert(iterator position, const T &val)
+		iterator insert(iterator position, const T &val)
 		{
 			sync local_lock(lock);
 			_count++;
@@ -300,6 +339,7 @@ namespace std
 			}
 			copy(position, position + (_count - 1), position + 1);
 			new ((void *)&(*position)) T(val);
+			return iterator(this, _count, position.m_index);
 		}
 
 		template <class TargetIterator>
