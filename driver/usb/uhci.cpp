@@ -233,7 +233,7 @@ struct DEVICE_desc
 
 class uhci_char_interface : public vnode
 {
-  private:
+private:
     uint32_t USBBASEPort;
     //  pointer to a 'Frame List Pointer'
     frame_list_pointer *frame_list;
@@ -241,7 +241,7 @@ class uhci_char_interface : public vnode
     //  frame lists should be aligned on 4k boundry
     uint32_t frame_list_base_address;
 
-  public:
+public:
     uhci_char_interface(const uhci_char_interface &) = delete;
     uhci_char_interface(uint32_t USBBASE, const string &_name) : vnode(nullptr), USBBASEPort(USBBASE), frame_list(nullptr), port_count(0), frame_list_base_address(0)
     {
@@ -463,60 +463,58 @@ class uhci_char_interface : public vnode
 };
 
 void uhci_init();
-int uhci_probe(pci_device_t *dev, pci_device_id table);
-void uhci_remove(pci_device_t *dev);
-int uhci_suspend(pci_device_t *dev, uint32_t state);
-int uhci_resume(pci_device_t *dev);
 
-int uhci_probe(pci_device_t *dev, pci_device_id table)
+class uhci_pci_driver : public pci_driver
 {
-    int ret = 0;
-    printf("Device probed\n");
-    pci_device_id devID;
-    dev->getDeviceId(&devID);
-    uint32_t USBBASE, portbase;
-    USBBASE = pci_resource_start(dev, 4);
-    USBBASE &= 0xFFE0;
-    portbase = pci_resource_start(dev, 0);
-    printf("USBBASE=0x%x\n", USBBASE);
-    printf("portbase=0x%x\n", portbase);
-    char controller_name[] = USB_HC_NAME;
-    controller_name[USB_HC_COUNTER_OFFSET] += controller_count++;
-    auto pUhciCharInterface = new uhci_char_interface(USBBASE, "USB-HC");
-    ret = mknod(controller_name, pUhciCharInterface);
-    if (ret)
+private:
+    /* data */
+public:
+    uhci_pci_driver() : pci_driver("UHCI Driver") {}
+    ~uhci_pci_driver() {}
+
+    int probe(pci_device_t *dev, pci_device_id table)
     {
-        printf("Failed to register block device\n");
-        ret = 0; // non fatal.
+        int ret = 0;
+        printf("Device probed\n");
+        pci_device_id devID;
+        dev->getDeviceId(&devID);
+        uint32_t USBBASE, portbase;
+        USBBASE = pci_resource_start(dev, 4);
+        USBBASE &= 0xFFE0;
+        portbase = pci_resource_start(dev, 0);
+        printf("USBBASE=0x%x\n", USBBASE);
+        printf("portbase=0x%x\n", portbase);
+        char controller_name[] = USB_HC_NAME;
+        controller_name[USB_HC_COUNTER_OFFSET] += controller_count++;
+        auto pUhciCharInterface = new uhci_char_interface(USBBASE, "USB-HC");
+        ret = mknod(controller_name, pUhciCharInterface);
+        if (ret)
+        {
+            printf("Failed to register block device\n");
+            ret = 0; // non fatal.
+        }
+        return ret;
     }
-    return ret;
+};
+
+pci_driver *create_uhci_instance(pci_device_t *dev)
+{
+    return (pci_driver *)new uhci_pci_driver();
 }
 
-void uhci_remove(pci_device_t *dev)
+void destroy_uhci_instance(pci_driver *driver)
 {
-}
-
-int uhci_suspend(pci_device_t *dev, uint32_t state)
-{
-    return 0;
-}
-
-int uhci_resume(pci_device_t *dev)
-{
-    return 0;
+    delete driver;
 }
 
 static pci_device_id supportedDevices[] = {
     {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_SERIAL, PCI_CLASS_SERIAL_USB, PCI_CLASS_SERIAL_USB_UHCI}};
 
-pci_driver_t uhci_driver_interface = {
-    "Universal Host Controller Driver",
+pci_driver_interface uhci_driver_interface = {
     supportedDevices,
     1,
-    uhci_probe,
-    uhci_remove,
-    uhci_suspend,
-    uhci_resume};
+    create_uhci_instance,
+    destroy_uhci_instance};
 
 void uhci_init()
 {

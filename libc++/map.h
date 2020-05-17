@@ -65,7 +65,7 @@ namespace std
             auto found_it = lower_bound(k.begin(), k.end(), _k, [](const pair<Key, T> &it, const Key &value) { return value > it.first; });
             if (found_it != k.end() && found_it->first == _k)
                 return found_it->second;
-            k.insert(found_it, make_pair<Key, T>(_k, T()));
+            found_it = k.insert(found_it, make_pair<Key, T>(_k, T()));
             return found_it->second;
         }
 

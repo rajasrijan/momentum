@@ -135,7 +135,6 @@ namespace std
 
 			if (index >= _count)
 			{
-				//printf("OUT OF ORDER ACCESS!!!");
 				asm("cli;hlt;");
 			}
 			void *tmp = (void *)((char *)__data + (element_size * index));
@@ -337,7 +336,9 @@ namespace std
 					free(__data);
 				__data = temp;
 			}
-			copy(position, position + (_count - 1), position + 1);
+			for (size_t i = _count - 1; i > position.m_index; i--)
+				__data[i] = __data[i - 1];
+
 			new ((void *)&(*position)) T(val);
 			return iterator(this, _count, position.m_index);
 		}
@@ -371,7 +372,7 @@ namespace std
 			position->~T();
 			copy(position + 1, end(), position);
 			_count--;
-			return position;
+			return iterator(this, _count, position.m_index);
 		}
 	};
 } // namespace std

@@ -20,12 +20,12 @@
 #include "pci_driver.h"
 #include "../libc/stdlib.h"
 
-std::vector<pci_driver_t *> pci_driver_tables;
+std::vector<pci_driver_interface *> pci_driver_tables;
 
-int pci_register_driver(pci_driver_t *dev)
+int pci_register_driver(pci_driver_interface *dev)
 {
 	pci_driver_tables.push_back(dev);
-	printf("Registered [%s]\n", dev->name);
+	printf("Registered PCI driver\n");
 
 	printf("Supported devices:\n");
 	for (int i = 0; i < dev->pci_device_count; i++)
@@ -37,7 +37,7 @@ int pci_register_driver(pci_driver_t *dev)
 	return 0;
 }
 
-void pci_unregister_driver(pci_driver_t *dev)
+void pci_unregister_driver(pci_driver_interface *dev)
 {
 }
 
@@ -48,7 +48,7 @@ int pci_find_compitable_driver(pci_device_t &device)
 	device.getDeviceId(&dev_id);
 	printf("Trying PCI_%x_%x_%x_%x_%x_%x\n", dev_id.VendorID, dev_id.DeviceID,
 		   dev_id.SubVendorID, dev_id.SubSystemID, dev_id.Class, dev_id.SubClass);
-	for (pci_driver_t *pci_driver : pci_driver_tables)
+	for (pci_driver_interface *pci_driver : pci_driver_tables)
 	{
 		int it = 0;
 		for (it = 0; it < pci_driver->pci_device_count; it++)
@@ -60,9 +60,9 @@ int pci_find_compitable_driver(pci_device_t &device)
 		}
 		if (it != pci_driver->pci_device_count)
 		{
-			printf("Found driver [%s]\n", pci_driver->name);
-			device.pDriver = pci_driver;
-			if (pci_driver->probe(&device, pci_driver->deviceTable[it]))
+			printf("Found driver\n");
+			device.pDriver = pci_driver->create_driver_instance(&device);
+			if (device.pDriver->probe(&device, dev_id))
 				device.pDriver = nullptr;
 			else
 				printf("Driver registered\n");

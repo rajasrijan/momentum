@@ -30,34 +30,6 @@
 
 static int disk_no = 0;
 
-int sata_probe(pci_device_t *dev, pci_device_id table);
-void sata_remove(pci_device_t *dev);
-int sata_suspend(pci_device_t *dev, uint32_t state);
-int sata_resume(pci_device_t *dev);
-int sata_interrupt(pci_device_t *dev);
-
-static pci_device_id supportedDevices[] = {
-    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID,
-     (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_SATA,
-     (uint8_t)PCI_ANY_ID},
-};
-
-pci_driver_t sata_pci_driver_interface = {"Generic Sata Driver",
-                                          supportedDevices,
-                                          sizeof(supportedDevices) /
-                                              sizeof(supportedDevices[0]),
-                                          sata_probe,
-                                          sata_remove,
-                                          sata_suspend,
-                                          sata_resume,
-                                          sata_interrupt};
-
-void sata_init()
-{
-    printf("sata_init\n");
-    pci_register_driver(&sata_pci_driver_interface);
-}
-
 class ahci_controller
 {
 private:
@@ -103,8 +75,6 @@ public:
                     printf("Port disconnected\n");
             }
         }
-        if (ret)
-            register_interrupt_handler(dev->irq_no, nullptr);
         return ret;
     }
 
@@ -126,28 +96,58 @@ public:
     }
 };
 
-int sata_probe(pci_device_t *dev, pci_device_id table)
+static pci_device_id supportedDevices[] = {
+    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID,
+     (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_SATA,
+     (uint8_t)PCI_ANY_ID},
+};
+
+class sata_pci_driver : pci_driver
 {
-    int ret = -ENXIO;
-    ahci_controller *controller = new ahci_controller;
-    dev->pDriver->user_ptr = controller;
-    if ((ret = controller->probe(dev)) == 0)
+    ahci_controller *controller;
+
+public:
+    sata_pci_driver() : pci_driver("SATA Driver") {}
+    int probe(pci_device_t *dev, pci_device_id table)
     {
-        printf("Using AHCI mode for SATA device.\n");
-        return 0;
+        int ret = -ENXIO;
+        controller = new ahci_controller;
+
+        if ((ret = controller->probe(dev)) == 0)
+        {
+            printf("Using AHCI mode for SATA device.\n");
+            return 0;
+        }
+        delete controller;
+        return ret;
     }
-    delete controller;
-    return ret;
-}
-void sata_remove(pci_device_t *dev) { return; }
-int sata_suspend(pci_device_t *dev, uint32_t state) { return -ENOSYS; }
-int sata_resume(pci_device_t *dev) { return -ENOSYS; }
-int sata_interrupt(pci_device_t *dev)
+    int interrupt()
+    {
+        int ret = 0;
+        ret = controller->handle_interrupt();
+        return ret;
+    }
+};
+
+pci_driver *create_sata_interface(pci_device_t *dev)
 {
-    int ret = 0;
-    ahci_controller *controller = (ahci_controller *)dev->pDriver->user_ptr;
-    ret = controller->handle_interrupt();
-    return ret;
+    auto tmp = new sata_pci_driver();
+    return (pci_driver *)tmp;
+}
+
+void destroy_sata_interface(pci_driver *driver)
+{
+    delete driver;
+}
+
+pci_driver_interface sata_pci_driver_interface = {supportedDevices,
+                                                  sizeof(supportedDevices) / sizeof(supportedDevices[0]),
+                                                  create_sata_interface, destroy_sata_interface};
+
+void sata_init()
+{
+    printf("sata_init\n");
+    pci_register_driver(&sata_pci_driver_interface);
 }
 
 int ahci_reset_host_contoller(HBA_MEM volatile *ahci)

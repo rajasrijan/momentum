@@ -37,9 +37,9 @@ SECTIONS
 	}
 	__MOD_END__ = .;
     
+	__CTOR_LIST__ = .;
 	.ctors ALIGN (0x1000) : AT(ADDR(.ctors) - 0xC0000000)
 	{
-		__CTOR_LIST__ = .;
 		*(.ctors)
 		*(.init_array)
 	}

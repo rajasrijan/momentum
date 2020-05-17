@@ -96,9 +96,9 @@ void pci_interrupt_handler(retStack_t *ret, general_registers_t *regs)
 		auto status = pci_read_status(pci_dev);
 		if (status & PCI_STATUS_INTERRUPT)
 		{
-			if (pci_dev->pDriver && pci_dev->pDriver->interrupt != nullptr)
+			if (pci_dev->pDriver)
 			{
-				pci_dev->pDriver->interrupt(pci_dev);
+				pci_dev->pDriver->interrupt();
 			}
 		}
 	}
@@ -149,9 +149,12 @@ void pci_init_devices()
 	}
 	for (auto &pci_device : pci_devices)
 	{
-		if (irq_pci_lookup.find(pci_device.irq_no) == irq_pci_lookup.end())
-			register_interrupt_handler(pci_device.irq_no, pci_interrupt_handler);
-		irq_pci_lookup[pci_device.irq_no].push_back(&pci_device);
+		if (pci_device.has_irq)
+		{
+			if (irq_pci_lookup.find(pci_device.irq_no) == irq_pci_lookup.end())
+				register_interrupt_handler(pci_device.irq_no, pci_interrupt_handler);
+			irq_pci_lookup[pci_device.irq_no].push_back(&pci_device);
+		}
 	}
 
 	printf("Search completed\n");

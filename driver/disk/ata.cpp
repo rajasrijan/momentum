@@ -89,47 +89,45 @@ static pci_device_id supportedDevices[] = {
 	{(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_ATA, (uint8_t)PCI_ANY_ID},
 };
 
-pci_driver_t ata_pci_driver_interface = {"IDE PCI Driver",
-										 supportedDevices,
-										 sizeof(supportedDevices) / sizeof(supportedDevices[0]),
-										 ata_probe,
-										 ata_remove,
-										 ata_suspend,
-										 ata_resume};
+class ata_pci_driver : public pci_driver
+{
+public:
+	ata_pci_driver() : pci_driver("IDE Device") {}
+	int probe(pci_device_t *dev, pci_device_id table)
+	{
+		int ret = 0;
+		if (table.SubClass != PCI_CLASS_STORAGE_IDE)
+		{
+			printf("Storage device not supported\n");
+			return 1;
+		}
+		printf("Device probed\n");
+		// pci_device_id devID;
+		// dev->getDeviceId(&devID);
+		ret = ide_probe(dev);
+		return ret;
+	}
+};
+
+pci_driver *create_ata_interface(pci_device_t *dev)
+{
+	auto tmp = new ata_pci_driver();
+	return (pci_driver *)tmp;
+}
+
+void destroy_ata_interface(pci_driver *driver)
+{
+	delete driver;
+}
+
+pci_driver_interface ata_pci_driver_interface = {supportedDevices,
+												 sizeof(supportedDevices) / sizeof(supportedDevices[0]),
+												 create_ata_interface, destroy_ata_interface};
 
 void ata_init()
 {
 	printf("ata_init\n");
 	pci_register_driver(&ata_pci_driver_interface);
-}
-
-int ata_probe(pci_device_t *dev, pci_device_id table)
-{
-	int ret = 0;
-	if (table.SubClass != PCI_CLASS_STORAGE_IDE)
-	{
-		printf("Storage device not supported\n");
-		return 1;
-	}
-	printf("Device probed\n");
-	// pci_device_id devID;
-	// dev->getDeviceId(&devID);
-	ret = ide_probe(dev);
-	return ret;
-}
-
-void ata_remove(pci_device_t *dev)
-{
-}
-
-int ata_suspend(pci_device_t *dev, uint32_t state)
-{
-	return 0;
-}
-
-int ata_resume(pci_device_t *dev)
-{
-	return 0;
 }
 
 int ataReadSectors_dma(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data)

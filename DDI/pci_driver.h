@@ -23,33 +23,36 @@
 #include <stdint.h>
 #include "../arch/x86_64/pci.h"
 #include "pci_ids.h"
+#include <errno.h>
 
 #define PCI_ANY_ID ((uint32_t)(~0))
 #define PCI_VDEVICE(vendor, device) PCI_VENDOR_ID_##vendor, (device), PCI_ANY_ID, PCI_ANY_ID, 0, 0
 
-typedef int (*pci_probe_t)(pci_device_t *dev, pci_device_id table);
-typedef void (*pci_remove_t)(pci_device_t *dev);
-typedef int (*pci_suspend_t)(pci_device_t *dev, uint32_t state);
-typedef int (*pci_resume_t)(pci_device_t *dev);
-typedef int (*pci_interrupt_t)(pci_device_t *dev);
-
-struct pci_driver_t
+class pci_driver
 {
+public:
     const char *name;
-    const pci_device_id *deviceTable;
-    const int pci_device_count;
-    pci_probe_t probe;
-    pci_remove_t remove;
-    pci_suspend_t suspend;
-    pci_resume_t resume;
-    pci_interrupt_t interrupt;
-    void *user_ptr;
+    pci_driver(const char *_name) : name(_name) {}
+    virtual ~pci_driver() {}
+    virtual int probe(pci_device_t *, pci_device_id table) = 0;
+    virtual int remove() { return -ENOSYS; }
+    virtual int suspend() { return -ENOSYS; }
+    virtual int resume() { return -ENOSYS; }
+    virtual int interrupt() { return -ENOSYS; }
 };
 
-extern std::vector<pci_driver_t *> pci_driver_tables;
+struct pci_driver_interface
+{
+    const pci_device_id *deviceTable;
+    const int pci_device_count;
+    function<pci_driver *(pci_device_t *)> create_driver_instance;
+    function<void(pci_driver *)> destroy_driver_instance;
+};
 
-int pci_register_driver(pci_driver_t *dev);
-void pci_unregister_driver(pci_driver_t *dev);
+extern std::vector<pci_driver_interface *> pci_driver_tables;
+
+int pci_register_driver(pci_driver_interface *dev);
+void pci_unregister_driver(pci_driver_interface *dev);
 int pci_find_compitable_driver(pci_device_t &device);
 
 #endif /* PCI_DRIVER_H */
