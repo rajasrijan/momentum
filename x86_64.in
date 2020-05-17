@@ -9,11 +9,13 @@ SECTIONS
 	{
 		*(.multiboot)
 		*(.text0*)
+		. = ALIGN(4096);
 	}
 
 	.data0 ALIGN (0x1000) : AT(ADDR(.data0))
 	{
 		*(.data0*)
+		. = ALIGN(4096);
 	}
 
 	. += 0xC0000000;
@@ -37,13 +39,13 @@ SECTIONS
 	}
 	__MOD_END__ = .;
     
-	__CTOR_LIST__ = .;
 	.ctors ALIGN (0x1000) : AT(ADDR(.ctors) - 0xC0000000)
 	{
+		__CTOR_LIST__ = .;
 		*(.ctors)
 		*(.init_array)
 	}
-    __CTOR_END__ = .;
+	__CTOR_END__ = .;
     
 	.dtors ALIGN (0x1000) : AT(ADDR(.dtors) - 0xC0000000)
 	{
