@@ -245,67 +245,68 @@ uint8_t get_acpi_tables()
 	default_apic_mapping();
 
 	default_ioapic_mapping();
-	for (uint64_t rsdptr = 0xE0000; rsdptr < 0xFFFFF; rsdptr += 2)
-	{
-		if (!memcmp((void *)rsdptr, ACPI_RSDP_SIGNATURE, 8))
-		{
-			sys_info.rsdp = (acpi_rsdp *)rsdptr;
-			break;
-		}
-	}
-	printf("RSD PTR [0x%x]\n", sys_info.rsdp);
 
-	acpi_rsdt *rsdt = (acpi_rsdt *)(uint64_t)(sys_info.rsdp->RsdtAddress);
-	printf("rsdt [0x%x]\n", rsdt);
-	if (checksum((uint8_t *)rsdt, rsdt->header.Length))
-	{
-		printf("Non zero checksum.");
-		__asm__("cli;hlt;");
-		return 1;
-	}
+	// for (uint64_t rsdptr = 0xE0000; rsdptr < 0xFFFFF; rsdptr += 2)
+	// {
+	// 	if (!memcmp((void *)rsdptr, ACPI_RSDP_SIGNATURE, 8))
+	// 	{
+	// 		sys_info.rsdp = (acpi_rsdp *)rsdptr;
+	// 		break;
+	// 	}
+	// }
+	// printf("RSD PTR [0x%x]\n", sys_info.rsdp);
 
-	uint32_t no_of_descriptors = ((rsdt->header.Length - (uint32_t)sizeof(acpi_description_header)) / 4);
-	printf("No of ACPI Descriptors 0x%x\n", no_of_descriptors);
+	// acpi_rsdt *rsdt = (acpi_rsdt *)(uint64_t)(sys_info.rsdp->RsdtAddress);
+	// printf("rsdt [0x%x]\n", rsdt);
+	// if (checksum((uint8_t *)rsdt, rsdt->header.Length))
+	// {
+	// 	printf("Non zero checksum.");
+	// 	__asm__("cli;hlt;");
+	// 	return 1;
+	// }
 
-	uint32_t *adhtPtrTbl = (uint32_t *)((sys_info.rsdp->RsdtAddress) + sizeof(acpi_description_header));
-	madt_structure *madt = nullptr;
-	for (uint32_t i = 0; i < no_of_descriptors; i++)
-	{
-		if (((acpi_description_header *)(uint64_t)adhtPtrTbl[i])->Signature == ACPI_DESCRIPTION_HEADER_MADT)
-		{
-			madt = ((madt_structure *)(uint64_t)adhtPtrTbl[i]);
-			break;
-		}
-	}
-	if (!madt)
-	{
-		printf("madt struct not found.");
-		__asm__("cli;hlt;");
-		return 1;
-	}
-	madt_entry_structure *madt_entry = &(madt->apic_entries);
-	uint32_t len = (madt->header.Length - (uint32_t)offsetof(madt_structure, apic_entries));
-	printf("MADT [0x%lx], madt_entry [0x%lx], len [0x%x], madt_structure [0x%x]\n", madt, madt_entry, madt->header.Length, sizeof(madt_structure));
-	while (len > 0)
-	{
-		if (madt_entry->length == 0)
-		{
-			printf("MADT entry length zero.");
-			__asm__("cli;hlt;");
-		}
-		printf("MADT Entry type [%x]\n", madt_entry->type);
-		switch (madt_entry->type)
-		{
-		case INTERRUPT_OVERRIDE:
-		{
-			interrupt_override *intovr = (interrupt_override *)madt_entry;
-			override_interrupt(IRQ(intovr->source), intovr->global_system_interrupt, intovr->flags);
-			break;
-		}
-		}
-		len -= madt_entry->length;
-		madt_entry = (madt_entry_structure *)((char *)madt_entry + (uint32_t)(madt_entry->length));
-	}
+	// uint32_t no_of_descriptors = ((rsdt->header.Length - (uint32_t)sizeof(acpi_description_header)) / 4);
+	// printf("No of ACPI Descriptors 0x%x\n", no_of_descriptors);
+
+	// uint32_t *adhtPtrTbl = (uint32_t *)((sys_info.rsdp->RsdtAddress) + sizeof(acpi_description_header));
+	// madt_structure *madt = nullptr;
+	// for (uint32_t i = 0; i < no_of_descriptors; i++)
+	// {
+	// 	if (((acpi_description_header *)(uint64_t)adhtPtrTbl[i])->Signature == ACPI_DESCRIPTION_HEADER_MADT)
+	// 	{
+	// 		madt = ((madt_structure *)(uint64_t)adhtPtrTbl[i]);
+	// 		break;
+	// 	}
+	// }
+	// if (!madt)
+	// {
+	// 	printf("madt struct not found.");
+	// 	__asm__("cli;hlt;");
+	// 	return 1;
+	// }
+	// madt_entry_structure *madt_entry = &(madt->apic_entries);
+	// uint32_t len = (madt->header.Length - (uint32_t)offsetof(madt_structure, apic_entries));
+	// printf("MADT [0x%lx], madt_entry [0x%lx], len [0x%x], madt_structure [0x%x]\n", madt, madt_entry, madt->header.Length, sizeof(madt_structure));
+	// while (len > 0)
+	// {
+	// 	if (madt_entry->length == 0)
+	// 	{
+	// 		printf("MADT entry length zero.");
+	// 		__asm__("cli;hlt;");
+	// 	}
+	// 	printf("MADT Entry type [%x]\n", madt_entry->type);
+	// 	switch (madt_entry->type)
+	// 	{
+	// 	case INTERRUPT_OVERRIDE:
+	// 	{
+	// 		interrupt_override *intovr = (interrupt_override *)madt_entry;
+	// 		override_interrupt(IRQ(intovr->source), intovr->global_system_interrupt, intovr->flags);
+	// 		break;
+	// 	}
+	// 	}
+	// 	len -= madt_entry->length;
+	// 	madt_entry = (madt_entry_structure *)((char *)madt_entry + (uint32_t)(madt_entry->length));
+	// }
 	return 0;
 }
 void NotifyHandler(ACPI_HANDLE Device, UINT32 Value, void *Context);

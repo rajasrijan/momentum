@@ -29,8 +29,8 @@ all: kernel.elf
 	$(MAKE) -C hosted_libc CC=$(CC)
 	$(MAKE) -C tools CC=$(CC)
 
-kernel.elf:$(OBJECT)
-	$(LD) $(LDFLAGS) -o $@ $^
+kernel.elf:$(OBJECT) x86_64.ld
+	$(LD) $(LDFLAGS) -o $@ $(OBJECT)
 	objdump -x kernel.elf > objdump.txt
 	objdump -d -M intel -S kernel.elf -j .text -j .text0> kernel.s
 	
@@ -54,3 +54,11 @@ tools/%:
 
 analyze:
 	scan-build --use-cc=$(CC) --use-c++=$(CXX) --analyzer-target=$(TARGET) make -j12
+
+.INTERMEDIATE:x86_64.ld
+
+%.ld:%.ld.in
+	$(CC) -I . -E -x c -P -o $@ $^
+
+%.s:%.s.in
+	$(CC) -I . -E -x c -P -o $@ $^

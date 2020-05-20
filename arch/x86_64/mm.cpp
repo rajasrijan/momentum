@@ -22,59 +22,49 @@
 #include "paging.h"
 #include <ctype.h>
 #include <string.h>
+#include <kernel/config.h>
+#include "multiboot2.h"
 
-uint64_t total_ram;
-uint32_t ram_end;
 static uint64_t mm_pop(void);
-uint64_t *pm_stack;
+uint64_t pm_stack[KERNEL_MAXIMUM_PHYSICAL_RAM / PageManager::PAGESIZE] = {};
 uint32_t pm_esp = 0;
 uint32_t mStackSize = 0;
-uint32_t reserved_mem_entries;
 heap_t *pHeap;
 struct MemMap_t
 {
 	uint64_t addr, len;
-} g_pMemAvailable[64];
-typedef struct reserved_memory
-{
-	uint32_t address;
-	uint32_t length;
-} reserved_memory_t;
-static reserved_memory_t *resv_mem;
+} g_pMemAvailable[64] = {}, g_pMemReserved[64] = {};
+size_t g_szMemAvailableCount = 0, g_szMemReservedCount = 0;
 
-void initilize_memorymanager(multiboot_info *mbi)
+void initilize_memorymanager(multiboot_tag_mmap *mbi)
 {
-	memset((void *)g_pMemAvailable, 0, sizeof(g_pMemAvailable));
-	multiboot_memory_map_t *mem_map = (multiboot_memory_map_t *)((uint64_t)mbi->mmap_addr);
-	uint32_t length = mbi->mmap_length;
+	multiboot_memory_map_t *mem_map = mbi->entries;
+	ssize_t length = mbi->size - sizeof(multiboot_tag_mmap);
 	uint64_t mAvailableMemory = 0;
 	const char *memType[] = {"AVAILABLE", "RESERVED", "ACPI RECLAIMABLE", "NVS", "BADRAM"};
-	int index = 0;
 	for (int i = 0; (i < 64) && (length > 0); i++)
 	{
 		printf("addr [0x%x], len [0x%x], type [%s]\n", mem_map->addr, mem_map->len, memType[mem_map->type - 1]);
 		if (mem_map->type == MULTIBOOT_MEMORY_AVAILABLE)
 		{
-			g_pMemAvailable[index].addr = mem_map->addr;
-			g_pMemAvailable[index].len = mem_map->len;
-			mAvailableMemory += g_pMemAvailable[index].len;
-			mStackSize += (g_pMemAvailable[index].len / PageManager::PAGESIZE);
-			index++;
+			g_pMemAvailable[g_szMemAvailableCount].addr = mem_map->addr;
+			g_pMemAvailable[g_szMemAvailableCount].len = mem_map->len;
+			mAvailableMemory += g_pMemAvailable[g_szMemAvailableCount].len;
+			mStackSize += (g_pMemAvailable[g_szMemAvailableCount].len / PageManager::PAGESIZE);
+			g_szMemAvailableCount++;
 		}
 		else if ((mem_map->type == MULTIBOOT_MEMORY_RESERVED) || (mem_map->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE))
 		{
-			for (uint64_t resvSz = 0; resvSz < mem_map->len; resvSz += 0x200000)
-			{
-				PageManager::getInstance()->IdentityMap2MBPages((mem_map->addr + resvSz) & 0xFFFFFFFFFFE00000);
-			}
+			g_pMemReserved[g_szMemReservedCount].addr = mem_map->addr;
+			g_pMemReserved[g_szMemReservedCount].len = mem_map->len;
+			g_szMemReservedCount++;
 		}
-		length -= (mem_map->size + sizeof(multiboot_memory_map_t::size));
-		mem_map = (multiboot_memory_map_t *)((uint64_t)mem_map + mem_map->size + sizeof(multiboot_memory_map_t::size));
+		length -= mbi->entry_size;
+		mem_map = (multiboot_memory_map_t *)((char *)mem_map + mbi->entry_size);
 	}
 	printf("%d Bytes usable memory found.\n", mAvailableMemory);
-	pm_stack = new uint64_t[mStackSize];
 	mStackSize = 0;
-	for (size_t i = 0; i < sizeof(g_pMemAvailable) / sizeof(g_pMemAvailable[0]); i++)
+	for (size_t i = 0; i < g_szMemAvailableCount; i++)
 	{
 		if (g_pMemAvailable[i].addr == 0 && g_pMemAvailable[i].len == 0)
 			break;
@@ -116,18 +106,6 @@ void create_kernel_heap()
 uint64_t get_2mb_block()
 {
 	return mm_pop();
-}
-
-int IsMemoryReserved(uint32_t mem_addr)
-{
-	for (uint32_t i = 0; i < reserved_mem_entries; i++)
-	{
-		if ((mem_addr >= resv_mem[i].address) && (mem_addr <= (resv_mem[i].address + resv_mem[i].length)))
-		{
-			return true;
-		}
-	}
-	return false;
 }
 
 /*

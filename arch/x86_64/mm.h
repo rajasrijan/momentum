@@ -19,30 +19,26 @@
 
 #ifndef MM_H
 #define MM_H
-#include "multiboot.h"
+
 #include <stdint.h>
 
 typedef struct _heap_
 {
 	uint32_t size;
-#define     HEAP_EMPTY  (0)
-#define     HEAP_FULL   (1)
+#define HEAP_EMPTY (0)
+#define HEAP_FULL (1)
 	uint8_t flags;
 	uint8_t checksum;
 } heap_t;
-extern uint64_t total_ram;
-extern uint32_t ram_end;
-void coax_multiboot(void *mbd);
-void initilize_memorymanager(multiboot_info* mbi);
+void initilize_memorymanager(struct multiboot_tag_mmap *mbi);
 void create_kernel_heap(void);
 uint64_t get_2mb_block(void);
-int IsMemoryReserved(uint32_t mem_addr);
-extern "C" void* g_qKernelEnd;
+extern "C" void *g_qKernelEnd;
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-	void* _malloc(uint32_t length);
+	void *_malloc(uint32_t length);
 	/*
 	 * Free allovated memory
 	 * Syntax:
@@ -54,4 +50,3 @@ extern "C"
 }
 #endif
 #endif /* MM_H */
-

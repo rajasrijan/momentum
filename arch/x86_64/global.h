@@ -20,7 +20,6 @@
 #ifndef _GLOBAL_H_
 #define _GLOBAL_H_
 
-#define KERNEL_CODE_PTR ((void *)0x00000000C0000000)
 #define KERNEL_STACK_SZ (0x0000000000200000)
 #define KERNEL_HEAP_PTR ((void *)0x00000000D0000000)
 #define KERNEL_DRIVER_PTR ((void *)0x00000000E0000000)
@@ -33,7 +32,6 @@
 #include "acpi.h"
 #include "apic.h"
 #include <stdio.h>
-#include "multiboot.h"
 #include <list>
 
 extern void *memory_map;
@@ -81,7 +79,7 @@ extern "C"
 	uint32_t get_async_spin_lock(void *lock_ptr);
 	uint32_t release_spin_lock(void *lock_ptr);
 
-	void stage2(multiboot_info *mbi);
+	void stage2(struct multiboot_information *mbi);
 	void switch_context(uint64_t rsp, uint64_t ss);
 	/*
 	 * gets the current previlage leval.

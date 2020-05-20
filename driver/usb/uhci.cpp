@@ -23,6 +23,7 @@
 #include <arch/x86_64/timer.h>
 #include <arch/x86_64/paging.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #define USB_HC_NAME "/dev/usb-hca"
 #define USB_HC_COUNTER_OFFSET 11

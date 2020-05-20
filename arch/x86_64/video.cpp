@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <arch/x86_64/multiboot2.h>
 #include <arch/x86_64/multiboot.h>
 #include <arch/x86_64/paging.h>
 #include <arch/x86_64/video.h>
@@ -92,15 +93,15 @@ void init_font()
     text_height = screen_height / font_height;
 }
 
-void init_video(multiboot_info *mbi)
+void init_video(multiboot_tag_framebuffer *mbi)
 {
-    videomemory = (uint8_t *)mbi->framebuffer_addr;
-    screen_width = mbi->framebuffer_width;
-    screen_height = mbi->framebuffer_height;
-    pitch = mbi->framebuffer_pitch;
-    depth = mbi->framebuffer_bpp / 8;
+    videomemory = (uint8_t *)mbi->common.framebuffer_addr;
+    screen_width = mbi->common.framebuffer_width;
+    screen_height = mbi->common.framebuffer_height;
+    pitch = mbi->common.framebuffer_pitch;
+    depth = mbi->common.framebuffer_bpp / 8;
     color = 0x0F00;
-    if (mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
+    if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
     {
         currentDisplayMode = TEXT_ONLY;
         putcharacter = putcharacter_text;
@@ -109,9 +110,9 @@ void init_video(multiboot_info *mbi)
         text_width = screen_width;
         text_height = screen_height;
     }
-    else if (mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
+    else if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
     {
-        PageManager::getInstance()->setVirtualToPhysicalMemory(mbi->framebuffer_addr, mbi->framebuffer_addr, mbi->framebuffer_width * mbi->framebuffer_height * mbi->framebuffer_bpp / 8, PageManager::Supervisor, PageManager::Read_Write);
+        PageManager::getInstance()->setVirtualToPhysicalMemory(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, mbi->common.framebuffer_width * mbi->common.framebuffer_height * mbi->common.framebuffer_bpp / 8, PageManager::Supervisor, PageManager::Read_Write);
         currentDisplayMode = GRAPHICS;
         init_font();
         putcharacter = putcharacter_vga;

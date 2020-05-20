@@ -18,15 +18,16 @@ sudo partprobe $LODRIVE
 echo 'Formatting to fat32..'
 sudo mkfs.vfat -F32 $LOPART
 PART_UUID=$(lsblk -f -n -o uuid "$LOPART")
+echo "fat32 uuid:$PART_UUID"
 mkdir tmpdir
 echo 'mounting to ./tmpdir'
 sudo mount $LOPART ./tmpdir -o umask=000
 mkdir ./tmpdir/dev
 mkdir ./tmpdir/mnt
 echo 'Installing GRUB'
-sudo grub-install --target=i386-pc --boot-directory=./tmpdir/boot --no-floppy --modules="normal part_msdos ext2 multiboot" $LODRIVE
+sudo grub-install --target=i386-pc --boot-directory=./tmpdir/boot --no-floppy --modules="normal part_msdos ext2 multiboot multiboot2" $LODRIVE
 echo 'unmounting ./tmpdir'
 sudo umount $LOPART
 rm -rf tmpdir
 sudo losetup -d $LODRIVE
-echo -e "set timeout=3\nset default=0\nmenuentry \"momentum OS\" {\n\tmultiboot /kernel.elf uuid=$PART_UUID \n\tboot\n}" | MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M - ::/boot/grub/grub.cfg
+echo -e "set timeout=100\nset default=0\nmenuentry \"momentum OS\" {\n\tmultiboot2 /kernel.elf uuid=$PART_UUID \n\tboot\n}" | MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M - ::/boot/grub/grub.cfg

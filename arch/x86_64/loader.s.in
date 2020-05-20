@@ -1,9 +1,9 @@
 ;
-; Copyright 2009-2019 Srijan Kumar Sharma
+; Copyright 2009-2020 Srijan Kumar Sharma
 ;
 ; This file is part of Momentum.
 ;
-; Momentum is free software: you can rRDIstribute it AND/or modify
+; Momentum is free software: you can redistribute it AND/or modify
 ; it under the terms of the GNU General Public License as published by
 ; the Free Software Foundation, either version 3 of the License, or
 ; (at your option) any later version.
@@ -16,6 +16,8 @@
 ; You should have received a copy of the GNU General Public License
 ; along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
 ;
+
+#include <kernel/config.h>
 
 [BITS 32]
 [global loader]
@@ -30,31 +32,7 @@
 [extern readMultiBootInfo]
 
 section .text0
-; setting up the Multiboot header - see GRUB docs for details
-MODULEALIGN equ  1<<0               ; align loaded modules on page boundaries
-MEMINFO     equ  1<<1               ; provide memory map
-VBEINFO     equ  1<<2               ; provide memory map
-FLAGS       equ  MODULEALIGN | MEMINFO | VBEINFO  ; this is the Multiboot 'flag' field
-MAGIC       equ    0x1BADB002       ; 'magic number' lets bootloader find the header
-CHECKSUM    equ -(MAGIC + FLAGS)    ; checksum required
-mode_type   equ 1
-width       equ 1024
-height      equ 768
-depth       equ 0
-
-section .text0
 align 8
-
-
-MultiBootHeader:
-   dd MAGIC
-   dd FLAGS
-   dd CHECKSUM
-   resd 5
-   dd mode_type
-   dd width
-   dd height
-   dd depth
 STACKSIZE equ 0x1000
 align 8
 [BITS 32]
@@ -100,10 +78,10 @@ loader:
     mov eax, 000000011h
     mov cr0, eax
 ;
-;    load new page table. 1gb identity mapped
+;    Load new page table. 1GB identity mapped
 ;
 .load_page_table:
-    MOV EAX,PML4T-KERNEL_BASE_PTR
+    MOV EAX,[page_table_ptr]
     MOV cr3,EAX
 ;
 ;    enable PAE
@@ -138,7 +116,7 @@ Realm64:
     mov ss, ax                    ; Set the stack segment to the A-register.
     mov fs, ax                    ; Set the F-segment to the A-register.
     mov gs, ax                    ; Set the G-segment to the A-register.
-    MOV RAX,PML4T-KERNEL_BASE_PTR
+    MOV RAX,[page_table_ptr]
     MOV cr3,RAX
 
 ;   wait for debugger
@@ -152,6 +130,7 @@ Realm64:
 ;    push stack magic marker.
 ;
     ;now enable SSE and the like
+.enable_sse:
     mov RAX, cr0
     and ax, 0xFFFB        ;clear coprocessor emulation CR0.EM
     or ax, 0x2            ;set coprocessor monitoring  CR0.MP
@@ -163,12 +142,11 @@ Realm64:
     ;
     ;enable tss
     ;
+.enable_tss:
     mov ax, GDT64.task_gate
     ltr ax
-    
-    MOV RAX, kernel_end-KERNEL_BASE_PTR
-    MOV QWORD [qKernelEnd-KERNEL_BASE_PTR], RAX
 
+.call_stage2:
     MOV RBP,0xDEADBEEFDEADBEEF
     PUSH RBP
     PUSH RBP
@@ -248,35 +226,7 @@ parse_acpi_tables:
     MOV EAX,1
     ret
 
-;
-;   void map_4mb(void* physical_address,void* virtual_address);
-;
-map_4mb:
-    PUSH EBP
-    MOV EBP,ESP
-    MOV EDI,DWORD [ESP + (4*(2+1))]
-    shr EDI,22  ;page table index
-    shl EDI,2  ;page table offset
-    add EDI,DWORD [EBX + paging_structure - loader]
-    or DWORD [EDI],3
-    MOV EAX,[EDI]
-    AND EAX,0xFFFFFFFFFFFFF000
-    MOV EDX,DWORD [ESP + (4*(2+0))]
-    shr EDX,22
-    shl EDX,22
-    or EDX,3
-    MOV ECX,1024
-.fill_page_table:
-    MOV [EAX],EDX
-    add EDX,0x1000
-    add EAX,4
-    dec ECX
-    cmp ECX,0
-    jnz .fill_page_table
-.done:
-    MOV ESP,EBP
-    POP EBP
-    ret 8
+section .data0
 data:
     gdt_ptr dd 0
     paging_structure dd 0
@@ -383,21 +333,23 @@ IDT64:
     dd 0x0000FFFF,0x00CF9200
 .end:
 
-section .data0
+;   Pointer to page table
+page_table_ptr dq PML4T-KERNEL_BASE_PTR
+;   pointer to variable holding pointer to kernel end
+
 align 0x1000
 stack:
-    resb STACKSIZE
+    TIMES STACKSIZE db 0
 
 section .data
 ;
 ; Pointer to end of kernel.
 ;
 g_qKernelEnd:
-    qKernelEnd dq 0
+    qKernelEnd dq kernel_end-KERNEL_BASE_PTR
 
 ;
-; long mode temporary page table.
-; 1GB of identity mapped memory
+; long mode page table.
 ;
 align 0x1000
 PML4T:

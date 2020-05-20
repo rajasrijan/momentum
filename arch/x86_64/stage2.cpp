@@ -43,6 +43,8 @@
 #include "descriptor_tables.h"
 #include <arch/x86_64/video.h>
 #include <arch/x86_64/rtc.h>
+#include <arch/x86_64/multiboot2.h>
+#include <arch/x86_64/multiboot.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -252,7 +254,51 @@ void decode_cmdline(char *cmdLine)
 	}
 }
 
-void stage2(multiboot_info *mbi)
+void process_multiboot2_info(multiboot_information *mbi)
+{
+	auto mboot_tag = mbi->multiboot_tags;
+	auto next_mb_tag = [](multiboot_tag *mbt) { return (multiboot_tag *)((char *)mbt + (((mbt->size + 7) / 8) * 8)); };
+
+	//	initialize video
+	mboot_tag = mboot_tag;
+	while (mboot_tag->type != MULTIBOOT_TAG_TYPE_END)
+	{
+		if (mboot_tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER)
+		{
+			init_video((multiboot_tag_framebuffer *)mboot_tag);
+			break;
+		}
+		mboot_tag = next_mb_tag(mboot_tag);
+	}
+
+	//	command line
+	mboot_tag = mbi->multiboot_tags;
+	while (mboot_tag->type != MULTIBOOT_TAG_TYPE_END)
+	{
+		if (mboot_tag->type == MULTIBOOT_TAG_TYPE_CMDLINE)
+		{
+			strcpy(kernel_cmdline, ((multiboot_tag_string *)mboot_tag)->string);
+			printf("Multiboot CMDLINE [%s]\n", kernel_cmdline);
+			decode_cmdline(kernel_cmdline);
+			break;
+		}
+		mboot_tag = next_mb_tag(mboot_tag);
+	}
+
+	//	initialize memory manager
+	mboot_tag = mbi->multiboot_tags;
+	while (mboot_tag->type != MULTIBOOT_TAG_TYPE_END)
+	{
+		if (mboot_tag->type == MULTIBOOT_TAG_TYPE_MMAP)
+		{
+			initilize_memorymanager((multiboot_tag_mmap *)mboot_tag);
+			break;
+		}
+		mboot_tag = next_mb_tag(mboot_tag);
+	}
+}
+
+void stage2(multiboot_information *mbi)
 {
 	//	IDT and Paging initialized before anything else
 	init_idt();
@@ -261,17 +307,8 @@ void stage2(multiboot_info *mbi)
 		printf("Paging initialize failed\n");
 		__asm__("cli;hlt;");
 	}
-	//	initialize video
-	init_video(mbi);
-	if ((mbi->flags & MULTIBOOT_INFO_CMDLINE) && mbi->cmdline != 0)
-	{
-		char *cmdLine = (char *)(uint64_t)mbi->cmdline;
-		strcpy(kernel_cmdline, cmdLine);
-		printf("Multiboot CMDLINE [%s]\n", cmdLine);
-		decode_cmdline(cmdLine);
-	}
+	process_multiboot2_info(mbi);
 	create_kernel_heap();
-	initilize_memorymanager(mbi);
 	//fix_refferances();;
 	if (get_acpi_tables())
 	{

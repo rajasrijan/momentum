@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include <arch/x86_64/multiboot.h>
 
 enum DisplayMode
 {
@@ -26,7 +25,7 @@ enum DisplayMode
     GRAPHICS
 };
 extern size_t text_width, text_height;
-extern void(*putcharacter)(const char ch, uint32_t x, uint32_t y);
-extern void(*scroll)(void);
-extern void(*setColor)(uint8_t c);
-void init_video(struct multiboot_info *mbi);
+extern void (*putcharacter)(const char ch, uint32_t x, uint32_t y);
+extern void (*scroll)(void);
+extern void (*setColor)(uint8_t c);
+void init_video(struct multiboot_tag_framebuffer *mbi);

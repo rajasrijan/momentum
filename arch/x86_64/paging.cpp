@@ -22,6 +22,7 @@
 #include "mm.h"
 #include "stdlib.h"
 #include "string.h"
+#include <kernel/config.h>
 
 void new_paging_structure(paging_structure_t *ps) {}
 
@@ -84,8 +85,8 @@ uint64_t PageManager::getPhysicalAddress(uint64_t virtual_address)
   uint64_t lvl3 = (virtual_address >> 30) & 0x1FF;
   uint64_t lvl2 = (virtual_address >> 21) & 0x1FF;
   uint64_t lvl1 = virtual_address & 0x1FFFFF;
-  uint64_t tmp4 = (PML4T[lvl4] & (~0xFFull)) + 0xC0000000;
-  uint64_t tmp3 = (((uint64_t *)tmp4)[lvl3] & (~0xFFull)) + 0xC0000000;
+  uint64_t tmp4 = (PML4T[lvl4] & (~0xFFull)) + KERNEL_BASE_PTR;
+  uint64_t tmp3 = (((uint64_t *)tmp4)[lvl3] & (~0xFFull)) + KERNEL_BASE_PTR;
   paddr = (((uint64_t *)tmp3)[lvl2] & (~0xFFull)) + lvl1;
   return paddr;
 }
@@ -177,8 +178,8 @@ int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege,
     printf("Not supported yet.\n");
     __asm("cli;hlt");
   }
-  PML4T[lvl4] = ((uint64_t)&PDPT[lvl3] - 0xC0000000) | flags;
-  PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - 0xC0000000) | flags;
+  PML4T[lvl4] = ((uint64_t)&PDPT[lvl3] - KERNEL_BASE_PTR) | flags;
+  PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - KERNEL_BASE_PTR) | flags;
   PDT[(lvl3 * 512) + lvl2] = paddr | 0x80 | flags;
   asm volatile("invlpg (%0)" ::"r"(vaddr));
   return 0;

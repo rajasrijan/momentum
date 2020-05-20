@@ -84,7 +84,6 @@ public:
 	~PageManager();
 };
 
-void map_4mb(uint64_t virtual_address);
 typedef volatile struct paging_structure paging_structure_t;
 void new_paging_structure(paging_structure_t *ps);
 void init_paging(void);
