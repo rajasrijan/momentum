@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
+ * Copyright 2009-2020 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -17,6 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
+#include <vector>
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
 #include <arch/x86_64/paging.h>
@@ -40,7 +42,9 @@ public:
     ahci_controller() : abar(nullptr), sata_blk_root_node{}
     {
     }
-    ~ahci_controller() {}
+    ~ahci_controller()
+    {
+    }
     int probe(pci_device_t *dev)
     {
         int ret = 0;
@@ -49,7 +53,7 @@ public:
         // ahci_reset_host_contoller(abar);
 
         // enable interrupt
-        abar->ghc |= HBA_GHC::IE;
+        abar->ghc = abar->ghc | HBA_GHC::IE;
         uint32_t pi = abar->pi;
         for (size_t i = 0; i < 32; i++)
         {
@@ -97,9 +101,7 @@ public:
 };
 
 static pci_device_id supportedDevices[] = {
-    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID,
-     (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_SATA,
-     (uint8_t)PCI_ANY_ID},
+    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_SATA, (uint8_t)PCI_ANY_ID},
 };
 
 class sata_pci_driver : pci_driver
@@ -107,7 +109,9 @@ class sata_pci_driver : pci_driver
     ahci_controller *controller;
 
 public:
-    sata_pci_driver() : pci_driver("SATA Driver") {}
+    sata_pci_driver() : pci_driver("SATA Driver")
+    {
+    }
     int probe(pci_device_t *dev, pci_device_id table)
     {
         int ret = -ENXIO;
@@ -140,9 +144,7 @@ void destroy_sata_interface(pci_driver *driver)
     delete driver;
 }
 
-pci_driver_interface sata_pci_driver_interface = {supportedDevices,
-                                                  sizeof(supportedDevices) / sizeof(supportedDevices[0]),
-                                                  create_sata_interface, destroy_sata_interface};
+pci_driver_interface sata_pci_driver_interface = {supportedDevices, sizeof(supportedDevices) / sizeof(supportedDevices[0]), create_sata_interface, destroy_sata_interface};
 
 void sata_init()
 {
@@ -153,7 +155,7 @@ void sata_init()
 int ahci_reset_host_contoller(HBA_MEM volatile *ahci)
 {
     //  HBA Reset HR
-    ahci->ghc |= HBA_GHC::HR;
+    ahci->ghc = ahci->ghc | HBA_GHC::HR;
     //  wait for reset to complete
     while (ahci->ghc & HBA_GHC::HR)
     {
@@ -168,7 +170,6 @@ sata_blk_vnode::sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const st
     mtx_init(&cmd_notify, 0);
     setName(_name.c_str());
     v_type = VBLK;
-    PageManager *pageManager = PageManager::getInstance();
     port = &(abar->ports[portId]);
     command_list = (HBA_CMD_HEADER *)aligned_malloc(sizeof(HBA_CMD_HEADER) * 32, 10);
     memset((void *)command_list, 0x0, sizeof(HBA_CMD_HEADER) * 32);
@@ -182,11 +183,19 @@ sata_blk_vnode::sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const st
     // Command list entry size = 32
     // Command list entry maxim count = 32
     // Command list maxim size = 32*32 = 1K per port
-    physical_address = pageManager->getPhysicalAddress((uint64_t)command_list);
+    if (PageManager::getPhysicalAddress((uint64_t)command_list, physical_address))
+    {
+        printf("Failed to get physical address\n");
+        asm("cli;hlt");
+    }
     Save_64BitPtr(port->clb, physical_address);
     // FIS offset: 32K+256*portno
     // FIS entry size = 256 bytes per port
-    physical_address = pageManager->getPhysicalAddress((uint64_t)fis_list);
+    if (PageManager::getPhysicalAddress((uint64_t)fis_list, physical_address))
+    {
+        printf("Failed to get physical address\n");
+        asm("cli;hlt");
+    }
     Save_64BitPtr(port->fb, physical_address);
     //
     enableFISReceive();
@@ -224,21 +233,29 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     HBA_CMD_HEADER volatile *cmdheader = &command_list[slot];
     cmdheader->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t); // Command FIS size
     cmdheader->w = 0;                                        // Read from device
-    cmdheader->prdtl = (uint16_t)((size - 1) >> 4) + 1;      // PRDT entries count
+    cmdheader->prdtl = (uint16_t)((size - 1) >> 22) + 1;      // PRDT entries count
 
     HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL *)aligned_malloc(sizeof(HBA_CMD_TBL), 10);
     memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
-    physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)cmdtbl);
+    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address))
+    {
+        printf("Failed to get physical address\n");
+        asm("cli;hlt");
+    }
     Save_64BitPtr(cmdheader->ctba, physical_address);
 
-    for (size_t i = 0, total_size = (512 * size); i < cmdheader->prdtl; i++, total_size -= 0x800000)
+    for (size_t i = 0, total_size = 0; i < cmdheader->prdtl; i++, total_size += 0x800000)
     {
-        physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)data + (i * 0x800000));
+        if (PageManager::getPhysicalAddress((uint64_t)data + (i * 0x800000), physical_address))
+        {
+            printf("Failed to get physical address\n");
+            asm("cli;hlt");
+        }
         Save_64BitPtr(cmdtbl->prdt_entry[i].dba, physical_address);
-        cmdtbl->prdt_entry[i].dbc = min(0x800000ul, total_size) - 1;
+        cmdtbl->prdt_entry[i].dbc = min(0x800000ul, ((512 * size) - total_size)) - 1;
         cmdtbl->prdt_entry[i].i = 0;
     }
-    //cmdtbl->prdt_entry[cmdheader->prdtl - 1].i = 1;
+    // cmdtbl->prdt_entry[cmdheader->prdtl - 1].i = 1;
     // Setup command
     FIS_REG_H2D *cmdfis = (FIS_REG_H2D *)(&cmdtbl->cfis);
 
@@ -308,7 +325,10 @@ int sata_blk_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
     return -ENOSYS;
 }
 
-int sata_blk_vnode::open(uint32_t flags) { return -ENOSYS; }
+int sata_blk_vnode::open(uint64_t flags)
+{
+    return -ENOSYS;
+}
 
 int sata_blk_vnode::getCommandSlot()
 {
@@ -348,12 +368,20 @@ int sata_blk_vnode::identify(ata_identity &ident)
     memset((void *)cmdtbl, 0, sizeof(HBA_CMD_TBL));
 
     // 8K bytes (16 sectors) per PRDT
-    physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)identify_data);
+    if (PageManager::getPhysicalAddress((uint64_t)identify_data, physical_address))
+    {
+        printf("Failed to get physical address\n");
+        asm("cli;hlt");
+    }
     Save_64BitPtr(cmdtbl->prdt_entry[0].dba, physical_address);
     cmdtbl->prdt_entry[0].dbc = 0x200 - 1; // 512 bytes per sector
     cmdtbl->prdt_entry[0].i = 0;
 
-    physical_address = PageManager::getInstance()->getPhysicalAddress((uint64_t)cmdtbl);
+    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address))
+    {
+        printf("Failed to get physical address\n");
+        asm("cli;hlt");
+    }
     Save_64BitPtr(cmdheader->ctba, physical_address);
 
     // Setup command

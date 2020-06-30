@@ -1,18 +1,18 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
- * 
+ * Copyright 2009-2020 Srijan Kumar Sharma
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -25,6 +25,7 @@
 #include <arch/x86_64/video.h>
 #include <arch/x86_64/font.h>
 #include <stdio.h>
+#include <kernel/config.h>
 
 uint8_t *videomemory = nullptr;
 size_t screen_width = 0, screen_height = 0;
@@ -33,13 +34,13 @@ uint16_t color = 0;
 size_t font_width = 0, font_height = 0, font_depth = 0, text_width = 0, text_height = 0;
 DisplayMode currentDisplayMode;
 //  print functions
-void (*putcharacter)(const char ch, uint32_t x, uint32_t y) = nullptr;
+void (*putcharacter)(const uint8_t ch, uint32_t x, uint32_t y) = nullptr;
 void (*scroll)(void) = nullptr;
 void (*setColor)(uint8_t c) = nullptr;
 //  --------------------------------------------------------------------------------
 //  text only functions
 //  --------------------------------------------------------------------------------
-void putcharacter_text(const char ch, uint32_t x, uint32_t y)
+void putcharacter_text(const uint8_t ch, uint32_t x, uint32_t y)
 {
     ((uint16_t *)videomemory)[((y * 80) + x)] = (uint16_t)(color | ch);
 }
@@ -57,7 +58,7 @@ void setColor_text(uint8_t c)
 //  --------------------------------------------------------------------------------
 //  VGA functions
 //  --------------------------------------------------------------------------------
-void putcharacter_vga(const char ch, uint32_t x, uint32_t y)
+void putcharacter_vga(const uint8_t ch, uint32_t x, uint32_t y)
 {
     for (size_t i = 0; i < font_height; i++)
     {
@@ -93,8 +94,9 @@ void init_font()
     text_height = screen_height / font_height;
 }
 
-void init_video(multiboot_tag_framebuffer *mbi)
+int init_video(multiboot_tag_framebuffer *mbi)
 {
+    int ret = 0;
     videomemory = (uint8_t *)mbi->common.framebuffer_addr;
     screen_width = mbi->common.framebuffer_width;
     screen_height = mbi->common.framebuffer_height;
@@ -112,11 +114,36 @@ void init_video(multiboot_tag_framebuffer *mbi)
     }
     else if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
     {
-        PageManager::getInstance()->setVirtualToPhysicalMemory(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, mbi->common.framebuffer_width * mbi->common.framebuffer_height * mbi->common.framebuffer_bpp / 8, PageManager::Supervisor, PageManager::Read_Write);
+        //  Paging is not initialized yet, so use 1GB temp paging structure.
+        uint64_t *pml4t = (uint64_t *)KERNEL_TEMP_PAGE_TABLE_LOCATION;
+        if ((pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 3) != 3)
+        {
+            //  page structure doesn't exist. Can't continue.
+            asm("cli;hlt");
+        }
+        uint64_t *pdpt = (uint64_t *)(pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 0xFFFFFFFFFFFFF000);
+        if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) == 3)
+        {
+            //  already mapped. Check if mapping is same as what we need, else can't continue.
+            if ((mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) != (pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 0xFFFFFFFFC0000000))
+                asm("cli;hlt");
+        }
+        else
+            pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] = (mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) | 0x83;
+        //  flush page cache
+        asm volatile("invlpg (%0)" ::"r"(mbi->common.framebuffer_addr));
+        //  keep record to readd pages later.
+        ret = PageManager::add_early_kernel_mapping(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, pitch * screen_height);
+        if (ret < 0)
+        {
+            printf("failed to add_early_kernel_mapping\n");
+            asm("cli;hlt");
+        }
         currentDisplayMode = GRAPHICS;
         init_font();
         putcharacter = putcharacter_vga;
         scroll = scroll_vga;
         setColor = setColor_vga;
     }
+    return ret;
 }

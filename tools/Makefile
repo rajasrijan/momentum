@@ -5,10 +5,10 @@ LDFLAGS := -L ../hosted_libc/ -lc
 ASFLAGS:=-f elf64
 
 sh:sh.o ../hosted_libc/libc.a
-	$(LD) -o sh.elf sh.o $(LDFLAGS)
+	$(LD) -o sh sh.o $(LDFLAGS)
 
 ../hosted_libc/libc.a:
 	(MAKE) -C ../hosted_libc
 
 clean:
-	$(RM) sh.elf *.o
+	$(RM) sh *.o

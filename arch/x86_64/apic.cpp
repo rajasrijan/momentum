@@ -1,18 +1,18 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
- * 
+ * Copyright 2009-2020 Srijan Kumar Sharma
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -23,7 +23,7 @@
 #include "interrupts.h"
 #include <kernel/sys_info.h>
 ioapic_t volatile *ioapic;
-//static void* find_rspd(void);
+// static void* find_rspd(void);
 
 /*
  * Very basic and file private memory compare(memcmp).
@@ -41,11 +41,17 @@ ioapic_t volatile *ioapic;
  */
 void init_ioapic()
 {
-	/*
-	 * If there is a better way let me know.
-	 */
-	ioapic = (ioapic_t *)0xFEC00000;
-	PageManager::getInstance()->IdentityMap2MBPages(0xFEC00000);
+    /*
+     * If there is a better way let me know.
+     */
+    int ret = 0;
+    ioapic = (ioapic_t *)0xFEC00000;
+    ret = PageManager::IdentityMap2MBPages(0xFEC00000);
+    if (ret < 0)
+    {
+        printf("Failed to identity map pages\n");
+        asm("cli;hlt");
+    }
 }
 
 /*
@@ -53,8 +59,8 @@ void init_ioapic()
  */
 void write_ioapic(uint32_t offset, uint32_t value)
 {
-	ioapic->ioregsel = offset;
-	ioapic->iowin = value;
+    ioapic->ioregsel = offset;
+    ioapic->iowin = value;
 }
 
 /*
@@ -62,8 +68,8 @@ void write_ioapic(uint32_t offset, uint32_t value)
  */
 uint32_t read_ioapic(uint32_t offset)
 {
-	ioapic->ioregsel = offset;
-	return ioapic->iowin;
+    ioapic->ioregsel = offset;
+    return ioapic->iowin;
 }
 
 /*
@@ -71,40 +77,40 @@ uint32_t read_ioapic(uint32_t offset)
  */
 void apic_pin_enable(uint32_t pin)
 {
-	write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
+    write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
 }
-static volatile uint64_t tick = 0;
+static uint64_t tick = 0;
 void simple_tick_counter(retStack_t *stack, general_registers_t *regs)
 {
-	tick++;
-	eoi();
+    tick++;
+    eoi();
 }
 /*
  * Initilize APIC timer.
  */
 void init_apic_timer(uint32_t frequency)
 {
-	outb(0x21, 0xFF);
-	outb(0xA1, 0xFF);
-	register_interrupt_handler(32, simple_tick_counter);
-	sys_info.local_apic->lvt_timer = 0x00020020;
-	sys_info.local_apic->div_conf = 0x02;
-	sys_info.local_apic->init_count = frequency;
-	// outb(0x70, 0);
-	// uint8_t prev_sec = inb(0x71);
-	// uint8_t sec = prev_sec;
-	// tick = 0;
-	// asm("sti");
-	// do
-	// {
-	// 	outb(0x70, 0);
-	// 	sec = inb(0x71);
-	// } while ((sec - prev_sec) <= 0);
-	// asm("cli");
-	// printf("[%d] ticks in [%d]s\n", tick, (sec - prev_sec));
-	// float correction_factor = (float)tick / (1000.0*(sec - prev_sec));
-	// sys_info.local_apic->init_count = correction_factor * frequency;
-	register_interrupt_handler(32, apic_timer_callback);
+    outb(0x21, 0xFF);
+    outb(0xA1, 0xFF);
+    register_interrupt_handler(32, simple_tick_counter);
+    sys_info.local_apic->lvt_timer = 0x00020020;
+    sys_info.local_apic->div_conf = 0x02;
+    sys_info.local_apic->init_count = frequency;
+    // outb(0x70, 0);
+    // uint8_t prev_sec = inb(0x71);
+    // uint8_t sec = prev_sec;
+    // tick = 0;
+    // asm("sti");
+    // do
+    // {
+    // 	outb(0x70, 0);
+    // 	sec = inb(0x71);
+    // } while ((sec - prev_sec) <= 0);
+    // asm("cli");
+    // printf("[%d] ticks in [%d]s\n", tick, (sec - prev_sec));
+    // float correction_factor = (float)tick / (1000.0*(sec - prev_sec));
+    // sys_info.local_apic->init_count = correction_factor * frequency;
+    register_interrupt_handler(32, apic_timer_callback);
 }
 
 /*
@@ -138,5 +144,5 @@ void init_apic_timer(uint32_t frequency)
  */
 void send_eoi()
 {
-	sys_info.local_apic->eoi = 0;
+    sys_info.local_apic->eoi = 0;
 }

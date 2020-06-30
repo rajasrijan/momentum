@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
+ * Copyright 2009-2020 Srijan Kumar Sharma
  * 
  * This file is part of Momentum.
  * 
@@ -25,14 +25,19 @@ template <typename ReturnValue, typename... Args>
 class function<ReturnValue(Args...)>
 {
 private:
-  ReturnValue (*_fn)(Args...);
+    ReturnValue (*_fn)(Args...);
 
 public:
-  function() {}
-  function(const function &f) : _fn(f._fn) {}
-  function(ReturnValue (*fn)(Args...)) : _fn(fn) {}
-  ReturnValue operator()(Args... args) const
-  {
-    return _fn(args...);
-  }
+    function() {}
+    function(const function &f) : _fn(f._fn) {}
+    function(ReturnValue (*fn)(Args...)) : _fn(fn) {}
+    ReturnValue operator()(Args... args) const
+    {
+        return _fn(args...);
+    }
+    function &operator=(const function &f)
+    {
+        _fn = f._fn;
+        return *this;
+    }
 };

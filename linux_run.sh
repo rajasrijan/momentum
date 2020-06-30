@@ -1,0 +1,1 @@
+qemu-system-x86_64 -machine q35 -rtc base=localtime -drive id=disk1,file=debian-7.11.0-amd64.qcow2,format=qcow2,if=none -device ide-hd,drive=disk1,bus=ide.0 -m 2048 -s

@@ -1,18 +1,18 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
- * 
+ * Copyright 2009-2020 Srijan Kumar Sharma
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -20,8 +20,8 @@
 #pragma once
 #include <stdint.h>
 
-#define Save_64BitPtr(Reg, Val)    \
-    Reg = (uint32_t)(uint64_t)Val; \
+#define Save_64BitPtr(Reg, Val)                                                                                                                                                                                                                \
+    Reg = (uint32_t)(uint64_t)Val;                                                                                                                                                                                                             \
     Reg##u = (uint32_t)((uint64_t)Val >> 32)
 
 #define Load_64BitPtr(Reg, Type) (Type *)(((uint64_t)Reg##u << 32) | ((uint64_t)Reg))
@@ -243,12 +243,12 @@ struct HBA_PORT
     } ssts; // 0x28, SATA status (SCR0:SStatus)
     struct
     {
-        uint8_t det : 4;   //Device Detection Initialization (DET)
-        uint8_t spd : 4;   //Speed Allowed (SPD)
-        uint8_t ipm : 4;   //Interface Power Management Transitions Allowed (IPM)
-        uint8_t spm : 4;   //Select Power Management (SPM): This field is not used by AHCI
-        uint8_t pmp : 4;   //Port Multiplier Port (PMP): This field is not used by AHCI.
-        uint16_t rsv : 12; //Reserved
+        uint8_t det : 4;   // Device Detection Initialization (DET)
+        uint8_t spd : 4;   // Speed Allowed (SPD)
+        uint8_t ipm : 4;   // Interface Power Management Transitions Allowed (IPM)
+        uint8_t spm : 4;   // Select Power Management (SPM): This field is not used by AHCI
+        uint8_t pmp : 4;   // Port Multiplier Port (PMP): This field is not used by AHCI.
+        uint16_t rsv : 12; // Reserved
 
     } sctl;             // 0x2C, SATA control (SCR2:SControl)
     uint32_t serr;      // 0x30, SATA error (SCR1:SError)
@@ -331,21 +331,22 @@ struct FIS_DMA_SETUP
 
     uint8_t rsved[2]; // Reserved
 
-    //DWORD 1&2
+    // DWORD 1&2
 
-    uint64_t DMAbufferID; // DMA Buffer Identifier. Used to Identify DMA buffer in host memory. SATA Spec says host specific and not in Spec. Trying AHCI spec might work.
+    uint64_t DMAbufferID; // DMA Buffer Identifier. Used to Identify DMA buffer in host memory. SATA Spec says host
+                          // specific and not in Spec. Trying AHCI spec might work.
 
-    //DWORD 3
-    uint32_t rsvd; //More reserved
+    // DWORD 3
+    uint32_t rsvd; // More reserved
 
-    //DWORD 4
-    uint32_t DMAbufOffset; //Byte offset into buffer. First 2 bits must be 0
+    // DWORD 4
+    uint32_t DMAbufOffset; // Byte offset into buffer. First 2 bits must be 0
 
-    //DWORD 5
-    uint32_t TransferCount; //Number of bytes to transfer. Bit 0 must be 0
+    // DWORD 5
+    uint32_t TransferCount; // Number of bytes to transfer. Bit 0 must be 0
 
-    //DWORD 6
-    uint32_t resvd; //Reserved
+    // DWORD 6
+    uint32_t resvd; // Reserved
 };
 
 struct HBA_FIS

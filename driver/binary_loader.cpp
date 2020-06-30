@@ -1,8 +1,8 @@
 #include "binary_loader.h"
+#include <algorithm>
 #include <arch/x86_64/paging.h>
 #include <kernel/multitask.h>
 #include <utility>
-#include <algorithm>
 
 binary_loader::binary_loader()
 {
@@ -19,21 +19,13 @@ void printElfHeader(const Elf64_Ehdr &hdr)
     printf("ELF Header:-\n");
     printf("Magic:0x%x, %s, %s, version: [%x], OS [%s], "
            "ABI Version: %x, Entry: %x, Program Header: %x, "
-           "Section Header: %x, flags: %x, Program Header size: %x, PH Count: %x\n",
-           *(uint32_t *)hdr.e_ident,
-           bitness[(hdr.e_ident[EI_CLASS] - 1) % 2],
-           endianness[(hdr.e_ident[EI_DATA] - 1) % 2],
-           hdr.e_version,
-           target_os[hdr.e_ident[EI_OSABI]],
-           hdr.e_ident[EI_ABIVERSION],
+           "Section Header: %x, flags: %x, Program Header size: %x, PH Count: "
+           "%x\n",
+           *(uint32_t *)hdr.e_ident, bitness[(hdr.e_ident[EI_CLASS] - 1) % 2], endianness[(hdr.e_ident[EI_DATA] - 1) % 2], hdr.e_version, target_os[hdr.e_ident[EI_OSABI]], hdr.e_ident[EI_ABIVERSION],
            //    hdr.type,
            //    hdr.machine,
            //    hdr.version2,
-           hdr.e_entry,
-           hdr.e_phoff,
-           hdr.e_shoff,
-           hdr.e_flags,
-           hdr.e_ehsize,
+           hdr.e_entry, hdr.e_phoff, hdr.e_shoff, hdr.e_flags, hdr.e_ehsize,
            //    hdr.phentsize,
            hdr.e_phnum
            //   ,
@@ -56,6 +48,7 @@ void printElfSectionHeader(const Elf64_Shdr *sheader)
 
 void binary_loader::load(shared_ptr<vnode> &node)
 {
+    int ret = 0;
     Elf64_Ehdr elf_hdr = {};
     node->bread(0, sizeof(Elf64_Ehdr), (char *)&elf_hdr, nullptr);
     printElfHeader(elf_hdr);
@@ -87,7 +80,7 @@ void binary_loader::load(shared_ptr<vnode> &node)
             next_it = user_memory_map.insert(next_it, page);
         }
     //  merge page entries
-    for (int i = 0; i < user_memory_map.size() - 1; i++)
+    for (size_t i = 0; i < user_memory_map.size() - 1; i++)
     {
         //  merge condition
         if (user_memory_map[i + 1].vaddr <= user_memory_map[i].vend())
@@ -103,9 +96,23 @@ void binary_loader::load(shared_ptr<vnode> &node)
     {
         MemPage kpage = {};
         kpage.size = page.size;
-        PageManager::getInstance()->findFreeVirtualMemory(kpage.vaddr, page.size);
-        PageManager::getInstance()->setPageAllocation(kpage.vaddr, kpage.size, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write);
-        kpage.paddr = PageManager::getInstance()->getPhysicalAddress(kpage.vaddr);
+        ret = PageManager::findFreeVirtualMemory(kpage.vaddr, page.size);
+        if (ret < 0)
+        {
+            printf("failed to findFreeVirtualMemory\n");
+            asm("cli;hlt");
+        }
+
+        if (PageManager::setPageAllocation(kpage.vaddr, kpage.size, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write))
+        {
+            printf("Failed to set page address\n");
+            asm("cli;hlt");
+        }
+        if (PageManager::getPhysicalAddress(kpage.vaddr, kpage.paddr))
+        {
+            printf("Failed to get physical address\n");
+            asm("cli;hlt");
+        }
         page.paddr = kpage.paddr;
         kernel_memory_map.push_back(kpage);
     }
@@ -131,7 +138,12 @@ void binary_loader::load(shared_ptr<vnode> &node)
     //  free the kernel mapping
     for (MemPage &page : kernel_memory_map)
     {
-        PageManager::getInstance()->freeVirtualMemory(page.vaddr, page.size);
+        ret = PageManager::freeVirtualMemory(page.vaddr, page.size);
+        if (ret < 0)
+        {
+            printf("failed to freeVirtualMemory\n");
+            asm("cli;hlt");
+        }
     }
     kernel_memory_map.clear();
     //  create process

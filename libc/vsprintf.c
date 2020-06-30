@@ -121,8 +121,85 @@ int decode_format(const char *buffer, enum FormatFlag *flags, int *width, int *p
     }
     specifier[0] = buffer[buffer_index];
     buffer_index++;
+    if (flags[0] == FormatFlag_PrependBaseNotifier)
+    {
+        if (length[0] == WidthFlags_ll)
+        {
+            width[0] = max(18, width[0]);
+        }
+        else
+        {
+            width[0] = max(10, width[0]);
+        }
+    }
+
     return buffer_index;
 }
+int print_unsigned_number(uint64_t number, int base, char *buffer, enum FormatFlag flags, int width, int precision, enum WidthFlags length, int specifier)
+{
+    char symbols[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    char digits[256] = {0};
+    int digits_index = 0, buffer_index = 0;
+    if (flags == FormatFlag_PadZeros && precision != -1)
+    {
+        flags = FormatFlag_None;
+    }
+    if (precision == -1)
+        precision = 0;
+    do
+    {
+        digits[digits_index] = symbols[number % base];
+        number /= base;
+        digits_index++;
+    } while (number > 0);
+    //  add leading zeros
+    precision -= digits_index;
+    for (int i = 0; i < precision; i++)
+    {
+        digits[digits_index++] = symbols[0];
+    }
+    int conditional_space = 0;
+    if ((specifier != 'x' && flags == FormatFlag_BlankIfNoSign) || (specifier != 'x' && flags == FormatFlag_PrependSign))
+    {
+        conditional_space = 1;
+    }
+    if (specifier == 'x' && flags == FormatFlag_PrependBaseNotifier)
+    {
+        conditional_space = 2;
+    }
+
+    if ((flags != FormatFlag_PadZeros) && (flags != FormatFlag_PrependBaseNotifier) && flags != FormatFlag_LeftJustify)
+        for (int i = 0; i < max(0, width - digits_index - conditional_space); i++)
+            buffer[buffer_index++] = ' ';
+    if (flags == FormatFlag_PrependSign && specifier != 'x')
+    {
+        buffer[buffer_index] = '+';
+        buffer_index++;
+    }
+    else if (flags == FormatFlag_BlankIfNoSign && specifier != 'x')
+    {
+        buffer[buffer_index] = ' ';
+        buffer_index++;
+    }
+    else if (specifier == 'x' && flags == FormatFlag_PrependBaseNotifier)
+    {
+        buffer[buffer_index++] = '0';
+        buffer[buffer_index++] = 'x';
+    }
+    if (((flags == FormatFlag_PadZeros) && precision == 0) || (flags == FormatFlag_PrependBaseNotifier))
+        for (int i = 0; i < max(0, width - digits_index - conditional_space); i++)
+            buffer[buffer_index++] = '0';
+    for (int i = digits_index - 1; i >= 0; i--)
+    {
+        buffer[buffer_index] = digits[i];
+        buffer_index++;
+    }
+    if (flags == FormatFlag_LeftJustify)
+        for (int i = 0; i < max(0, width - digits_index - conditional_space); i++)
+            buffer[buffer_index++] = ' ';
+    return buffer_index;
+}
+
 int print_number(int64_t number, int base, char *buffer, enum FormatFlag flags, int width, int precision, enum WidthFlags length, int specifier)
 {
     char symbols[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
@@ -162,7 +239,7 @@ int print_number(int64_t number, int base, char *buffer, enum FormatFlag flags, 
         conditional_space = 2;
     }
 
-    if ((flags != FormatFlag_PadZeros) && flags != FormatFlag_LeftJustify)
+    if ((flags != FormatFlag_PadZeros) && (flags != FormatFlag_PrependBaseNotifier) && flags != FormatFlag_LeftJustify)
         for (int i = 0; i < max(0, width - digits_index - conditional_space); i++)
             buffer[buffer_index++] = ' ';
     if (isNeg)
@@ -185,7 +262,7 @@ int print_number(int64_t number, int base, char *buffer, enum FormatFlag flags, 
         buffer[buffer_index++] = '0';
         buffer[buffer_index++] = 'x';
     }
-    if (flags == FormatFlag_PadZeros && precision == 0)
+    if (((flags == FormatFlag_PadZeros) && precision == 0) || (flags == FormatFlag_PrependBaseNotifier))
         for (int i = 0; i < max(0, width - digits_index - conditional_space); i++)
             buffer[buffer_index++] = '0';
     for (int i = digits_index - 1; i >= 0; i--)
@@ -228,22 +305,40 @@ int vsnprintf(char *buffer, size_t n, const char *format, va_list arg)
                     buffer_index += print_number(number, 10, &buffer[buffer_index], flags, width, precision, length, specifier);
                 }
             }
-            else if (specifier == 'x')
+            else if (specifier == 'u')
             {
                 if (length == WidthFlags_None)
                 {
                     unsigned int number = va_arg(arg, unsigned int);
-                    buffer_index += print_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
+                    buffer_index += print_unsigned_number(number, 10, &buffer[buffer_index], flags, width, precision, length, specifier);
                 }
                 else if (length == WidthFlags_l)
                 {
                     unsigned long int number = va_arg(arg, unsigned long int);
-                    buffer_index += print_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
+                    buffer_index += print_unsigned_number(number, 10, &buffer[buffer_index], flags, width, precision, length, specifier);
                 }
                 else if (length == WidthFlags_ll)
                 {
                     unsigned long long int number = va_arg(arg, unsigned long long int);
-                    buffer_index += print_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
+                    buffer_index += print_unsigned_number(number, 10, &buffer[buffer_index], flags, width, precision, length, specifier);
+                }
+            }
+            else if ((specifier == 'x') || (specifier == 'X'))
+            {
+                if (length == WidthFlags_None)
+                {
+                    unsigned int number = va_arg(arg, unsigned int);
+                    buffer_index += print_unsigned_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
+                }
+                else if (length == WidthFlags_l)
+                {
+                    unsigned long int number = va_arg(arg, unsigned long int);
+                    buffer_index += print_unsigned_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
+                }
+                else if (length == WidthFlags_ll)
+                {
+                    unsigned long long int number = va_arg(arg, unsigned long long int);
+                    buffer_index += print_unsigned_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
                 }
             }
             else if (specifier == 's')

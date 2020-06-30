@@ -1,18 +1,18 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
- * 
+ * Copyright 2009-2020 Srijan Kumar Sharma
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -32,7 +32,10 @@ void *_malloc(uint32_t length)
     __asm__("int3");
     return NULL;
 }
-void _free(void *ptr) { __asm__("int3"); }
+void _free(void *ptr)
+{
+    __asm__("int3");
+}
 void *_aligned_malloc(uint32_t len, int n)
 {
     __asm__("int3");
@@ -40,8 +43,7 @@ void *_aligned_malloc(uint32_t len, int n)
 }
 __attribute__((noreturn)) void exit(int status)
 {
-    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)
-                     : "rcx", "r11");
+    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0) : "rcx", "r11");
     while (1)
     {
         __asm__("pause");

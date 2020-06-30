@@ -9,7 +9,7 @@ void *operator new[](size_t size)
     return malloc(size);
 }
 
-void *operator new(size_t size, void *t)
+void *operator new([[maybe_unused]] size_t size, void *t)
 {
     return t;
 }

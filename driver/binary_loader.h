@@ -1,6 +1,6 @@
-#include <stdint.h>
-#include <memory>
 #include <kernel/vfs.h>
+#include <memory>
+#include <stdint.h>
 
 #define EI_NIDENT 16
 #define Elf64_Addr alignas(8) uint64_t
@@ -9,24 +9,24 @@
 #define Elf64_Word alignas(4) uint32_t
 #define Elf64_Xword alignas(8) uint64_t
 
-//File identification
+// File identification
 #define EI_MAG0 0
 #define EI_MAG1 1
 #define EI_MAG2 2
 #define EI_MAG3 3
-//File class
+// File class
 #define EI_CLASS 4
-//Data encoding
+// Data encoding
 #define EI_DATA 5
-//File version
+// File version
 #define EI_VERSION 6
-//Operating system / ABI identification
+// Operating system / ABI identification
 #define EI_OSABI 7
-//ABI version
+// ABI version
 #define EI_ABIVERSION 8
-//Start of padding bytes
+// Start of padding bytes
 #define EI_PAD 9
-//Size of e_ident[]
+// Size of e_ident[]
 #define EI_NIDENT 16
 
 #pragma pack(push, 1)
@@ -49,32 +49,32 @@ typedef struct
 } Elf64_Ehdr;
 // Marks an unused section header
 #define SHT_NULL 0
-//Contains information defined by the program
+// Contains information defined by the program
 #define SHT_PROGBITS 1
-//Contains a linker symbol table
+// Contains a linker symbol table
 #define SHT_SYMTAB 2
-//Contains a string table
+// Contains a string table
 #define SHT_STRTAB 3
-//Contains “Rela” type relocation entries
+// Contains “Rela” type relocation entries
 #define SHT_RELA 4
-//Contains a symbol hash table
+// Contains a symbol hash table
 #define SHT_HASH 5
-//Contains dynamic linking tables
+// Contains dynamic linking tables
 #define SHT_DYNAMIC 6
-//Contains note information
+// Contains note information
 #define SHT_NOTE 7
-//Contains uninitialized space; does not occupy any space in the file
+// Contains uninitialized space; does not occupy any space in the file
 #define SHT_NOBITS 8
-//Contains “Rel” type relocationentries
+// Contains “Rel” type relocationentries
 #define SHT_REL 9
-//Reserved
+// Reserved
 #define SHT_SHLIB 10
 // Contains a dynamic loader symbol table
 #define SHT_DYNSYM 11
-//Environment-specific use
+// Environment-specific use
 #define SHT_LOOS 0x60000000
 #define SHT_HIOS 0x6FFFFFFF
-//Processor-spe
+// Processor-spe
 #define SHT_LOPROC 0x70000000
 #define SHT_HIPROC 0x7FFFFFFF
 
@@ -126,8 +126,8 @@ typedef struct
 
 class binary_loader
 {
-private:
-public:
+  private:
+  public:
     binary_loader(/* args */);
     ~binary_loader();
     static void load(shared_ptr<vnode> &node);

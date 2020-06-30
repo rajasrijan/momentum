@@ -16,9 +16,10 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#define SYSCALL_EXIT (0)
-#define SYSCALL_PUTCHAR (1)
-#define SYSCALL_GETCHAR (2)
-#define SYSCALL_GETCWD (3)
-#define SYSCALL_CHDIR (4)
+
+#include <stdint.h>
+#include "bitmap_allocator.h"
+
+void test()
+{
+}

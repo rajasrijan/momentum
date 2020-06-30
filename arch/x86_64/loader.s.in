@@ -22,12 +22,6 @@
 [BITS 32]
 [global loader]
 [global stack]
-[global g_qKernelEnd]
-[global PML4T]
-[global PDPT]
-[global PDT]
-[extern kernel_start]
-[extern kernel_end]
 [extern stage2]
 [extern readMultiBootInfo]
 
@@ -81,7 +75,19 @@ loader:
 ;    Load new page table. 1GB identity mapped
 ;
 .load_page_table:
-    MOV EAX,[page_table_ptr]
+    MOV EAX, KERNEL_TEMP_PAGE_TABLE_LOCATION
+    MOV dword [eax], KERNEL_TEMP_PAGE_TABLE_LOCATION + 0x1000 + 3
+    MOV dword [eax + 0x1000], 0x83
+#if ((KERNEL_BASE_PTR>>39)&0x1FF)==0
+    MOV dword [eax + 0x1000+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x83
+    MOV dword [eax + 0x1000+4+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x0
+#else
+    MOV dword [eax + ((KERNEL_BASE_PTR>>39)&0x1FF)*8], KERNEL_TEMP_PAGE_TABLE_LOCATION + 0x2000 + 3
+    MOV dword [eax + 0x2000+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x83
+    MOV dword [eax + 0x2000+4+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x0
+#endif
+    
+    MOV EAX, KERNEL_TEMP_PAGE_TABLE_LOCATION
     MOV cr3,EAX
 ;
 ;    enable PAE
@@ -116,19 +122,9 @@ Realm64:
     mov ss, ax                    ; Set the stack segment to the A-register.
     mov fs, ax                    ; Set the F-segment to the A-register.
     mov gs, ax                    ; Set the G-segment to the A-register.
-    MOV RAX,[page_table_ptr]
+    MOV RAX, KERNEL_TEMP_PAGE_TABLE_LOCATION
     MOV cr3,RAX
-
-;   wait for debugger
-;   MOV RAX,1
-;debugger:
-;   test RAX,1
-;   pause
-;   jnz debugger
     cli
-;
-;    push stack magic marker.
-;
     ;now enable SSE and the like
 .enable_sse:
     mov RAX, cr0
@@ -147,6 +143,9 @@ Realm64:
     ltr ax
 
 .call_stage2:
+;
+;    push stack magic marker.
+;
     MOV RBP,0xDEADBEEFDEADBEEF
     PUSH RBP
     PUSH RBP
@@ -333,45 +332,7 @@ IDT64:
     dd 0x0000FFFF,0x00CF9200
 .end:
 
-;   Pointer to page table
-page_table_ptr dq PML4T-KERNEL_BASE_PTR
-;   pointer to variable holding pointer to kernel end
-
 align 0x1000
 stack:
     TIMES STACKSIZE db 0
 
-section .data
-;
-; Pointer to end of kernel.
-;
-g_qKernelEnd:
-    qKernelEnd dq kernel_end-KERNEL_BASE_PTR
-
-;
-; long mode page table.
-;
-align 0x1000
-PML4T:
-    dq PDPT + 0x03 - KERNEL_BASE_PTR
-    dq 0
-align 0x1000
-PDPT:
-    dq PDT + 0x03 - KERNEL_BASE_PTR
-    dq 0x00000000
-    dq 0x00000000
-    dq PDT.PDT3GB + 0x03 - KERNEL_BASE_PTR
-    resb 0x1000 - ($ - PDPT)
-align 0x1000
-PDT:
-    dq 0x00000083
-    dq 0x00200083
-    dq 0x00400083
-    dq 0x00600083
-    resb 0x3000 - ($ - PDT)
-.PDT3GB:
-    dq 0x00000083
-    dq 0x00200083
-    dq 0x00400083
-    dq 0x00600083
-    resb 0x1FC000 - ($ - .PDT3GB)

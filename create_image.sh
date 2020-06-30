@@ -1,5 +1,5 @@
 #!/bin/sh
-# This file is part of momentum project Copyright 2009-2019 Srijan Kumar Sharma
+# This file is part of momentum project Copyright 2009-2020 Srijan Kumar Sharma
 # Check LICENSE file
 echo 'Deleting old image..'
 rm momentum.raw
@@ -30,4 +30,4 @@ echo 'unmounting ./tmpdir'
 sudo umount $LOPART
 rm -rf tmpdir
 sudo losetup -d $LODRIVE
-echo -e "set timeout=100\nset default=0\nmenuentry \"momentum OS\" {\n\tmultiboot2 /kernel.elf uuid=$PART_UUID \n\tboot\n}" | MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M - ::/boot/grub/grub.cfg
+echo -e "set timeout=2\nset default=0\nmenuentry \"momentum OS\" {\n\tmultiboot2 /kernel.elf uuid=$PART_UUID \n\tboot\n}" | MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M - ::/boot/grub/grub.cfg

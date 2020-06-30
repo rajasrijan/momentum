@@ -1,9 +1,9 @@
 CXXINCLUDE := -include new
 TARGET := x86_64-pc-none-elf
-CFLAGS := --target=$(TARGET) -m64 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow -mno-red-zone\
+CFLAGS := --target=$(TARGET) -m64 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow --std=c11 -mno-red-zone\
 	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/ -I . -g -O0 -fno-function-sections -I acpica/include
 
-CXXFLAGS := --target=$(TARGET) -m64 -Wshadow -Wpointer-arith -mno-red-zone -Werror -Wwrite-strings -fno-exceptions -fno-rtti -Weffc++ -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel -ffreestanding -std=c++17  -D_MOMENTUM_ \
+CXXFLAGS := --target=$(TARGET) -m64 -Wall -Wextra -Wunused-result -Wshadow -Wpointer-arith -mno-red-zone -Wwrite-strings -Werror -Wno-unused-parameter -Wno-null-pointer-arithmetic -Wno-missing-braces -fno-exceptions -fno-rtti -Weffc++ -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel -ffreestanding -std=c++20  -D_MOMENTUM_ \
 	    -I libc/ -I libc++/ -I .  -I acpica/include $(CXXINCLUDE) -g -O0 -fno-function-sections
 
 LDFLAGS:= -T x86_64.ld -z max-page-size=0x1000
@@ -12,7 +12,7 @@ ASFLAGS:=-f elf64
 
 acpica_objects := $(patsubst %.c,%.o,$(wildcard acpica/*/*.c))
 
-OBJECT := libc/string.o libc++/string.o arch/x86_64/loader.o arch/x86_64/arch_hal.o arch/x86_64/interrupts.o \
+OBJECT := arch/x86_64/loader.o libc/string.o libc++/string.o arch/x86_64/arch_hal.o arch/x86_64/interrupts.o \
 	arch/x86_64/stage2.o arch/x86_64/descriptor_tables.o arch/x86_64/paging.o arch/x86_64/global.o arch/x86_64/acpi.o arch/x86_64/mm.o \
 	arch/x86_64/video.o arch/x86_64/timer.o arch/x86_64/apic.o arch/x86_64/pci.o arch/x86_64/font.o \
 	arch/x86_64/multiboot2.o arch/x86_64/keyboard.o arch/x86_64/rtc.o libc/stdio.o libc/vsprintf.o libc/stdlib.o libc/threads.o libc++/new.o \
@@ -47,7 +47,7 @@ install:kernel.elf
 	$(MAKE) -C hosted_libc CC=$(CC)
 	$(MAKE) -C tools CC=$(CC)
 	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M kernel.elf ::kernel.elf
-	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/sh.elf ::sh.elf
+	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/sh ::sh
 
 tools/%:
 	$(MAKE) -C tools

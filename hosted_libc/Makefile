@@ -6,7 +6,7 @@ libc_src = $(wildcard ../libc/*.c)
 libc_obj = $(patsubst ../libc/%.c,../hosted_libc/%.o,$(libc_src)) crt.o
 
 
-libc:$(libc_obj)
+libc.a:$(libc_obj)
 	$(AR) rcs libc.a $(libc_obj)
 
 clean:

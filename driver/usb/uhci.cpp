@@ -1,21 +1,24 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
- * 
+ * Copyright 2009-2020 Srijan Kumar Sharma
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <stdint.h>
+#include <vector>
 #include "uhci.h"
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
@@ -137,13 +140,13 @@ struct transfer_descriptor_status
 {
     uint16_t actual_length : 11;       //
     uint8_t reserved1 : 6;             //
-    uint8_t bit_stuff_error : 1;       //Set by UHCI Controller
-    uint8_t timeout_crc : 1;           //Set by UHCI Controller
-    uint8_t non_acknowledged : 1;      //Set by UHCI Controller
-    uint8_t babble_detected : 1;       //Set by UHCI Controller
-    uint8_t data_buffer_error : 1;     //Set by UHCI Controller
-    uint8_t stalled : 1;               //Set by UHCI Controller
-    uint8_t active : 1;                //Set by UHCI Controller
+    uint8_t bit_stuff_error : 1;       // Set by UHCI Controller
+    uint8_t timeout_crc : 1;           // Set by UHCI Controller
+    uint8_t non_acknowledged : 1;      // Set by UHCI Controller
+    uint8_t babble_detected : 1;       // Set by UHCI Controller
+    uint8_t data_buffer_error : 1;     // Set by UHCI Controller
+    uint8_t stalled : 1;               // Set by UHCI Controller
+    uint8_t active : 1;                // Set by UHCI Controller
     uint8_t interrupt_on_complete : 1; //
     uint8_t is_isochronous : 1;        //
     uint8_t low_speed : 1;             //
@@ -220,7 +223,9 @@ struct DEVICE_desc
     uint8_t iManufacturer, iProduct, iSerialNumber, bNumConfigurations;
     void print()
     {
-        printf("USB ver. %d.%d\n\tDevice class [%x]\n\tDevice sub class [%x]\n\tDevice protocol [%x]\n\tNumConfigurations [%x]\n", bcdUSB[1], bcdUSB[0], bDeviceClass, bDeviceSubClass, bDeviceProtocol, bNumConfigurations);
+        printf("USB ver. %d.%d\n\tDevice class [%x]\n\tDevice sub class [%x]\n\tDevice protocol "
+               "[%x]\n\tNumConfigurations [%x]\n",
+               bcdUSB[1], bcdUSB[0], bDeviceClass, bDeviceSubClass, bDeviceProtocol, bNumConfigurations);
     }
 };
 
@@ -234,7 +239,7 @@ struct DEVICE_desc
 
 class uhci_char_interface : public vnode
 {
-private:
+  private:
     uint32_t USBBASEPort;
     //  pointer to a 'Frame List Pointer'
     frame_list_pointer *frame_list;
@@ -242,7 +247,7 @@ private:
     //  frame lists should be aligned on 4k boundry
     uint32_t frame_list_base_address;
 
-public:
+  public:
     uhci_char_interface(const uhci_char_interface &) = delete;
     uhci_char_interface(uint32_t USBBASE, const string &_name) : vnode(nullptr), USBBASEPort(USBBASE), frame_list(nullptr), port_count(0), frame_list_base_address(0)
     {
@@ -265,7 +270,13 @@ public:
             frame_list[i].process_full_queue = 0;
             frame_list[i].reserved = 0;
         }
-        frame_list_base_address = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)frame_list);
+        uint64_t long_base_pointer = 0;
+        if (PageManager::getPhysicalAddress((uint64_t)frame_list, long_base_pointer))
+        {
+            printf("Failed to get physical address!");
+            asm("cli;hlt");
+        }
+        frame_list_base_address = (uint32_t)long_base_pointer;
         //  stop transfers
         outw(USBCMD(USBBASEPort), 0);
         // set at 1ms
@@ -311,7 +322,10 @@ public:
     {
     }
     uhci_char_interface &operator=(const uhci_char_interface &) = delete;
-    int open(uint32_t flags) { return -ENOSYS; }
+    int open(uint64_t flags)
+    {
+        return -ENOSYS;
+    }
     int get_descriptor(uint8_t address, uint8_t endpoint, DEVICE_desc &deviceDesc)
     {
         printf("Get Descriptor\n");
@@ -331,14 +345,27 @@ public:
 
     void link_td(transfer_descriptor *src, transfer_descriptor *dst)
     {
-        uint32_t dst_phy_addr = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)dst);
+        uint64_t long_base_pointer = 0;
+        if (PageManager::getPhysicalAddress((uint64_t)dst, long_base_pointer))
+        {
+            printf("Failed to get physical address!");
+            asm("cli;hlt");
+        }
+        uint32_t dst_phy_addr = (uint32_t)long_base_pointer;
+
         src->link_pointer.descriptor_address = (dst_phy_addr >> 4);
         src->link_pointer.is_empty = 0;
     }
 
     uint32_t virtual_addr_to_phy(void *ptr)
     {
-        return (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)ptr);
+        uint64_t long_base_pointer = 0;
+        if (PageManager::getPhysicalAddress((uint64_t)ptr, long_base_pointer))
+        {
+            printf("Failed to get physical address!");
+            asm("cli;hlt");
+        }
+        return (uint32_t)long_base_pointer;
     }
 
     template <uint8_t packet_type>
@@ -350,8 +377,22 @@ public:
         memset(pSetupDesc.get(), 0, sizeof(transfer_descriptor));
         memset(pDataDesc.get(), 0, sizeof(transfer_descriptor));
         memset(pStatusDesc.get(), 0, sizeof(transfer_descriptor));
-        uint32_t payload_phy_addr = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)pPayload);
-        uint32_t setup_phy_addr = (uint32_t)PageManager::getInstance()->getPhysicalAddress((uint64_t)pSetupDesc.get());
+        uint64_t long_base_pointer = 0;
+        if (PageManager::getPhysicalAddress((uint64_t)pPayload, long_base_pointer))
+        {
+            printf("Failed to get physical address!");
+            asm("cli;hlt");
+        }
+        uint32_t payload_phy_addr = (uint32_t)long_base_pointer;
+        long_base_pointer = 0;
+
+        if (PageManager::getPhysicalAddress((uint64_t)pSetupDesc.get(), long_base_pointer))
+        {
+            printf("Failed to get physical address!");
+            asm("cli;hlt");
+        }
+        uint32_t setup_phy_addr = (uint32_t)long_base_pointer;
+
         pSetupDesc->link_pointer.is_empty = 1;
         pSetupDesc->status.active = 1;
         pSetupDesc->status.interrupt_on_complete = 0;
@@ -379,7 +420,7 @@ public:
         {
             link_td(pSetupDesc.get(), pStatusDesc.get());
         }
-        //if (packet_type == PACKET_TYPE_SETUP)
+        // if (packet_type == PACKET_TYPE_SETUP)
         {
             pStatusDesc->packet_header.packet_type = PACKET_TYPE_IN;
         }
@@ -417,8 +458,8 @@ public:
         printf("status 0x%x\n", status);
         //  stop transfers
         outw(USBCMD(USBBASEPort), 0);
-        //print_descriptor(pSetupDesc.get());
-        //print_descriptor(pStatusDesc.get());
+        // print_descriptor(pSetupDesc.get());
+        // print_descriptor(pStatusDesc.get());
         return 0;
     }
 
@@ -431,13 +472,8 @@ public:
                "\tactive: %d\n\tinterrupt_on_complete: %d"
                "\tis_isochronous: %d\n\tlow_speed: %d"
                "\terror_counter: %d\n\tshort_packet_detect: %d\n",
-               pDesc->status.actual_length, pDesc->status.bit_stuff_error,
-               pDesc->status.timeout_crc, pDesc->status.non_acknowledged,
-               pDesc->status.babble_detected, pDesc->status.data_buffer_error,
-               pDesc->status.stalled, pDesc->status.active,
-               pDesc->status.interrupt_on_complete, pDesc->status.is_isochronous,
-               pDesc->status.low_speed, pDesc->status.error_counter,
-               pDesc->status.short_packet_detect);
+               pDesc->status.actual_length, pDesc->status.bit_stuff_error, pDesc->status.timeout_crc, pDesc->status.non_acknowledged, pDesc->status.babble_detected, pDesc->status.data_buffer_error, pDesc->status.stalled,
+               pDesc->status.active, pDesc->status.interrupt_on_complete, pDesc->status.is_isochronous, pDesc->status.low_speed, pDesc->status.error_counter, pDesc->status.short_packet_detect);
     }
     int bread(ssize_t position, size_t size, char *data, int *bytesRead)
     {
@@ -467,11 +503,15 @@ void uhci_init();
 
 class uhci_pci_driver : public pci_driver
 {
-private:
+  private:
     /* data */
-public:
-    uhci_pci_driver() : pci_driver("UHCI Driver") {}
-    ~uhci_pci_driver() {}
+  public:
+    uhci_pci_driver() : pci_driver("UHCI Driver")
+    {
+    }
+    ~uhci_pci_driver()
+    {
+    }
 
     int probe(pci_device_t *dev, pci_device_id table)
     {
@@ -508,14 +548,9 @@ void destroy_uhci_instance(pci_driver *driver)
     delete driver;
 }
 
-static pci_device_id supportedDevices[] = {
-    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_SERIAL, PCI_CLASS_SERIAL_USB, PCI_CLASS_SERIAL_USB_UHCI}};
+static pci_device_id supportedDevices[] = {{(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_SERIAL, PCI_CLASS_SERIAL_USB, PCI_CLASS_SERIAL_USB_UHCI}};
 
-pci_driver_interface uhci_driver_interface = {
-    supportedDevices,
-    1,
-    create_uhci_instance,
-    destroy_uhci_instance};
+pci_driver_interface uhci_driver_interface = {supportedDevices, 1, create_uhci_instance, destroy_uhci_instance};
 
 void uhci_init()
 {

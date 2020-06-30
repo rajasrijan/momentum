@@ -1,7 +1,7 @@
 #ifdef __cplusplus
 
-#include <arch/x86_64/paging.h>
 #include <arch/x86_64/global.h>
+#include <arch/x86_64/paging.h>
 #include <arch/x86_64/timer.h>
 #include <kernel/multitask.h>
 #include <utility>
@@ -10,14 +10,14 @@ extern "C"
 {
 #endif
 #include <acpi.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
     /* Types for AcpiOsExecute */
 
     /*
- * OSL Initialization and shutdown primitives
- */
+     * OSL Initialization and shutdown primitives
+     */
     ACPI_STATUS AcpiOsInitialize(void)
     {
         printf("Initializing ACPI OSL\n");
@@ -25,8 +25,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsTerminate(
-        void)
+    AcpiOsTerminate(void)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -34,8 +33,8 @@ extern "C"
     }
 
     /*
- * ACPI Table interfaces
- */
+     * ACPI Table interfaces
+     */
     ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer(void)
     {
         ACPI_PHYSICAL_ADDRESS Ret = 0;
@@ -45,7 +44,7 @@ extern "C"
 
     ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *InitVal, ACPI_STRING *NewVal)
     {
-        NewVal = NULL;
+        *NewVal = NULL;
         return AE_NOT_IMPLEMENTED;
     }
 
@@ -57,25 +56,23 @@ extern "C"
 
     ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_PHYSICAL_ADDRESS *NewAddress, UINT32 *NewTableLength)
     {
-        NewAddress = NULL;
-        NewTableLength = NULL;
+        *NewAddress = 0;
+        *NewTableLength = 0;
         return AE_NOT_IMPLEMENTED;
     }
 
     /*
- * Spinlock primitives
- */
+     * Spinlock primitives
+     */
     ACPI_STATUS
-    AcpiOsCreateLock(
-        ACPI_SPINLOCK *OutHandle)
+    AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
     {
         *OutHandle = (mtx_t *)malloc(sizeof(mtx_t));
         mtx_init(*OutHandle, 0);
         return 0;
     }
 
-    void AcpiOsDeleteLock(
-        ACPI_SPINLOCK Handle)
+    void AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
     {
         free(Handle);
     }
@@ -92,8 +89,8 @@ extern "C"
     }
 
     /*
- * Semaphore primitives
- */
+     * Semaphore primitives
+     */
     ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle)
     {
         *OutHandle = (ACPI_SEMAPHORE)malloc(sizeof(sem_t));
@@ -102,8 +99,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsDeleteSemaphore(
-        ACPI_SEMAPHORE Handle)
+    AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -111,10 +107,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsWaitSemaphore(
-        ACPI_SEMAPHORE Handle,
-        UINT32 Units,
-        UINT16 Timeout)
+    AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Timeout)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -122,9 +115,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsSignalSemaphore(
-        ACPI_SEMAPHORE Handle,
-        UINT32 Units)
+    AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -132,20 +123,18 @@ extern "C"
     }
 
     /*
- * Mutex primitives. May be configured to use semaphores instead via
- * ACPI_MUTEX_TYPE (see platform/acenv.h)
- */
+     * Mutex primitives. May be configured to use semaphores instead via
+     * ACPI_MUTEX_TYPE (see platform/acenv.h)
+     */
     ACPI_STATUS
-    AcpiOsCreateMutex(
-        ACPI_MUTEX *OutHandle)
+    AcpiOsCreateMutex(ACPI_MUTEX *OutHandle)
     {
         *OutHandle = (mtx_t *)malloc(sizeof(mtx_t));
         mtx_init(*OutHandle, 0);
         return 0;
     }
 
-    void AcpiOsDeleteMutex(
-        ACPI_MUTEX Handle)
+    void AcpiOsDeleteMutex(ACPI_MUTEX Handle)
     {
         free(Handle);
     }
@@ -162,38 +151,49 @@ extern "C"
     }
 
     /*
- * Memory allocation and mapping
- */
+     * Memory allocation and mapping
+     */
     void *AcpiOsAllocate(ACPI_SIZE Size)
     {
         return calloc(1, Size);
     }
 
-    void AcpiOsFree(
-        void *Memory)
+    void AcpiOsFree(void *Memory)
     {
         free(Memory);
     }
 
     void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
     {
+        int ret = 0;
         uint64_t paddr = ((Where / PageManager::PAGESIZE) * PageManager::PAGESIZE);
         uint64_t length = PageManager::roundToPageSize(Length + Where) - paddr;
         uint64_t offset = Where - paddr;
         uint64_t vaddr = 0;
-        if (PageManager::getInstance()->findFreeVirtualMemory(vaddr, length, 0x40000000))
+        if (PageManager::findFreeVirtualMemory(vaddr, length, 0x40000000))
         {
             printf("Virtual Memory Full");
             asm("cli;hlt");
         }
-        PageManager::getInstance()->setVirtualToPhysicalMemory(vaddr, paddr, length, PageManager::Supervisor, PageManager::Read_Write);
+        ret = PageManager::setVirtualToPhysicalMemory(vaddr, paddr, length, PageManager::Supervisor, PageManager::Read_Write);
+        if (ret < 0)
+        {
+            printf("failed to setVirtualToPhysicalMemory\n");
+            asm("cli;hlt");
+        }
         return (void *)(vaddr + offset);
     }
 
     void AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Size)
     {
+        int ret = 0;
         Size = PageManager::roundToPageSize(Size);
-        PageManager::getInstance()->freeVirtualMemory((uint64_t)LogicalAddress, Size);
+        ret = PageManager::freeVirtualMemory((uint64_t)LogicalAddress, Size);
+        if (ret < 0)
+        {
+            printf("failed to freeVirtualMemory(\n");
+            asm("cli;hlt");
+        }
     }
 
     ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
@@ -204,8 +204,8 @@ extern "C"
     }
 
     /*
- * Interrupt handlers
- */
+     * Interrupt handlers
+     */
     pair<ACPI_OSD_HANDLER, void *> ServiceRoutines[256];
     void common_interrupt_handler(retStack_t *stack, general_registers_t *context)
     {
@@ -224,9 +224,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsRemoveInterruptHandler(
-        UINT32 InterruptNumber,
-        ACPI_OSD_HANDLER ServiceRoutine)
+    AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRoutine)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -234,48 +232,42 @@ extern "C"
     }
 
     /*
- * Threads and Scheduling
- */
+     * Threads and Scheduling
+     */
     ACPI_THREAD_ID AcpiOsGetThreadId(void)
     {
         return multitask::getInstance()->getKernelThread()->getThreadID();
     }
 
     ACPI_STATUS
-    AcpiOsExecute(
-        ACPI_EXECUTE_TYPE Type,
-        ACPI_OSD_EXEC_CALLBACK Function,
-        void *Context)
+    AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
         return EXIT_FAILURE;
     }
 
-    void AcpiOsWaitEventsComplete(
-        void)
+    void AcpiOsWaitEventsComplete(void)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
     }
 
-    void AcpiOsSleep(
-        UINT64 Milliseconds)
+    void AcpiOsSleep(UINT64 Milliseconds)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
     }
 
-    void AcpiOsStall(
-        UINT32 Microseconds)
+    void AcpiOsStall(UINT32 Microseconds)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
     }
 
     /*
- * Platform and hardware-independent I/O interfaces
- */
+     * Platform and hardware-independent I/O interfaces
+     */
     ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32 *Value, UINT32 Width)
     {
         switch (Width)
@@ -317,13 +309,10 @@ extern "C"
     }
 
     /*
- * Platform and hardware-independent physical memory interfaces
- */
+     * Platform and hardware-independent physical memory interfaces
+     */
     ACPI_STATUS
-    AcpiOsReadMemory(
-        ACPI_PHYSICAL_ADDRESS Address,
-        UINT64 *Value,
-        UINT32 Width)
+    AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -331,10 +320,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsWriteMemory(
-        ACPI_PHYSICAL_ADDRESS Address,
-        UINT64 Value,
-        UINT32 Width)
+    AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT32 Width)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -342,16 +328,12 @@ extern "C"
     }
 
     /*
- * Platform and hardware-independent PCI configuration space access
- * Note: Can't use "Register" as a parameter, changed to "Reg" --
- * certain compilers complain.
- */
+     * Platform and hardware-independent PCI configuration space access
+     * Note: Can't use "Register" as a parameter, changed to "Reg" --
+     * certain compilers complain.
+     */
     ACPI_STATUS
-    AcpiOsReadPciConfiguration(
-        ACPI_PCI_ID *PciId,
-        UINT32 Reg,
-        UINT64 *Value,
-        UINT32 Width)
+    AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Reg, UINT64 *Value, UINT32 Width)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -359,11 +341,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsWritePciConfiguration(
-        ACPI_PCI_ID *PciId,
-        UINT32 Reg,
-        UINT64 Value,
-        UINT32 Width)
+    AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Reg, UINT64 Value, UINT32 Width)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -371,12 +349,10 @@ extern "C"
     }
 
     /*
- * Miscellaneous
- */
+     * Miscellaneous
+     */
     BOOLEAN
-    AcpiOsReadable(
-        void *Pointer,
-        ACPI_SIZE Length)
+    AcpiOsReadable(void *Pointer, ACPI_SIZE Length)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -384,9 +360,7 @@ extern "C"
     }
 
     BOOLEAN
-    AcpiOsWritable(
-        void *Pointer,
-        ACPI_SIZE Length)
+    AcpiOsWritable(void *Pointer, ACPI_SIZE Length)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -399,9 +373,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsSignal(
-        UINT32 Function,
-        void *Info)
+    AcpiOsSignal(UINT32 Function, void *Info)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -415,14 +387,14 @@ extern "C"
     }
 
     /*
- * Debug print routines
- */
+     * Debug print routines
+     */
     void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char *Format, ...)
     {
         char buffer[1024];
         va_list arg;
         va_start(arg, Format);
-        vsnprintf(buffer,1024, Format, arg);
+        vsnprintf(buffer, 1024, Format, arg);
         printf(buffer);
         va_end(arg);
     }
@@ -430,25 +402,21 @@ extern "C"
     void AcpiOsVprintf(const char *Format, va_list Args)
     {
         char buffer[1024];
-        vsnprintf(buffer,1024, Format, Args);
+        vsnprintf(buffer, 1024, Format, Args);
         printf(buffer);
     }
 
-    void AcpiOsRedirectOutput(
-        void *Destination)
+    void AcpiOsRedirectOutput(void *Destination)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
     }
 
     /*
- * Debug IO
- */
+     * Debug IO
+     */
     ACPI_STATUS
-    AcpiOsGetLine(
-        char *Buffer,
-        UINT32 BufferLength,
-        UINT32 *BytesRead)
+    AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -456,24 +424,21 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsInitializeDebugger(
-        void)
+    AcpiOsInitializeDebugger(void)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
         return EXIT_FAILURE;
     }
 
-    void AcpiOsTerminateDebugger(
-        void)
+    void AcpiOsTerminateDebugger(void)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
     }
 
     ACPI_STATUS
-    AcpiOsWaitCommandReady(
-        void)
+    AcpiOsWaitCommandReady(void)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -481,33 +446,24 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsNotifyCommandComplete(
-        void)
+    AcpiOsNotifyCommandComplete(void)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
         return EXIT_FAILURE;
     }
 
-    void AcpiOsTracePoint(
-        ACPI_TRACE_EVENT_TYPE Type,
-        BOOLEAN Begin,
-        UINT8 *Aml,
-        char *Pathname)
+    void AcpiOsTracePoint(ACPI_TRACE_EVENT_TYPE Type, BOOLEAN Begin, UINT8 *Aml, char *Pathname)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
     }
 
     /*
- * Obtain ACPI table(s)
- */
+     * Obtain ACPI table(s)
+     */
     ACPI_STATUS
-    AcpiOsGetTableByName(
-        char *Signature,
-        UINT32 Instance,
-        ACPI_TABLE_HEADER **Table,
-        ACPI_PHYSICAL_ADDRESS *Address)
+    AcpiOsGetTableByName(char *Signature, UINT32 Instance, ACPI_TABLE_HEADER **Table, ACPI_PHYSICAL_ADDRESS *Address)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -515,11 +471,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsGetTableByIndex(
-        UINT32 Index,
-        ACPI_TABLE_HEADER **Table,
-        UINT32 *Instance,
-        ACPI_PHYSICAL_ADDRESS *Address)
+    AcpiOsGetTableByIndex(UINT32 Index, ACPI_TABLE_HEADER **Table, UINT32 *Instance, ACPI_PHYSICAL_ADDRESS *Address)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -527,9 +479,7 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsGetTableByAddress(
-        ACPI_PHYSICAL_ADDRESS Address,
-        ACPI_TABLE_HEADER **Table)
+    AcpiOsGetTableByAddress(ACPI_PHYSICAL_ADDRESS Address, ACPI_TABLE_HEADER **Table)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -537,30 +487,23 @@ extern "C"
     }
 
     /*
- * Directory manipulation
- */
-    void *
-    AcpiOsOpenDirectory(
-        char *Pathname,
-        char *WildcardSpec,
-        char RequestedFileType)
+     * Directory manipulation
+     */
+    void *AcpiOsOpenDirectory(char *Pathname, char *WildcardSpec, char RequestedFileType)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
         return nullptr;
     }
 
-    char *
-    AcpiOsGetNextFilename(
-        void *DirHandle)
+    char *AcpiOsGetNextFilename(void *DirHandle)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
         return nullptr;
     }
 
-    void AcpiOsCloseDirectory(
-        void *DirHandle)
+    void AcpiOsCloseDirectory(void *DirHandle)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");

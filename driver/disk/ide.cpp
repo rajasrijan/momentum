@@ -1,22 +1,24 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
- * 
+ * Copyright 2009-2020 Srijan Kumar Sharma
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
+#include <vector>
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
 #include <kernel/vfs.h>
@@ -41,7 +43,7 @@ int ide_probe(pci_device_t *dev)
             //  Replace BAR[j] with standard bars if it is 0x0 or 0x1
             BAR[j] = ((BAR[j] == 0) || (BAR[j] == 1)) ? standard_bars[j] : BAR[j];
         }
-        //printf("BAR[%d]=0x%x\n", j, BAR[j]);
+        // printf("BAR[%d]=0x%x\n", j, BAR[j]);
     }
     // start setup DMA
     // end setup DMA
@@ -64,7 +66,7 @@ int ide_probe(pci_device_t *dev)
             if (ret)
             {
                 printf("Failed to register block device\n");
-                //ret = 0; // non fatal.
+                // ret = 0; // non fatal.
             }
         }
     }

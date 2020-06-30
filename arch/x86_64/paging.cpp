@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2019 Srijan Kumar Sharma
+ * Copyright 2009-2020 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -22,24 +22,119 @@
 #include "mm.h"
 #include "stdlib.h"
 #include "string.h"
+#include <errno.h>
 #include <kernel/config.h>
+#include <stdint.h>
+#include <kernel/bitmap_allocator.h>
 
-void new_paging_structure(paging_structure_t *ps) {}
+uint64_t cpu_local_pml4t = 0;
+bitmap_allocator<512, 4096> default_pagemem_allocator;
 
-PageManager::PageManager() {}
+//  keep track of memory mappings in kernel early stages, before paging is correctly setup.
+static MemPage early_kernel_mappings[3] = {};
+size_t early_kernel_mappings_count = 0;
 
-PageManager *PageManager::getInstance()
+template <int level = 4>
+int page_allocation_helper(page_struct *pd, uint64_t vaddr, uint64_t paddr, uint64_t length, PageManager::Privilege privilege, PageManager::PageType pageType)
 {
-  static PageManager pageManager;
-  return &pageManager;
+    if (level <= 0)
+    {
+        //  never reach here;
+        asm("cli;hlt");
+        return 0;
+    }
+
+    uint64_t p = 0, v = 0;
+    int index = PG_LVL_IDX(vaddr, level);
+    const uint64_t PG_SIZE = PG_LVL_SZ(level);
+    uint64_t vaddr_end = vaddr + length;
+    uint64_t page_offset = PG_LVL_OFFSET(vaddr, level);
+
+    while ((level != 4) && (((level == 1) && (vaddr_end > vaddr)) || ((page_offset <= (PG_SIZE / 2)) && (vaddr_end >= (vaddr + (PG_SIZE / 2))))))
+    {
+        paddr = PG_LVL_ALIGN(paddr, level);
+        vaddr = PG_LVL_ALIGN(vaddr, level);
+        pd[index].paddr = (paddr >> 12);
+        pd[index].present = 1;
+        if (pageType == PageManager::PageType::Read_Write)
+            pd[index].rw = 1;
+        if (level != 1)
+            pd[index].ps = 1;
+        if (privilege == PageManager::Privilege::User)
+            pd[index].us = 1;
+        asm volatile("invlpg (%0)" ::"r"(vaddr));
+        index++;
+        paddr += PG_SIZE;
+        vaddr += PG_SIZE;
+        page_offset = PG_LVL_OFFSET(vaddr, level);
+    }
+
+    if (vaddr_end <= vaddr || level == 1)
+        return 0;
+
+    if (pd[index].present == 0)
+    {
+        if (bitmap_alloc(default_pagemem_allocator, p, v))
+        {
+            printf("pagemem allocator cannot fail\n");
+            asm("cli;hlt");
+        }
+        memset((void *)v, 0, 4096);
+        pd[index].paddr = (p >> 12);
+        pd[index].present = 1;
+        pd[index].rw = 1;
+        asm volatile("invlpg (%0)" ::"r"(vaddr));
+    }
+    else
+    {
+        p = pd[index].paddr << 12;
+        v = (p - default_pagemem_allocator.paddr) + default_pagemem_allocator.vaddr;
+    }
+    return page_allocation_helper < (level > 0) ? level - 1 : 0 > ((page_struct *)v, vaddr, paddr, vaddr_end - vaddr, privilege, pageType);
 }
+
+int PageManager::initialize()
+{
+    //  get a 2 MB RAM frame
+    default_pagemem_allocator.paddr = get_2mb_block();
+    add_early_kernel_mapping(default_pagemem_allocator.paddr + KERNEL_BASE_PTR, default_pagemem_allocator.paddr, PAGESIZE);
+    if (default_pagemem_allocator.paddr >= 0x40000000)
+    {
+        printf("paddr cant be greater than 1GB, not mapped yet.\n");
+        asm("cli;hlt");
+    }
+    default_pagemem_allocator.vaddr = default_pagemem_allocator.paddr;
+    if (bitmap_alloc(default_pagemem_allocator, cpu_local_pml4t, cpu_local_pml4t) < 0)
+    {
+        printf("Failed to setup memory for page directory!\n");
+        asm("cli;hlt");
+    }
+    memset((void *)cpu_local_pml4t, 0, 4096);
+    //  start mapping
+    uint64_t vaddr = (uint64_t)&kernel_start & 0xFFFFFFFFFFFFF000;
+    uint64_t paddr = vaddr - KERNEL_BASE_PTR;
+    uint64_t length = (uint64_t)&kernel_end - vaddr;
+    page_allocation_helper((page_struct *)cpu_local_pml4t, vaddr, paddr, length, Privilege::Supervisor, PageType::Read_Write);
+    page_allocation_helper((page_struct *)cpu_local_pml4t, paddr, paddr, length, Privilege::Supervisor, PageType::Read_Write);
+    for (size_t i = 0; i < early_kernel_mappings_count; i++)
+    {
+        page_allocation_helper((page_struct *)cpu_local_pml4t, early_kernel_mappings[i].vaddr, early_kernel_mappings[i].paddr, early_kernel_mappings[i].size, Privilege::Supervisor, PageType::Read_Write);
+    }
+
+    asm volatile(".intel_syntax noprefix;"
+                 "mov cr3, rax;" ::"a"(cpu_local_pml4t));
+    cpu_local_pml4t += KERNEL_BASE_PTR;
+    default_pagemem_allocator.vaddr = default_pagemem_allocator.vaddr + KERNEL_BASE_PTR;
+    return 0;
+}
+
 /**
  * Round up to page size
  *
  */
 uint64_t PageManager::roundToPageSize(uint64_t sz)
 {
-  return ((sz + 0x1FFFFF) & 0xFFFFFFFFFFE00000);
+    return ((sz + 0x1FFFFF) & 0xFFFFFFFFFFE00000);
 }
 
 /**
@@ -48,237 +143,184 @@ uint64_t PageManager::roundToPageSize(uint64_t sz)
  */
 uint64_t PageManager::roundToPageBoundry(uint64_t addr)
 {
-  return (addr & 0xFFFFFFFFFFE00000);
+    return (addr & 0xFFFFFFFFFFE00000);
 }
 
 int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType)
 {
-  if (size % PAGESIZE)
-  {
-    printf("Size not 2MB aligned\n");
-    __asm__("cli;hlt;");
-  }
-  for (size_t i = 0; i < size / PAGESIZE; i++)
-  {
-    uint64_t memory_slab = get_2mb_block();
-    printf("SLAB addr [%x]\n", memory_slab);
-    setVirtualToPhysicalMemory(vaddr, memory_slab, PAGESIZE, privilege, pageType);
-  }
-  return 0;
+    int ret = 0;
+    for (size_t i = 0; i < size; i += PAGESIZE)
+    {
+        uint64_t memory_slab = get_2mb_block();
+        printf("SLAB addr [%x]\n", memory_slab);
+        ret = setVirtualToPhysicalMemory(vaddr + i, memory_slab, PAGESIZE, privilege, pageType);
+        if (ret < 0)
+            break;
+    }
+    if (ret < 0)
+    {
+        freeVirtualMemory(vaddr, size);
+    }
+    return ret;
 }
 
 int PageManager::setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType)
 {
-  for (uint64_t i = 0; i < size; i += PAGESIZE)
-  {
-    set2MBPage(vaddr, paddr, privilege, pageType);
-    vaddr += PAGESIZE;
-    paddr += PAGESIZE;
-  }
-  return 0;
+    int ret = 0;
+    ret = page_allocation_helper((page_struct *)cpu_local_pml4t, vaddr, paddr, size, privilege, pageType);
+    return ret;
 }
 
-uint64_t PageManager::getPhysicalAddress(uint64_t virtual_address)
+template <int level = 4>
+static int getphysicaladdress_helper(page_struct *pg, uint64_t vaddr, uint64_t &paddr)
 {
-  uint64_t paddr = 0;
-  uint64_t lvl4 = (virtual_address >> 39) & 0x1FF;
-  uint64_t lvl3 = (virtual_address >> 30) & 0x1FF;
-  uint64_t lvl2 = (virtual_address >> 21) & 0x1FF;
-  uint64_t lvl1 = virtual_address & 0x1FFFFF;
-  uint64_t tmp4 = (PML4T[lvl4] & (~0xFFull)) + KERNEL_BASE_PTR;
-  uint64_t tmp3 = (((uint64_t *)tmp4)[lvl3] & (~0xFFull)) + KERNEL_BASE_PTR;
-  paddr = (((uint64_t *)tmp3)[lvl2] & (~0xFFull)) + lvl1;
-  return paddr;
+    uint64_t l1 = PG_LVL_IDX(vaddr, level);
+    if (pg[l1].present == 1)
+    {
+        if (level > 1 && pg[l1].ps == 0)
+        {
+            auto new_pg = (page_struct *)(PG_GET_ADDRESS(&pg[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
+            return getphysicaladdress_helper < (level > 1) ? level - 1 : 1 > (new_pg, vaddr, paddr);
+        }
+        else
+        {
+            paddr = PG_GET_ADDRESS(&pg[l1]) + PG_LVL_OFFSET(vaddr, level);
+            return 0;
+        }
+    }
+    else
+    {
+        return -ENOMEM;
+    }
+    return 0;
+}
+
+int PageManager::getPhysicalAddress(uint64_t vaddr, uint64_t &paddr)
+{
+    return getphysicaladdress_helper((page_struct *)cpu_local_pml4t, vaddr, paddr);
+}
+
+template <int level = 4>
+static int freememory_helper(page_struct *pg, uint64_t vaddr, uint64_t sz)
+{
+    for (uint64_t l1 = PG_LVL_IDX(vaddr, level); l1 < (sz + PG_LVL_SZ(level) - 1) / PG_LVL_SZ(level); l1++)
+    {
+        if (pg[l1].present == 1)
+        {
+            auto new_pg = (page_struct *)(PG_GET_ADDRESS(&pg[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
+            if (level > 1 && pg[l1].ps == 0)
+            {
+                freememory_helper<(level > 1) ? level - 1 : 1>(new_pg, vaddr, sz);
+            }
+            else
+            {
+                new_pg->addr = 0;
+            }
+        }
+    }
+    return 0;
 }
 
 int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 {
-  while (size > 0)
-  {
-    int lvl4 = (vaddr >> 39) & 0x1FF;
-    int lvl3 = (vaddr >> 30) & 0x1FF;
-    int lvl2 = (vaddr >> 21) & 0x1FF;
-    if (lvl4 > 0)
-    {
-      return 1;
-    }
-    if (lvl2 == 0)
-    {
-      if (lvl3 == 0)
-      {
-        if (lvl4 == 0)
-        {
-          if (size >= BIGBIGPAGESIZE)
-          {
-            PML4T[lvl4] &= 0xFFFFFFFFFFFFFFFE;
-            size -= BIGBIGPAGESIZE;
-            vaddr += BIGBIGPAGESIZE;
-          }
-          else if (size >= BIGPAGESIZE)
-          {
-            PDPT[lvl3] &= 0xFFFFFFFFFFFFFFFE;
-            size -= BIGPAGESIZE;
-            vaddr += BIGPAGESIZE;
-          }
-          else if (size >= PAGESIZE)
-          {
-            PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
-            size -= PAGESIZE;
-            vaddr += PAGESIZE;
-          }
-          else
-          {
-            printf("Invalid page size [%x]\n", size);
-            asm("cli;hlt");
-          }
-        }
-        else
-        {
-          printf("lvl4 pages shouldnt exist\n");
-          asm("cli;hlt");
-        }
-      }
-      else if (size >= BIGPAGESIZE)
-      {
-        PDPT[lvl3] &= 0xFFFFFFFFFFFFFFFE;
-        size -= BIGPAGESIZE;
-        vaddr += BIGPAGESIZE;
-      }
-      else if (size >= PAGESIZE)
-      {
-        PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
-        size -= PAGESIZE;
-        vaddr += PAGESIZE;
-      }
-    }
-    else if (size >= PAGESIZE)
-    {
-      PDT[(lvl3 * 512) + lvl2] &= 0xFFFFFFFFFFFFFFFE;
-      size -= PAGESIZE;
-      vaddr += PAGESIZE;
-    }
-  }
-  return 0;
+    return freememory_helper((page_struct *)cpu_local_pml4t, vaddr, size);
 }
 
-int PageManager::set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType)
+int PageManager::set2MBPage([[maybe_unused]] uint64_t vaddr, [[maybe_unused]] uint64_t paddr, [[maybe_unused]] Privilege privilege, [[maybe_unused]] PageType pageType)
 {
-  if (paddr % PAGESIZE)
-  {
-    printf("Physical address not correctly aligned\n");
-    __asm("cli;hlt");
-  }
-  uint8_t flags = 16 | privilege << 2 | pageType << 1 | 1;
-  int lvl4 = (vaddr >> 39) & 0x1FF;
-  int lvl3 = (vaddr >> 30) & 0x1FF;
-  int lvl2 = (vaddr >> 21) & 0x1FF;
-
-  if (lvl4 > 0)
-  {
-    printf("Not supported yet.\n");
-    __asm("cli;hlt");
-  }
-  PML4T[lvl4] = ((uint64_t)&PDPT[lvl3] - KERNEL_BASE_PTR) | flags;
-  PDPT[lvl3] = ((uint64_t)&PDT[(lvl3 * 512)] - KERNEL_BASE_PTR) | flags;
-  PDT[(lvl3 * 512) + lvl2] = paddr | 0x80 | flags;
-  asm volatile("invlpg (%0)" ::"r"(vaddr));
-  return 0;
+    printf("NOT IMPLEMENTED!\n");
+    asm("cli;hlt");
+    return -ENOSYS;
 }
 
 int PageManager::IdentityMap2MBPages(uint64_t paddr)
 {
-  return set2MBPage(paddr, paddr, PageManager::Supervisor, PageManager::Read_Write);
+    int ret = 0;
+    ret = page_allocation_helper((page_struct *)cpu_local_pml4t, paddr, paddr, PAGESIZE, Privilege::Supervisor, PageType::Read_Write);
+    return ret;
 }
 
-int PageManager::initialize()
+int PageManager::findVirtualMemory([[maybe_unused]] uint64_t paddr, [[maybe_unused]] uint64_t &vaddr)
 {
-  // register_interrupt_handler(0x0E, interruptHandler);
-  return 0;
+    printf("NOT IMPLEMENTED!\n");
+    asm("cli;hlt");
+    return -ENOSYS;
 }
 
-int PageManager::findVirtualMemory(uint64_t paddr, uint64_t &vaddr)
+template <int level = 4>
+static int findfreememory_helper(page_struct *pg, uint64_t &vaddr, uint64_t sz, uint64_t offset, uint64_t &sz_alloc, uint64_t parent_vaddr = 0, bool restart_counting = true)
 {
-  for (uint64_t lvl4 = 0; lvl4 < 1; lvl4++)
-    for (uint64_t lvl3 = 0; lvl3 < 512; lvl3++)
-      for (uint64_t lvl2 = 0; lvl2 < 512; lvl2++)
-      {
-        if (PDT[(lvl3 * 512) + lvl2] & 1)
+    auto base = std::max(parent_vaddr, offset);
+    for (uint64_t l1 = PG_LVL_IDX(base, level); l1 < 512; l1++)
+    {
+        if (pg[l1].present == 1)
         {
-          uint64_t phy_addr = PDT[(lvl3 * 512) + lvl2] & 0xFFFFFFFFFFFFFF00;
-          if (paddr >= phy_addr && paddr < phy_addr + PAGESIZE)
-          {
-            vaddr = ((lvl4 << 39) | (lvl3 << 30) | (lvl2 << 21)) + (paddr % PAGESIZE);
-            return 0;
-          }
+            if (level > 1 && pg[l1].ps == 0)
+            {
+                auto new_pg = (page_struct *)(PG_GET_ADDRESS(&pg[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
+                restart_counting = findfreememory_helper < (level > 1) ? level - 1 : 1 > (new_pg, vaddr, sz, offset, sz_alloc, parent_vaddr + (l1 * PG_LVL_SZ(level)), restart_counting);
+                if (sz_alloc >= sz)
+                    return true;
+            }
+            else if (!restart_counting)
+            {
+                printf("vaddr:%#llx, size:%#llx\n", vaddr, sz_alloc);
+                restart_counting = true;
+            }
         }
-      }
-  return 1;
+        else if (pg[l1].present == 0)
+        {
+            if (restart_counting)
+            {
+                vaddr = parent_vaddr + (l1 * PG_LVL_SZ(level));
+                sz_alloc = 0;
+            }
+            sz_alloc += PG_LVL_SZ(level);
+            restart_counting = false;
+            if (sz_alloc >= sz)
+                return true;
+        }
+        else
+        {
+            printf("NOT IMPLIMENTED!\n");
+            asm("cli;hlt");
+        }
+    }
+    if (level == 4 && !restart_counting)
+    {
+        printf("vaddr:%#llx, size:%#llx\n", vaddr, sz_alloc);
+        restart_counting = true;
+    }
+    return restart_counting;
 }
 
 int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset)
 {
-  offset = roundToPageSize(offset);
-  uint64_t lvl4 = (offset >> 39) & 0x1FF;
-  uint64_t lvl3 = (offset >> 30) & 0x1FF;
-  uint64_t lvl2 = (offset >> 21) & 0x1FF;
-  uint64_t foundSize = 0;
-  for (; lvl4 < 1 && foundSize < sz; lvl4++)
-  {
-    for (; lvl3 < 512 && foundSize < sz; lvl3++)
-    {
-      //	TODO: perform lvl3 checks
-      for (; lvl2 < 512 && foundSize < sz; lvl2++)
-      {
-        if ((PDT[(lvl3 * 512) + lvl2] & 1) == 0)
-        {
-          if (foundSize == 0)
-          {
-            vaddr = ((lvl4 << 39) | (lvl3 << 30) | (lvl2 << 21));
-          }
-          foundSize += PAGESIZE;
-        }
-        else
-        {
-          foundSize = 0;
-          vaddr = 0;
-        }
-      }
-    }
-  }
-  if (foundSize < sz)
-  {
-    return 1;
-  }
-  return 0;
+    int ret = 0;
+    uint64_t sz_alloc = 0;
+
+    page_struct *pg = (page_struct *)cpu_local_pml4t;
+    findfreememory_helper(pg, vaddr, sz, offset, sz_alloc);
+    return ret;
 }
 
-PageManager::~PageManager() {}
-
-int PageManager::getMemoryMap(std::vector<MemPage> &memMap)
+int PageManager::getMemoryMap([[maybe_unused]] std::vector<MemPage> &memMap)
 {
-  uint64_t vaddr = 0, paddr = 0;
-  uint8_t flags = 0;
-  for (uint64_t lvl4 = 0; lvl4 < 1; lvl4++)
-    for (uint64_t lvl3 = 0; lvl3 < 512; lvl3++)
-      for (uint64_t lvl2 = 0; lvl2 < 512; lvl2++)
-      {
-        uint8_t _flags = PDT[(lvl3 * 512) + lvl2] & 0x07;
-        uint64_t _paddr = PDT[(lvl3 * 512) + lvl2] & 0xFFFFFFFFFFFFFF00;
-        vaddr = ((lvl4 << 39) | (lvl3 << 30) | (lvl2 << 21));
-        if (((_flags != flags) || (_paddr != (paddr + PAGESIZE))))
-        {
-          if ((_flags & 1) == 1)
-          {
-            MemPage page = {vaddr, _paddr, PAGESIZE};
-            memMap.push_back(page);
-          }
-        }
-        else
-        {
-          memMap.back().size += PAGESIZE;
-        }
-        paddr = _paddr;
-        flags = _flags;
-      }
-  return 0;
+    printf("NOT IMPLEMENTED!\n");
+    asm("cli;hlt");
+    return -ENOSYS;
+}
+
+int PageManager::add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size)
+{
+    if (early_kernel_mappings_count >= (sizeof(early_kernel_mappings) / sizeof(early_kernel_mappings[0])))
+    {
+        printf("too many mappings\n");
+        asm("cli;hlt");
+    }
+    early_kernel_mappings[early_kernel_mappings_count].vaddr = vaddr;
+    early_kernel_mappings[early_kernel_mappings_count].paddr = paddr;
+    early_kernel_mappings[early_kernel_mappings_count].size = size;
+    early_kernel_mappings_count++;
+    return 0;
 }
