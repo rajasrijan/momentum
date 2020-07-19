@@ -37,15 +37,15 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
     }
     else
     {
-        printf("RSP [0x%llx]\n", stack);
-        printf("Interrupt No [0x%llx], RSP [0x%llx], RIP [0x%llx]\n", stack->interruptNumber, regs->rsp, stack->rip);
+        printf("RSP [%#llx]\n", stack);
+        printf("Intr.No [%#llx], RSP [%#llx], RIP [%#llx]\n", stack->interruptNumber, regs->rsp, stack->rip);
         if (stack->interruptNumber == 6)
         {
             printf("Invalid Opcode\n");
         }
         else if (stack->interruptNumber == 14)
         {
-            printf("PF addr [0x%x], Error code [0x%llx]\n", get_cr2(), stack->err);
+            printf("PF addr [0x%02x:%#llx], Error code [0x%llx]\n", stack->cs, get_cr2(), stack->err);
         }
         else if (stack->interruptNumber == 13)
         {

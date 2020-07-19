@@ -43,7 +43,7 @@ static inline int bitmap_alloc(bitmap_allocator<bitmap_size, block_size> &alloca
 }
 
 template <uint64_t bitmap_size, uint64_t block_size>
-static inline int bitmap_free(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t &paddr)
+static inline int bitmap_free(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t paddr)
 {
     const uint64_t offset = paddr - allocator.paddr;
     const uint64_t index = offset / block_size;

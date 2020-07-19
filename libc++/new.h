@@ -16,12 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include "stddef.h"
-#include "stdlib.h"
+#ifndef __NEW_H__
+#define __NEW_H__
+#include "cstddef"
 
-void *operator new(size_t size);
-void *operator new[](size_t size);
-void *operator new(size_t size, void *t);
+void *operator new(std::size_t size);
+void *operator new[](std::size_t size);
+void *operator new(std::size_t size, void *t);
 void operator delete(void *p);
 void operator delete[](void *p);
+
+#endif // __NEW_H__

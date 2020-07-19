@@ -43,7 +43,7 @@ class root_vnode : public vnode
 {
     vector<shared_ptr<vnode>> children;
 
-  public:
+public:
     root_vnode(const char *name /*, root_vnode *root*/) : vnode(nullptr), children()
     {
         if (name)
@@ -101,7 +101,7 @@ class partition_vnode : public vnode
     shared_ptr<vnode> v_parent;
     size_t v_start_blk, v_size_blk;
 
-  public:
+public:
     partition_vnode(const char *name, shared_ptr<vnode> parent_vnode, size_t start_blk, size_t size_blk) : vnode(nullptr), v_parent(parent_vnode), v_start_blk(0), v_size_blk(0)
     {
         if (name)
@@ -750,28 +750,17 @@ vector<string> split_path(const string &path)
     } while (end_offset != string::npos && start_offset < path.size());
     return ret;
 }
+
 int openat(int dirfd, const string &pathname, int flags, mode_t mode)
 {
     int descriptor = -1;
     if (dirfd == FDCWD)
     {
         shared_ptr<vnode> cdir;
-        if (pathname[0] == '/')
+        if (lookup(pathname.c_str(), cdir))
         {
-            cdir = rnode;
-        }
-        else
-        {
-            cdir = getCurrentDirectory();
-        }
-        auto path_components = split_path(pathname);
-        for (auto &path_component : path_components)
-        {
-            if (cdir->dolookup(path_component.c_str(), cdir) != 0)
-            {
-                printf("Invalid path\n");
-                return -1;
-            }
+            printf("no such directory!");
+            return -ENOTDIR;
         }
         //	handles
         descriptor = atomic_increment(&handle_value);
@@ -779,6 +768,7 @@ int openat(int dirfd, const string &pathname, int flags, mode_t mode)
     }
     return descriptor;
 }
+
 int lookup(const char *path, shared_ptr<vnode> &node)
 {
     shared_ptr<vnode> cdir;
@@ -793,7 +783,9 @@ int lookup(const char *path, shared_ptr<vnode> &node)
     auto path_components = split_path(path);
     for (auto &path_component : path_components)
     {
-        if (cdir->dolookup(path_component.c_str(), cdir) != 0)
+        if (path_component == ".")
+            continue;
+        else if (cdir->dolookup(path_component.c_str(), cdir) != 0)
         {
             printf("Invalid path\n");
             return -1;
@@ -850,6 +842,7 @@ void close(int fd)
 {
     handles.erase(fd);
 }
+
 int getdents(int fd, vector<string> &dir)
 {
     auto find_result = handles.find(fd);

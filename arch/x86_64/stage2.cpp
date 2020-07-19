@@ -45,6 +45,8 @@
 #include <arch/x86_64/rtc.h>
 #include <arch/x86_64/multiboot2.h>
 #include <arch/x86_64/multiboot.h>
+#include <memory>
+#include <kernel/gui.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -63,7 +65,7 @@ extern "C"
 }
 #endif
 
-const char copyright[] = "Momentum Copyright (C) 2009-2018 Srijan Kumar Sharma\n"
+const char copyright[] = "Momentum Copyright (C) 2009-2020 Srijan Kumar Sharma\n"
                          "This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.\n"
                          "This is free software, and you are welcome to redistribute it\n"
                          "under certain conditions; type `show c' for details.\n";
@@ -316,11 +318,13 @@ void stage2(multiboot_information *mbi)
         printf("memory manager initialize failed\n");
         __asm__("cli;hlt;");
     }
+    
     if (PageManager::initialize())
     {
         printf("Paging initialize failed\n");
         __asm__("cli;hlt;");
     }
+
     if (create_kernel_heap())
     {
         printf("Kernel heap initialize failed\n");
@@ -420,7 +424,7 @@ void *pnpHotPlug([[maybe_unused]] void *arg)
  */
 void state_c0()
 {
-    printf("Kernal thread started\n");
+    printf("Kernal thread started.\n");
     InitializeFullAcpi();
     pci_init_devices();
     init_vfs();
@@ -439,6 +443,11 @@ void state_c0()
     char input[4096];
     sleep(10);
     printf(copyright);
+    // if (initilize_graphics())
+    // {
+    //     printf("Graphics initilize failed\n");
+    //     __asm__("cli;hlt;");
+    // }
     while (true)
     {
         std::string curDir = getCurrentPath();

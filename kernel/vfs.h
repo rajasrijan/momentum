@@ -315,7 +315,6 @@ enum Open_Flags
 typedef uint64_t mode_t;
 int lookup(const char *path, shared_ptr<vnode> &node);
 int open(const string &name);
-void close(int fd);
 int openat(int dirfd, const string &pathname, int flags, mode_t mode);
 
 int read(int fd, char *dst, size_t size);

@@ -18,9 +18,21 @@
  */
 
 #include <stdint.h>
-#include <errno.h>
-#include "bitmap_allocator.h"
+#include <time.h>
+#include <stddef.h>
+#include <fcntl.h>
+#include <stddef.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
-void test()
+struct dirent dir[INT16_MAX];
+
+int main()
 {
+    int fd = 0, ret = 0;
+    fd = openat(AT_FDCWD, ".", O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_DIRECTORY);
+    ret = getdents64(fd, dir, INT16_MAX);
+    for (int i = 0; i < ret; i++)
+        printf("%s\n", dir[i].d_name);
+    close(fd);
 }

@@ -108,6 +108,7 @@ void binary_loader::load(shared_ptr<vnode> &node)
             printf("Failed to set page address\n");
             asm("cli;hlt");
         }
+
         if (PageManager::getPhysicalAddress(kpage.vaddr, kpage.paddr))
         {
             printf("Failed to get physical address\n");

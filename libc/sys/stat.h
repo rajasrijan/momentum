@@ -17,10 +17,15 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include <errno.h>
-#include "bitmap_allocator.h"
+#ifndef STAT_H
+#define STAT_H
 
-void test()
+struct stat
 {
-}
+    time_t st_atime; // last access time
+    time_t st_mtime; // last modification time
+    time_t st_ctime; // last sttus change type
+};
+
+int fstat(int fd, struct stat *buf);
+#endif

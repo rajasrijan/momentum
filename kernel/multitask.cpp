@@ -18,12 +18,14 @@
  */
 #include "multitask.h"
 #include <arch/x86_64/global.h>
+#include <arch/x86_64/mm.h>
 #include <kernel/syscall.h>
 #include <kernel/vfs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -245,6 +247,8 @@ void multitask::destroyProcess(int status)
         }
         delete prs;
     }
+    //  set kernel thread as active.
+    setActiveProcess(getKernelProcess());
 }
 
 int multitask::createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg)
@@ -308,7 +312,7 @@ thread_t multitask::getNextThread(retStack_t *stack, general_registers_t *regs)
 {
     threadList[uiCurrentThreadIndex]->context = *stack;
     threadList[uiCurrentThreadIndex]->regs = *regs;
-    // sync lock(multitaskMutex);
+
     if (mtx_trylock_notimeout(&multitaskMutex) == thrd_success)
     {
         mtx_unlock(&threadList[uiCurrentThreadIndex]->mtx);
@@ -317,12 +321,21 @@ thread_t multitask::getNextThread(retStack_t *stack, general_registers_t *regs)
         {
             uiThreadIterator = (uiThreadIterator + 1) % uiThreadCount;
         } while ((mtx_trylock_notimeout(&threadList[uiThreadIterator]->mtx) != thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
+        //  if there is a process switch, need to change page directory.
+        if (threadList[uiCurrentThreadIndex]->parentProcess != threadList[uiThreadIterator]->parentProcess)
+        {
+            //  remove old page directory
+            PageManager::removeMemoryMap(threadList[uiCurrentThreadIndex]->parentProcess->memory_map);
+            //  apply new page directory
+            PageManager::applyMemoryMap(threadList[uiThreadIterator]->parentProcess->memory_map, PageManager::Privilege::User, PageManager::PageType::Read_Write);
+        }
         if (threadList[uiCurrentThreadIndex]->flags == THREAD_STOP && uiCurrentThreadIndex != uiThreadIterator)
         {
             printf("Thread needs cleanup\n");
             delete threadList[uiCurrentThreadIndex];
             threadList.erase(threadList.begin() + uiCurrentThreadIndex);
         }
+
         uiCurrentThreadIndex = uiThreadIterator;
         mtx_unlock(&multitaskMutex);
     }
@@ -381,6 +394,16 @@ process_info::~process_info()
         threads[i]->release();
     }
     threads.clear();
+    //  remove mapping
+    PageManager::removeMemoryMap(memory_map);
+    //  reclaim physical memory
+    for (const auto &mmap : memory_map)
+    {
+        for (size_t i = 0; i < mmap.size; i += PageManager::PAGESIZE)
+        {
+            rel_2mb_block(mmap.paddr + i);
+        }
+    }
 }
 
 uint64_t process_info::get_cs()
@@ -421,31 +444,62 @@ uint64_t process_info::get_ss()
 
 extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
 {
-    if (callid == SYSCALL_EXIT)
+    switch (callid)
+    {
+    case SYSCALL_EXIT:
     {
         multitask::getInstance()->destroyProcess(arg0);
+        //  there is nothing left to return to. Wait for reschedule and cleanup.
+        while (true)
+        {
+            asm("pause;hlt");
+        }
     }
-    else if (callid == SYSCALL_PUTCHAR)
+    case SYSCALL_PUTCHAR:
     {
         return putchar(arg0);
     }
-    else if (callid == SYSCALL_GETCHAR)
+    case SYSCALL_GETCHAR:
     {
         return getchar();
     }
-    else if (callid == SYSCALL_GETCWD)
+    case SYSCALL_GETCWD:
     {
         std::string curDir = getCurrentPath();
         strncpy((char *)arg0, curDir.c_str(), min((unsigned long)arg1, curDir.size() + 1));
         return arg0;
     }
-    else if (callid == SYSCALL_CHDIR)
+    case SYSCALL_CHDIR:
     {
         return chdir((const char *)arg0);
     }
-    else
+    case SYSCALL_CLOSE:
     {
-        printf("Unknown syscall\n");
+        return close(arg0);
+    }
+    case SYSCALL_OPENAT:
+    {
+        openat_args *args = (openat_args *)arg0;
+        return openat(args->dirfd, args->pathname, args->flags, 0);
+    }
+    case SYSCALL_GETDENTS:
+    {
+        getdents_args *args = (getdents_args *)arg0;
+        vector<string> dir;
+        int ret = getdents(args->fd, dir);
+        auto dent_sz = dir.size();
+        for (size_t i = 0; i < min(dent_sz, args->count); i++)
+        {
+            strncpy(args->dirp[i].d_name, dir[i].c_str(), NAME_MAX);
+        }
+        ret = min(dent_sz, args->count);
+        return ret;
+    }
+    default:
+    {
+        printf("Unknown syscall: %d\n", callid);
+        asm("cli;hlt");
+    }
     }
     return 0;
 }

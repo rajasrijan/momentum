@@ -33,6 +33,7 @@ typedef struct _heap_
 int initilize_memorymanager(struct multiboot_tag_mmap *mbi);
 int create_kernel_heap(void);
 uint64_t get_2mb_block(void);
+void rel_2mb_block(uint64_t p);
 
 #ifdef __cplusplus
 extern "C"

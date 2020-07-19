@@ -110,6 +110,12 @@ uint64_t get_2mb_block()
     return p;
 }
 
+void rel_2mb_block(uint64_t p)
+{
+    if (bitmap_free(mem_available, p))
+        asm("cli;hlt");
+}
+
 /*
  * Aligned allocate memory in kernel heap.B
  */

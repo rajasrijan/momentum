@@ -24,10 +24,10 @@
 #include <vector>
 #include <utility>
 
-#define PG_LVL_IDX(vaddr, lvl) ((vaddr >> ((9 * lvl) + 3)) & 0x1FF)
+#define PG_LVL_IDX(vaddr, lvl) (((vaddr) >> ((9 * lvl) + 3)) & 0x1FF)
 #define PG_LVL_SZ(lvl) (1ull << ((9 * lvl) + 3))
-#define PG_LVL_ALIGN(vaddr, lvl) (vaddr & (0xFFFFFFFFFFFFFFFFull << ((9 * lvl) + 3)))
-#define PG_LVL_OFFSET(vaddr, lvl) (vaddr & ((1ull << ((9 * lvl) + 3)) - 1))
+#define PG_LVL_ALIGN(vaddr, lvl) ((vaddr) & (0xFFFFFFFFFFFFFFFFull << ((9 * lvl) + 3)))
+#define PG_LVL_OFFSET(vaddr, lvl) ((vaddr) & ((1ull << ((9 * lvl) + 3)) - 1))
 #define PG_LVL_VADDR(l4, l3, l2, l1) (((l4 & 0x1FF) << 39) | ((l3 & 0x1FF) << 30) | ((l2 & 0x1FF) << 21) | ((l1 & 0x1FF) << 12))
 #define PG_GET_ADDRESS(pg) ((pg)->paddr << 12)
 
@@ -99,8 +99,10 @@ namespace PageManager
     int IdentityMap2MBPages(uint64_t paddr);
     int initialize();
     int findVirtualMemory(uint64_t paddr, uint64_t &vaddr);
-    int findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset = 0);
+    int findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset = 0x0);
     int getMemoryMap(std::vector<MemPage> &memMap);
+    int applyMemoryMap(const std::vector<MemPage> &memMap, Privilege privilege, PageType pageType);
+    int removeMemoryMap(const std::vector<MemPage> &memMap);
     int add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size);
 }; // namespace PageManager
 

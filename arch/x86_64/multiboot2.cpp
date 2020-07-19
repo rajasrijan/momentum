@@ -39,14 +39,14 @@ __attribute__((section(".multiboot"))) kernel_multiboot_header momentum_multiboo
         MULTIBOOT_TAG_TYPE_VBE,
         MULTIBOOT_TAG_TYPE_END,
     },
-    {
-        .type = MULTIBOOT_HEADER_TAG_FRAMEBUFFER,
-        .flags = 0,
-        .size = sizeof(multiboot_header_tag_framebuffer),
-        .width = 1024,
-        .height = 768,
-        .depth = 32,
-    },
+    // {
+    //     .type = MULTIBOOT_HEADER_TAG_FRAMEBUFFER,
+    //     .flags = 0,
+    //     .size = sizeof(multiboot_header_tag_framebuffer),
+    //     .width = 1024,
+    //     .height = 768,
+    //     .depth = 32,
+    // },
     {
         .type = MULTIBOOT_HEADER_TAG_MODULE_ALIGN,
         .flags = 0,

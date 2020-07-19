@@ -27,16 +27,38 @@
 #include <stdio.h>
 #include <kernel/config.h>
 
-uint8_t *videomemory = nullptr;
-size_t screen_width = 0, screen_height = 0;
-size_t pitch = 0, depth = 0;
-uint16_t color = 0;
+static uint8_t *videomemory = nullptr;
+static size_t screen_width = 0, screen_height = 0;
+static size_t pitch = 0, depth = 0;
+static uint16_t color = 0;
 size_t font_width = 0, font_height = 0, font_depth = 0, text_width = 0, text_height = 0;
 DisplayMode currentDisplayMode;
 //  print functions
 void (*putcharacter)(const uint8_t ch, uint32_t x, uint32_t y) = nullptr;
 void (*scroll)(void) = nullptr;
 void (*setColor)(uint8_t c) = nullptr;
+int set_io_functions(void (*putcharacter_new)(const uint8_t ch, uint32_t x, uint32_t y),
+                     void (*scroll_new)(void),
+                     void (*setColor_new)(uint8_t c))
+{
+    putcharacter = putcharacter_new;
+    scroll = scroll_new;
+    setColor = setColor_new;
+    return 0;
+}
+__uint128_t *get_framebuffer()
+{
+    return (__uint128_t *)videomemory;
+}
+
+void get_screenparams(size_t *_screen_width, size_t *_screen_height, size_t *_pitch, size_t *_depth)
+{
+    *_screen_width = screen_width;
+    *_screen_height = screen_height;
+    *_pitch = pitch;
+    *_depth = depth;
+}
+
 //  --------------------------------------------------------------------------------
 //  text only functions
 //  --------------------------------------------------------------------------------
@@ -103,6 +125,31 @@ int init_video(multiboot_tag_framebuffer *mbi)
     pitch = mbi->common.framebuffer_pitch;
     depth = mbi->common.framebuffer_bpp / 8;
     color = 0x0F00;
+    //  Paging is not initialized yet, so use 1GB temp paging structure.
+    uint64_t *pml4t = (uint64_t *)KERNEL_TEMP_PAGE_TABLE_LOCATION;
+    if ((pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 3) != 3)
+    {
+        //  page structure doesn't exist. Can't continue.
+        asm("cli;hlt");
+    }
+    uint64_t *pdpt = (uint64_t *)(pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 0xFFFFFFFFFFFFF000);
+    if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) == 3)
+    {
+        //  already mapped. Check if mapping is same as what we need, else can't continue.
+        if ((mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) != (pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 0xFFFFFFFFC0000000))
+            asm("cli;hlt");
+    }
+    else
+        pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] = (mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) | 0x83;
+    //  flush page cache
+    asm volatile("invlpg (%0)" ::"r"(mbi->common.framebuffer_addr));
+    //  keep record to readd pages later.
+    ret = PageManager::add_early_kernel_mapping(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, pitch * screen_height);
+    if (ret < 0)
+    {
+        printf("failed to add_early_kernel_mapping\n");
+        asm("cli;hlt");
+    }
     if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
     {
         currentDisplayMode = TEXT_ONLY;
@@ -114,31 +161,6 @@ int init_video(multiboot_tag_framebuffer *mbi)
     }
     else if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
     {
-        //  Paging is not initialized yet, so use 1GB temp paging structure.
-        uint64_t *pml4t = (uint64_t *)KERNEL_TEMP_PAGE_TABLE_LOCATION;
-        if ((pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 3) != 3)
-        {
-            //  page structure doesn't exist. Can't continue.
-            asm("cli;hlt");
-        }
-        uint64_t *pdpt = (uint64_t *)(pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 0xFFFFFFFFFFFFF000);
-        if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) == 3)
-        {
-            //  already mapped. Check if mapping is same as what we need, else can't continue.
-            if ((mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) != (pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 0xFFFFFFFFC0000000))
-                asm("cli;hlt");
-        }
-        else
-            pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] = (mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) | 0x83;
-        //  flush page cache
-        asm volatile("invlpg (%0)" ::"r"(mbi->common.framebuffer_addr));
-        //  keep record to readd pages later.
-        ret = PageManager::add_early_kernel_mapping(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, pitch * screen_height);
-        if (ret < 0)
-        {
-            printf("failed to add_early_kernel_mapping\n");
-            asm("cli;hlt");
-        }
         currentDisplayMode = GRAPHICS;
         init_font();
         putcharacter = putcharacter_vga;

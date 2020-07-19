@@ -24,6 +24,7 @@
 #include <kernel/syscall.h>
 #if __STDC_HOSTED__ == 0
 #include <native_sync.h>
+#include <stddef.h>
 #include <arch/x86_64/video.h>
 #endif
 

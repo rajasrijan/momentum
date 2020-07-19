@@ -17,10 +17,24 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include <errno.h>
-#include "bitmap_allocator.h"
+#ifndef _FCNTL_H_
+#define _FCNTL_H_
 
-void test()
+#define AT_FDCWD -100
+
+#define O_RDONLY (1 << 0)
+#define O_NONBLOCK (1 << 1)
+#define O_CLOEXEC (1 << 2)
+#define O_DIRECTORY (1 << 3)
+
+#define NAME_MAX 256
+
+struct dirent
 {
-}
+    char d_name[NAME_MAX];
+};
+
+int openat(int dirfd, const char *pathname, int flags);
+int getdents64(int fd, struct dirent *dirp, size_t count);
+
+#endif
