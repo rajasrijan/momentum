@@ -21,11 +21,20 @@ void printElfHeader(const Elf64_Ehdr &hdr)
            "ABI Version: %x, Entry: %x, Program Header: %x, "
            "Section Header: %x, flags: %x, Program Header size: %x, PH Count: "
            "%x\n",
-           *(uint32_t *)hdr.e_ident, bitness[(hdr.e_ident[EI_CLASS] - 1) % 2], endianness[(hdr.e_ident[EI_DATA] - 1) % 2], hdr.e_version, target_os[hdr.e_ident[EI_OSABI]], hdr.e_ident[EI_ABIVERSION],
+           *(uint32_t *)hdr.e_ident,
+           bitness[(hdr.e_ident[EI_CLASS] - 1) % 2],
+           endianness[(hdr.e_ident[EI_DATA] - 1) % 2],
+           hdr.e_version,
+           target_os[hdr.e_ident[EI_OSABI]],
+           hdr.e_ident[EI_ABIVERSION],
            //    hdr.type,
            //    hdr.machine,
            //    hdr.version2,
-           hdr.e_entry, hdr.e_phoff, hdr.e_shoff, hdr.e_flags, hdr.e_ehsize,
+           hdr.e_entry,
+           hdr.e_phoff,
+           hdr.e_shoff,
+           hdr.e_flags,
+           hdr.e_ehsize,
            //    hdr.phentsize,
            hdr.e_phnum
            //   ,

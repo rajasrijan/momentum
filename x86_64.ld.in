@@ -11,6 +11,7 @@ SECTIONS
 	{
 		*(.multiboot)
 		*(.text0*)
+		*(.rodata0*)
 		. = ALIGN(4096);
 	}
 

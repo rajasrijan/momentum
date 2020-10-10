@@ -23,9 +23,9 @@
 #include "stdlib.h"
 #include "string.h"
 #include <errno.h>
+#include <kernel/bitmap_allocator.h>
 #include <kernel/config.h>
 #include <stdint.h>
-#include <kernel/bitmap_allocator.h>
 
 uint64_t cpu_local_pml4t = 0;
 bitmap_allocator<512, 4096> default_pagemem_allocator;
@@ -239,6 +239,14 @@ int PageManager::IdentityMap2MBPages(uint64_t paddr)
     return ret;
 }
 
+int PageManager::IdentityMapPages(uint64_t paddr, uint64_t size)
+{
+    int ret = 0;
+    uint64_t sz_alloc = 0;
+    ret = page_allocation_helper((page_struct *)cpu_local_pml4t, paddr, paddr, size, Privilege::Supervisor, PageType::Read_Write, sz_alloc);
+    return ret;
+}
+
 int PageManager::findVirtualMemory([[maybe_unused]] uint64_t paddr, [[maybe_unused]] uint64_t &vaddr)
 {
     printf("NOT IMPLEMENTED!\n");
@@ -334,9 +342,10 @@ int PageManager::applyMemoryMap(const std::vector<MemPage> &memMap, Privilege pr
 }
 int PageManager::removeMemoryMap(const std::vector<MemPage> &memMap)
 {
+    int ret = 0;
     for (auto map : memMap)
     {
-        freeVirtualMemory(map.vaddr, map.size);
+        ret = freeVirtualMemory(map.vaddr, map.size);
     }
-    return 0;
+    return ret;
 }

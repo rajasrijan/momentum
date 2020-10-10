@@ -38,8 +38,8 @@ extern "C"
 extern "C"
 {
 #endif
-#include <stdint.h>
 #include "apic.h"
+#include <stdint.h>
 
     struct acpi_description_header
     {

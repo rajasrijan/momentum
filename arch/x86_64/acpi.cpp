@@ -19,16 +19,16 @@
 
 #include "acpi.h"
 #include "apic.h"
-#include "paging.h"
 #include "global.h"
+#include "paging.h"
 #include "pci.h"
+#include <ctype.h>
+#include <kernel/sys_info.h>
+#include <map>
 #include <stdint.h>
 #include <string.h>
 #include <string>
 #include <vector>
-#include <ctype.h>
-#include <map>
-#include <kernel/sys_info.h>
 
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
@@ -59,7 +59,9 @@ static void default_apic_mapping(void)
 {
     int ret = 0;
     uint64_t msr_apicbase = 0;
-    __asm("rdmsr" : "=a"(msr_apicbase) : "c"((uint64_t)IA32_APIC_BASE_MSR));
+    __asm("rdmsr"
+          : "=a"(msr_apicbase)
+          : "c"((uint64_t)IA32_APIC_BASE_MSR));
     sys_info.local_apic = (local_apic_structure *)(msr_apicbase & APICBASE_ADDRESS);
     printf("local apic:[0x%x], enabled [%d], BSP [%d]\n", sys_info.local_apic, (msr_apicbase & APICBASE_ENABLED) == APICBASE_ENABLED, (msr_apicbase & APICBASE_BSP) == APICBASE_BSP);
     ret = PageManager::IdentityMap2MBPages(((uint64_t)sys_info.local_apic) & 0xFFFFFFFFFFE00000);
@@ -207,25 +209,29 @@ static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
     uint32_t flags_hi = 0, flags_lo = 0;
     switch (flags & 0x3)
     {
-    case 0x01: {
-        flags_lo &= 0xFFFFDFFF;
-        break;
-    }
-    case 0x3: {
-        flags_lo |= 0x00002000;
-        break;
-    }
+        case 0x01:
+        {
+            flags_lo &= 0xFFFFDFFF;
+            break;
+        }
+        case 0x3:
+        {
+            flags_lo |= 0x00002000;
+            break;
+        }
     }
     switch ((flags >> 2) & 0x3)
     {
-    case 0x01: {
-        flags_lo &= 0xFFFF7FFF;
-        break;
-    }
-    case 0x3: {
-        flags_lo |= 0x00008000;
-        break;
-    }
+        case 0x01:
+        {
+            flags_lo &= 0xFFFF7FFF;
+            break;
+        }
+        case 0x3:
+        {
+            flags_lo |= 0x00008000;
+            break;
+        }
     }
     write_ioapic(hi_pin, 0x00000000 | flags_hi);
     write_ioapic(lo_pin, 0x00010000 | source | flags_lo);
@@ -346,13 +352,13 @@ static ACPI_STATUS AcpiNsFindPrtMethods(ACPI_HANDLE ObjHandle, UINT32 NestingLev
     ParentNode = Node->Parent;
     switch (ParentNode->Type)
     {
-    case ACPI_TYPE_DEVICE:
-        memcpy((void *)name, (void *)ParentNode->Name.Ascii, 4);
-        printf("ACPI %s\n", name);
-        device_list->push_back((ACPI_HANDLE)ParentNode);
-        break;
-    default:
-        break;
+        case ACPI_TYPE_DEVICE:
+            memcpy((void *)name, (void *)ParentNode->Name.Ascii, 4);
+            printf("ACPI %s\n", name);
+            device_list->push_back((ACPI_HANDLE)ParentNode);
+            break;
+        default:
+            break;
     }
     return (AE_OK);
 }
@@ -478,7 +484,7 @@ int InitializeFullAcpi(void)
                     printf("Failed to get resource for [%s]. Error [%x]\n", pci_routing->Source, Status);
                     return Status;
                 }
-                printf("PCI device [%x]  IRQ:", pci_routing->Address);
+                //  printf("PCI device [%x]  IRQ:", pci_routing->Address);
                 ACPI_RESOURCE *resource = (ACPI_RESOURCE *)ret.Pointer;
                 while (resource->Length > 0)
                 {
@@ -487,7 +493,7 @@ int InitializeFullAcpi(void)
                         uint32_t interrupt_flags = 0;
                         for (size_t i = 0; i < resource->Data.ExtendedIrq.InterruptCount; i++)
                         {
-                            printf(" %d,", resource->Data.ExtendedIrq.Interrupts[i]);
+                            //printf(" %d,", resource->Data.ExtendedIrq.Interrupts[i]);
                         }
                         if (resource->Data.ExtendedIrq.Polarity == 0)
                         {
@@ -507,7 +513,7 @@ int InitializeFullAcpi(void)
                         }
 
                         routing_table.push_back({pci_routing->Address, pci_routing->Pin, resource->Data.ExtendedIrq.Interrupts[0], interrupt_flags});
-                        printf("\n");
+                        //printf("\n");
                     }
                     resource = ACPI_NEXT_RESOURCE(resource);
                 }

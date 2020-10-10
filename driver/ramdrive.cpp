@@ -90,7 +90,6 @@ class ramfs_vnode : public vnode
     int bmap(void);
     int strategy(void);
     int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int bwrite(void);
     int brelse(void);
 };
 

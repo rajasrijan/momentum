@@ -18,10 +18,6 @@
  */
 #include "ELFFile.h"
 
-ELFFile::ELFFile()
-{
-}
+ELFFile::ELFFile() {}
 
-ELFFile::~ELFFile()
-{
-}
+ELFFile::~ELFFile() {}

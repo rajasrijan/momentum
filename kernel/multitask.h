@@ -35,6 +35,11 @@
  */
 #define THREAD_BUSY (1 << 0)
 #define THREAD_STOP (1 << 1)
+/*
+ *	Process flags.
+ */
+#define PROCESS_BUSY (1 << 0)
+#define PROCESS_STOP (1 << 1)
 
 #define KERNEL_PROCESS_NAME "kernel_process"
 #define KERNEL_THREAD_NAME "kernel_thread"
@@ -49,6 +54,7 @@ typedef class process_info *process_t;
 class process_info
 {
   public:
+    uint64_t flags;
     std::vector<MemPage> memory_map;
     ring_buffer<char, 256> key_buffer;
     std::vector<std::shared_ptr<class vnode>> path_history;
@@ -88,6 +94,12 @@ class process_info
     const char *getName()
     {
         return p_szProcessName;
+    }
+    void release();
+    int removeThread(thread_t thread);
+    bool isStopped()
+    {
+        return (flags == PROCESS_STOP) && threads.empty();
     }
 };
 

@@ -23,7 +23,11 @@
 [global loader]
 [global stack]
 [extern stage2]
-[extern readMultiBootInfo]
+[extern find_framebuffer]
+[extern framebuffer_ptr]
+[extern early_print]
+[extern PAGE_DIRECTORY]
+[extern create_page_directory]
 
 section .text0
 align 8
@@ -34,6 +38,9 @@ loader:
     ;EBX has multiboot info structure.
     cli
     MOV ESP,stack+STACKSIZE
+    push ebx
+    call find_framebuffer
+    add esp,4
 ;
 ;    KILL PIC, its dead.
 ;    
@@ -69,26 +76,15 @@ loader:
 ;    enable cr0.PM
 ;
 .enable_protected_mode:
-    mov eax, 000000011h
+    mov eax, 0x00000001
     mov cr0, eax
 ;
 ;    Load new page table. 1GB identity mapped
 ;
 .load_page_table:
-    MOV EAX, KERNEL_TEMP_PAGE_TABLE_LOCATION
-    MOV dword [eax], KERNEL_TEMP_PAGE_TABLE_LOCATION + 0x1000 + 3
-    MOV dword [eax + 0x1000], 0x83
-#if ((KERNEL_BASE_PTR>>39)&0x1FF)==0
-    MOV dword [eax + 0x1000+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x83
-    MOV dword [eax + 0x1000+4+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x0
-#else
-    MOV dword [eax + ((KERNEL_BASE_PTR>>39)&0x1FF)*8], KERNEL_TEMP_PAGE_TABLE_LOCATION + 0x2000 + 3
-    MOV dword [eax + 0x2000+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x83
-    MOV dword [eax + 0x2000+4+((KERNEL_BASE_PTR>>30)&0x1FF)*8], 0x0
-#endif
-    
-    MOV EAX, KERNEL_TEMP_PAGE_TABLE_LOCATION
-    MOV cr3,EAX
+    call create_page_directory
+    mov dword eax,[PAGE_DIRECTORY]
+    mov cr3,eax
 ;
 ;    enable PAE
 ;
@@ -103,15 +99,18 @@ loader:
     rdmsr                        ; Read from the model-specific register.
     or eax, 1 << 8|1             ; Set the LM-bit and SCE-bit which are bit 8 and 1.
     wrmsr                        ; Write to the model-specific register.
+
 ;
 ;    Enabling paging
 ;
     mov eax, cr0                 ; Set the A-register to control register 0.
     or eax, 1 << 31              ; Set the PG-bit, which is the 32nd bit (bit 31).
     mov cr0, eax                 ; Set control register 0 to the A-register.
+
 .gdt64:
     lgdt [GDT64.Pointer]
     jmp GDT64.Code_ring0:Realm64
+
 ; Use 64-bit.
 [BITS 64]
  
@@ -122,7 +121,7 @@ Realm64:
     mov ss, ax                    ; Set the stack segment to the A-register.
     mov fs, ax                    ; Set the F-segment to the A-register.
     mov gs, ax                    ; Set the G-segment to the A-register.
-    MOV RAX, KERNEL_TEMP_PAGE_TABLE_LOCATION
+    MOV QWORD RAX, [PAGE_DIRECTORY]
     MOV cr3,RAX
     cli
     ;now enable SSE and the like
@@ -156,85 +155,11 @@ Realm64:
 hang:
     cli;
     hlt;
-[BITS 32]
-find_acpi:
-    MOV EAX,0xE0000
-.loop:
-    cmp DWORD [EAX],'RSD '
-    jne .continue
-    cmp DWORD [EAX+4],'PTR '
-    je .done
-.continue:
-    cmp EAX,0xFFFFF
-    jge .failed
-    add EAX,2
-    jmp .loop
-.failed:
-    xor EAX,EAX
-.done:
-    ret
-
-
-parse_acpi_tables:
-    CALL find_acpi                  ;got rsdp.
-    cmp EAX,0
-    jz .failed
-    MOV DWORD [EBX + rsdp - loader],EAX
-    MOV EAX,[EAX+16]                ;got rsdt.
-    cmp DWORD [EAX],'RSDT'
-    jne .failed
-    MOV ECX,[EAX+4]
-    SUB ECX,36                      ;length of descriptor tables.
-    shr ECX,2                       ;divide by 4.
-    add EAX,36
-.test_table:
-    cmp ECX,0
-    jz .failed
-    MOV EDX,[EAX]
-    cmp DWORD [EDX],'APIC'
-    je .found_madt
-    add EAX,4
-    dec ECX
-    jmp .test_table
-.found_madt:
-    MOV EAX,EDX
-    MOV ECX,[EAX+4]
-    SUB ECX,44                      ;length of entire apic structure.
-    MOV EDX,[EAX+36]
-    MOV DWORD [EBX + local_apic_address - loader],EDX   ;store local apic address.
-    add EAX,44
-.test_apic_entries:
-    cmp ECX,0
-    jz .done
-.switch0:
-    cmp byte [EAX],0
-    jne .next_entry
-    inc DWORD [EBX + no_of_cpus - loader]
-.next_entry:
-    xor EDX,EDX
-    MOV dl,byte [EAX+1]
-    cmp ECX,EDX
-    jl .failed
-    add EAX,EDX
-    SUB ECX,EDX
-    jmp .test_apic_entries
-.failed:
-    xor EAX,EAX
-    ret
-.done:
-    MOV EAX,1
-    ret
 
 section .data0
+align 8
 data:
-    gdt_ptr dd 0
-    paging_structure dd 0
-    local_apic_address dd 0
-    no_of_cpus dd 0
-    memory_map dd 0
-    memory_map_len dd 0
-    idt_ptr dd 0
-    rsdp dd 0
+
 align 8
 gdt_start:
 .gdt_ptr_start:
@@ -325,7 +250,7 @@ GDT64:                   ; Global Descriptor Table (64-bit).
 
 pIDE64: ; Used by LGDT.
     dw IDT64.end-IDT64 ; GDT limit ...
-    dd IDT64 ; and 32-bit GDT base
+    dq IDT64 ; and 32-bit GDT base
 IDT64:
     dd 0,0
     dd 0x0000FFFF,0x00CF9A00

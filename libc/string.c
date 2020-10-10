@@ -132,7 +132,7 @@ char *strcat(char *dst, const char *src)
 
 const char *strrchar(const char *s1, int character)
 {
-    for (size_t len = strlen(s1); len >= 0; len--)
+    for (int64_t len = strlen(s1); len >= 0; len--)
     {
         if (s1[len] == character)
         {

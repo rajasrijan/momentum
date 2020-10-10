@@ -16,8 +16,8 @@ extern "C"
     /* Types for AcpiOsExecute */
 
     /*
-     * OSL Initialization and shutdown primitives
-     */
+ * OSL Initialization and shutdown primitives
+ */
     ACPI_STATUS AcpiOsInitialize(void)
     {
         printf("Initializing ACPI OSL\n");
@@ -33,8 +33,8 @@ extern "C"
     }
 
     /*
-     * ACPI Table interfaces
-     */
+ * ACPI Table interfaces
+ */
     ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer(void)
     {
         ACPI_PHYSICAL_ADDRESS Ret = 0;
@@ -42,19 +42,23 @@ extern "C"
         return Ret;
     }
 
-    ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *InitVal, ACPI_STRING *NewVal)
+    ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *InitVal,
+                                         ACPI_STRING *NewVal)
     {
         *NewVal = NULL;
         return AE_NOT_IMPLEMENTED;
     }
 
-    ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_TABLE_HEADER **NewTable)
+    ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *ExistingTable,
+                                    ACPI_TABLE_HEADER **NewTable)
     {
         *NewTable = NULL;
         return AE_NOT_IMPLEMENTED;
     }
 
-    ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_PHYSICAL_ADDRESS *NewAddress, UINT32 *NewTableLength)
+    ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable,
+                                            ACPI_PHYSICAL_ADDRESS *NewAddress,
+                                            UINT32 *NewTableLength)
     {
         *NewAddress = 0;
         *NewTableLength = 0;
@@ -62,20 +66,16 @@ extern "C"
     }
 
     /*
-     * Spinlock primitives
-     */
-    ACPI_STATUS
-    AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
+ * Spinlock primitives
+ */
+    ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
     {
         *OutHandle = (mtx_t *)malloc(sizeof(mtx_t));
         mtx_init(*OutHandle, 0);
         return 0;
     }
 
-    void AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
-    {
-        free(Handle);
-    }
+    void AcpiOsDeleteLock(ACPI_SPINLOCK Handle) { free(Handle); }
 
     ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle)
     {
@@ -89,8 +89,8 @@ extern "C"
     }
 
     /*
-     * Semaphore primitives
-     */
+ * Semaphore primitives
+ */
     ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle)
     {
         *OutHandle = (ACPI_SEMAPHORE)malloc(sizeof(sem_t));
@@ -123,9 +123,9 @@ extern "C"
     }
 
     /*
-     * Mutex primitives. May be configured to use semaphores instead via
-     * ACPI_MUTEX_TYPE (see platform/acenv.h)
-     */
+ * Mutex primitives. May be configured to use semaphores instead via
+ * ACPI_MUTEX_TYPE (see platform/acenv.h)
+ */
     ACPI_STATUS
     AcpiOsCreateMutex(ACPI_MUTEX *OutHandle)
     {
@@ -134,10 +134,7 @@ extern "C"
         return 0;
     }
 
-    void AcpiOsDeleteMutex(ACPI_MUTEX Handle)
-    {
-        free(Handle);
-    }
+    void AcpiOsDeleteMutex(ACPI_MUTEX Handle) { free(Handle); }
 
     ACPI_STATUS
     AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout)
@@ -145,23 +142,14 @@ extern "C"
         return mtx_trylock(Handle, Timeout);
     }
 
-    void AcpiOsReleaseMutex(ACPI_MUTEX Handle)
-    {
-        mtx_unlock(Handle);
-    }
+    void AcpiOsReleaseMutex(ACPI_MUTEX Handle) { mtx_unlock(Handle); }
 
     /*
-     * Memory allocation and mapping
-     */
-    void *AcpiOsAllocate(ACPI_SIZE Size)
-    {
-        return calloc(1, Size);
-    }
+ * Memory allocation and mapping
+ */
+    void *AcpiOsAllocate(ACPI_SIZE Size) { return calloc(1, Size); }
 
-    void AcpiOsFree(void *Memory)
-    {
-        free(Memory);
-    }
+    void AcpiOsFree(void *Memory) { free(Memory); }
 
     void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length)
     {
@@ -175,7 +163,8 @@ extern "C"
             printf("Virtual Memory Full");
             asm("cli;hlt");
         }
-        ret = PageManager::setVirtualToPhysicalMemory(vaddr, paddr, length, PageManager::Supervisor, PageManager::Read_Write);
+        ret = PageManager::setVirtualToPhysicalMemory(
+            vaddr, paddr, length, PageManager::Supervisor, PageManager::Read_Write);
         if (ret < 0)
         {
             printf("failed to setVirtualToPhysicalMemory\n");
@@ -196,7 +185,8 @@ extern "C"
         }
     }
 
-    ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
+    ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress,
+                                         ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -204,8 +194,8 @@ extern "C"
     }
 
     /*
-     * Interrupt handlers
-     */
+ * Interrupt handlers
+ */
     pair<ACPI_OSD_HANDLER, void *> ServiceRoutines[256];
     void common_interrupt_handler(retStack_t *stack, general_registers_t *context)
     {
@@ -216,7 +206,9 @@ extern "C"
         }
     }
 
-    ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRoutine, void *Context)
+    ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
+                                              ACPI_OSD_HANDLER ServiceRoutine,
+                                              void *Context)
     {
         ServiceRoutines[InterruptNumber] = make_pair(ServiceRoutine, Context);
         register_interrupt_handler(InterruptNumber, common_interrupt_handler);
@@ -224,7 +216,8 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRoutine)
+    AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber,
+                                 ACPI_OSD_HANDLER ServiceRoutine)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -232,8 +225,8 @@ extern "C"
     }
 
     /*
-     * Threads and Scheduling
-     */
+ * Threads and Scheduling
+ */
     ACPI_THREAD_ID AcpiOsGetThreadId(void)
     {
         return multitask::getInstance()->getKernelThread()->getThreadID();
@@ -266,24 +259,24 @@ extern "C"
     }
 
     /*
-     * Platform and hardware-independent I/O interfaces
-     */
+ * Platform and hardware-independent I/O interfaces
+ */
     ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32 *Value, UINT32 Width)
     {
         switch (Width)
         {
-        case 8:
-            *Value = inb(Address);
-            break;
-        case 16:
-            *Value = inw(Address);
-            break;
-        case 32:
-            *Value = inl(Address);
-            break;
-        default:
-            printf("%s: Invalid width [%d]\n", __FUNCTION__, Width);
-            __asm__("cli;hlt");
+            case 8:
+                *Value = inb(Address);
+                break;
+            case 16:
+                *Value = inw(Address);
+                break;
+            case 32:
+                *Value = inl(Address);
+                break;
+            default:
+                printf("%s: Invalid width [%d]\n", __FUNCTION__, Width);
+                __asm__("cli;hlt");
         }
         return 0;
     }
@@ -292,25 +285,25 @@ extern "C"
     {
         switch (Width)
         {
-        case 8:
-            outb(Address, Value);
-            break;
-        case 16:
-            outw(Address, Value);
-            break;
-        case 32:
-            outl(Address, Value);
-            break;
-        default:
-            printf("%s: Invalid width [%d]\n", __FUNCTION__, Width);
-            __asm__("cli;hlt");
+            case 8:
+                outb(Address, Value);
+                break;
+            case 16:
+                outw(Address, Value);
+                break;
+            case 32:
+                outl(Address, Value);
+                break;
+            default:
+                printf("%s: Invalid width [%d]\n", __FUNCTION__, Width);
+                __asm__("cli;hlt");
         }
         return 0;
     }
 
     /*
-     * Platform and hardware-independent physical memory interfaces
-     */
+ * Platform and hardware-independent physical memory interfaces
+ */
     ACPI_STATUS
     AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width)
     {
@@ -328,10 +321,10 @@ extern "C"
     }
 
     /*
-     * Platform and hardware-independent PCI configuration space access
-     * Note: Can't use "Register" as a parameter, changed to "Reg" --
-     * certain compilers complain.
-     */
+ * Platform and hardware-independent PCI configuration space access
+ * Note: Can't use "Register" as a parameter, changed to "Reg" --
+ * certain compilers complain.
+ */
     ACPI_STATUS
     AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Reg, UINT64 *Value, UINT32 Width)
     {
@@ -349,8 +342,8 @@ extern "C"
     }
 
     /*
-     * Miscellaneous
-     */
+ * Miscellaneous
+ */
     BOOLEAN
     AcpiOsReadable(void *Pointer, ACPI_SIZE Length)
     {
@@ -367,10 +360,7 @@ extern "C"
         return EXIT_FAILURE;
     }
 
-    UINT64 AcpiOsGetTimer(void)
-    {
-        return getSystemTime();
-    }
+    UINT64 AcpiOsGetTimer(void) { return getSystemTime(); }
 
     ACPI_STATUS
     AcpiOsSignal(UINT32 Function, void *Info)
@@ -387,8 +377,8 @@ extern "C"
     }
 
     /*
-     * Debug print routines
-     */
+ * Debug print routines
+ */
     void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char *Format, ...)
     {
         char buffer[1024];
@@ -413,8 +403,8 @@ extern "C"
     }
 
     /*
-     * Debug IO
-     */
+ * Debug IO
+ */
     ACPI_STATUS
     AcpiOsGetLine(char *Buffer, UINT32 BufferLength, UINT32 *BytesRead)
     {
@@ -460,8 +450,8 @@ extern "C"
     }
 
     /*
-     * Obtain ACPI table(s)
-     */
+ * Obtain ACPI table(s)
+ */
     ACPI_STATUS
     AcpiOsGetTableByName(char *Signature, UINT32 Instance, ACPI_TABLE_HEADER **Table, ACPI_PHYSICAL_ADDRESS *Address)
     {
@@ -479,7 +469,8 @@ extern "C"
     }
 
     ACPI_STATUS
-    AcpiOsGetTableByAddress(ACPI_PHYSICAL_ADDRESS Address, ACPI_TABLE_HEADER **Table)
+    AcpiOsGetTableByAddress(ACPI_PHYSICAL_ADDRESS Address,
+                            ACPI_TABLE_HEADER **Table)
     {
         printf("%s not impl\n", __FUNCTION__);
         __asm__("cli;hlt");
@@ -487,8 +478,8 @@ extern "C"
     }
 
     /*
-     * Directory manipulation
-     */
+ * Directory manipulation
+ */
     void *AcpiOsOpenDirectory(char *Pathname, char *WildcardSpec, char RequestedFileType)
     {
         printf("%s not impl\n", __FUNCTION__);

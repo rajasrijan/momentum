@@ -17,8 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "global.h"
 #include "descriptor_tables.h"
+#include "global.h"
 #include <kernel/sys_info.h>
 
 void set_gdt_gate(gdt_entry_t *gdt_entries, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran)

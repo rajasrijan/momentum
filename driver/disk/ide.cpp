@@ -57,7 +57,7 @@ int ide_probe(pci_device_t *dev)
             {
                 continue;
             }
-            ret = 0;
+            
             printf("IDE drive at [%s] [%s]\n", !bus ? "primary" : "secondry", !master ? "master" : "slave");
             string disk_name = "hda";
             disk_name.back() += disk_no++;

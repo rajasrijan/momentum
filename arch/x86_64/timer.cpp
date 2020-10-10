@@ -17,16 +17,16 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "timer.h"
+#include "../../libc/threads.h"
+#include "apic.h"
+#include "global.h"
+#include "interrupts.h"
+#include "stddef.h"
+#include "string.h"
+#include <kernel/multitask.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "string.h"
-#include "stddef.h"
-#include "timer.h"
-#include "global.h"
-#include "apic.h"
-#include "../../libc/threads.h"
-#include "interrupts.h"
-#include <kernel/multitask.h>
 
 static uint64_t tick = 0;
 

@@ -70,18 +70,24 @@ int ata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRe
     return ataReadSectors_pio(data_port, IsMaster, position, size, data);
 }
 
+int ata_blk_vnode::bwrite(ssize_t position, size_t size, char *data, int *bytesRead)
+{
+    return -ENOSYS;
+}
+
 int ata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
 {
     switch (command)
     {
-    case BLKGETSIZE64: {
-        ata_identity ident = {};
-        ataIdentify(ident, data_port, IsMaster);
-        *((uint64_t *)data) = ident.MAX_LBA;
-    }
-    break;
-    default:
-        return EINVAL;
+        case BLKGETSIZE64:
+        {
+            ata_identity ident = {};
+            ataIdentify(ident, data_port, IsMaster);
+            *((uint64_t *)data) = ident.MAX_LBA;
+        }
+        break;
+        default:
+            return EINVAL;
     }
     return 0;
 }

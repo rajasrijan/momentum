@@ -19,10 +19,10 @@
 
 #ifndef PAGING_H
 #define PAGING_H
-#include <stdint.h>
 #include "interrupts.h"
-#include <vector>
+#include <stdint.h>
 #include <utility>
+#include <vector>
 
 #define PG_LVL_IDX(vaddr, lvl) (((vaddr) >> ((9 * lvl) + 3)) & 0x1FF)
 #define PG_LVL_SZ(lvl) (1ull << ((9 * lvl) + 3))
@@ -67,43 +67,44 @@ struct MemPage
 
 namespace PageManager
 {
-    const uint64_t SMALLPAGESIZE = 0x1000;
-    const uint64_t PAGESIZE = 0x200000;
-    const uint64_t BIGPAGESIZE = 0x40000000;
-    const uint64_t BIGBIGPAGESIZE = 0x8000000000;
+const uint64_t SMALLPAGESIZE = 0x1000;
+const uint64_t PAGESIZE = 0x200000;
+const uint64_t BIGPAGESIZE = 0x40000000;
+const uint64_t BIGBIGPAGESIZE = 0x8000000000;
 
-    enum Privilege
-    {
-        Supervisor = 0,
-        User = 1
-    };
-    enum PageType
-    {
-        Read_Only = 0,
-        Read_Write = 1
-    };
+enum Privilege
+{
+    Supervisor = 0,
+    User = 1
+};
+enum PageType
+{
+    Read_Only = 0,
+    Read_Write = 1
+};
 
-    int set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType);
-    /*
+int set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType);
+/*
     handle page faults
 */
-    void interruptHandler(retStack_t *stack, general_registers_t *regs);
+void interruptHandler(retStack_t *stack, general_registers_t *regs);
 
-    uint64_t roundToPageSize(uint64_t sz);
-    uint64_t roundToPageBoundry(uint64_t addr);
-    int setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType);
-    int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType);
-    int getPhysicalAddress(uint64_t vaddr, uint64_t &paddr);
-    int getVirtualAddress(uint64_t paddr, uint64_t length, uint64_t &vaddr);
-    int freeVirtualMemory(uint64_t vaddr, uint64_t size);
-    int IdentityMap2MBPages(uint64_t paddr);
-    int initialize();
-    int findVirtualMemory(uint64_t paddr, uint64_t &vaddr);
-    int findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset = 0x0);
-    int getMemoryMap(std::vector<MemPage> &memMap);
-    int applyMemoryMap(const std::vector<MemPage> &memMap, Privilege privilege, PageType pageType);
-    int removeMemoryMap(const std::vector<MemPage> &memMap);
-    int add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size);
+uint64_t roundToPageSize(uint64_t sz);
+uint64_t roundToPageBoundry(uint64_t addr);
+int setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType);
+int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType);
+int getPhysicalAddress(uint64_t vaddr, uint64_t &paddr);
+int getVirtualAddress(uint64_t paddr, uint64_t length, uint64_t &vaddr);
+int freeVirtualMemory(uint64_t vaddr, uint64_t size);
+int IdentityMap2MBPages(uint64_t paddr);
+int IdentityMapPages(uint64_t paddr, uint64_t size);
+int initialize();
+int findVirtualMemory(uint64_t paddr, uint64_t &vaddr);
+int findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset = 0x0);
+int getMemoryMap(std::vector<MemPage> &memMap);
+int applyMemoryMap(const std::vector<MemPage> &memMap, Privilege privilege, PageType pageType);
+int removeMemoryMap(const std::vector<MemPage> &memMap);
+int add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size);
 }; // namespace PageManager
 
 typedef volatile struct paging_structure paging_structure_t;

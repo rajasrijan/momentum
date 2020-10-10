@@ -42,7 +42,7 @@ int bitblit(__uint128_t *dst, size_t dst_pitch, size_t dst_height, __uint128_t *
     src_pitch /= sizeof(__uint128_t);
 
     auto p = min(dst_pitch, src_pitch);
-    
+
     for (size_t i = 0; i < height; i++)
     {
         for (size_t j = 0; j < p; j++)

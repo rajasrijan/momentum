@@ -35,6 +35,13 @@ extern "C"
 
     int strcmp(const char *s1, const char *s2);
     char stricmp(const char *s1, const char *s2);
+    /**
+     * @brief find last character in the string s1
+     * 
+     * @param s1 string in which to search for
+     * @param character he character to search for
+     * @return const char* character position or NULL on no match
+     */
     const char *strrchar(const char *s1, int character);
     const char *strchar(const char *s1, int character);
     char *strstr(const char *str1, const char *str2);

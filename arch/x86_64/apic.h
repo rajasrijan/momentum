@@ -26,6 +26,32 @@
 #define APICBASE_ENABLED 0x00000800
 #define APICBASE_ADDRESS 0xfffff000
 
+//  APIC interrupt command register defines
+#define APIC_ICR_DELIVERY_FIXED 0x000
+#define APIC_ICR_DELIVERY_LOWPRIORITY 0x100
+#define APIC_ICR_DELIVERY_SMI 0x200
+#define APIC_ICR_DELIVERY_RESV0 0x300
+#define APIC_ICR_DELIVERY_NMI 0x400
+#define APIC_ICR_DELIVERY_INIT 0x500
+#define APIC_ICR_DELIVERY_STARTUP 0x600
+#define APIC_ICR_DELIVERY_RESV1 0x700
+
+#define APIC_ICR_DESTMODE_PHYSICAL 0x000
+#define APIC_ICR_DESTMODE_LOGICAL 0x800
+
+#define APIC_ICR_DELIVERY_STATUS 0x1000
+
+#define APIC_ICR_LEVEL_DEASSERT 0x0000
+#define APIC_ICR_LEVEL_ASSERT 0x4000
+
+#define APIC_ICR_TRIGGER_EDGE 0x0000
+#define APIC_ICR_TRIGGER_LEVEL 0x8000
+
+#define APIC_ICR_DEST_NONE 0x00000
+#define APIC_ICR_DEST_SELF 0x40000
+#define APIC_ICR_DEST_ALL_SELF 0x80000
+#define APIC_ICR_DEST_ALL_NOSELF 0xC0000
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -67,5 +93,28 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @brief Send INIT interrut to destination cpu. This function is only used for AP startup.
+ * 
+ * @param isShorthand Set to true to indicate 'dest' is shorthand address, false to indicate full address.
+ * @param dest Destination address
+ */
+void apic_interrupt_command_init(bool isShorthand, uint64_t dest);
+
+/**
+ * @brief Send STARTUP interrut to destination cpu. This function is only used for AP startup.
+ * 
+ * @param isShorthand Set to true to indicate 'dest' is shorthand address, false to indicate full address.
+ * @param dest Destination address
+ * @param vector 
+ */
+void apic_interrupt_command_sipi(bool isShorthand, uint64_t dest, uint8_t vector);
+
+/**
+ * @brief Initialize symmetric muliprocessor
+ * 
+ */
+int init_symmetric_multi_processor();
 
 #endif /* APIC_H */

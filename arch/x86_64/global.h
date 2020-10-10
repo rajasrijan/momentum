@@ -24,20 +24,22 @@
 #define KERNEL_DRIVER_PTR ((void *)0x00000000E0000000)
 #define KERNEL_DRV_HEAP_PTR ((void *)0x00000000F0000000)
 
-#include <stdint.h>
-#include <stddef.h>
+#include "apic.h"
 #include "descriptor_tables.h"
 #include "paging.h"
-#include "apic.h"
-#include <stdio.h>
 #include <list>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
 
 extern void *memory_map;
 extern uint32_t memory_map_len;
 
 static inline void insl(uint16_t port, void *addr, uint32_t count)
 {
-    __asm__ __volatile__("rep ; insl" : "=D"(addr), "=c"(count) : "d"(port), "0"(addr), "1"(count));
+    __asm__ __volatile__("rep ; insl"
+                         : "=D"(addr), "=c"(count)
+                         : "d"(port), "0"(addr), "1"(count));
 }
 
 static inline uint8_t checksum(uint8_t *ptr, uint32_t len)
@@ -57,12 +59,16 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
 }
 static inline void rdmsr(uint32_t msr, uint32_t *lo, uint32_t *hi)
 {
-    asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
+    asm volatile("rdmsr"
+                 : "=a"(*lo), "=d"(*hi)
+                 : "c"(msr));
 }
 
 static inline void wrmsr(uint32_t msr, uint64_t val)
 {
-    asm volatile("wrmsr" : : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
+    asm volatile("wrmsr"
+                 :
+                 : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
 }
 
 extern "C" uint64_t kernel_start;

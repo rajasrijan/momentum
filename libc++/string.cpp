@@ -31,7 +31,6 @@ unsigned long long std::to_uuid(const char *str)
             }
             result = (result << 4) | hex;
         }
-        result <<= 48;
     }
     else if (strlen(str) == 36)
     {

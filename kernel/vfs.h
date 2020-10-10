@@ -179,7 +179,7 @@ class vnode
     virtual int access(void);
     virtual int bmap(void);
     virtual int bread(ssize_t position, size_t size, char *data, int *bytesRead) = 0;
-    virtual int bwrite(void);
+    virtual int bwrite(ssize_t position, size_t size, char *data, int *bytesWritten) = 0;
     virtual int brelse(void);
     virtual int close(void);
     virtual int create(void);
@@ -205,6 +205,10 @@ class vnode
     virtual int symlink(void);
     virtual int strategy(void);
     virtual bool namecmp(const string &name) const;
+    virtual bool isPartitionable()
+    {
+        return true;
+    }
     void addRef(shared_ptr<vnode> &node)
     {
         ref_nodes.push_back(node);

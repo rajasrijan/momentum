@@ -34,11 +34,11 @@ static int disk_no = 0;
 
 class ahci_controller
 {
-private:
+  private:
     HBA_MEM volatile *abar;
     sata_blk_vnode *sata_blk_root_node[32];
 
-public:
+  public:
     ahci_controller() : abar(nullptr), sata_blk_root_node{}
     {
     }
@@ -108,7 +108,7 @@ class sata_pci_driver : pci_driver
 {
     ahci_controller *controller;
 
-public:
+  public:
     sata_pci_driver() : pci_driver("SATA Driver")
     {
     }
@@ -222,7 +222,6 @@ sata_blk_vnode::~sata_blk_vnode()
 
 int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 {
-    mtx_lock(&cmd_notify);
     uint64_t physical_address = 0;
 
     int spin = 0; // Spin lock timeout counter
@@ -233,7 +232,7 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     HBA_CMD_HEADER volatile *cmdheader = &command_list[slot];
     cmdheader->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t); // Command FIS size
     cmdheader->w = 0;                                        // Read from device
-    cmdheader->prdtl = (uint16_t)((size - 1) >> 22) + 1;      // PRDT entries count
+    cmdheader->prdtl = (uint16_t)((size - 1) >> 22) + 1;     // PRDT entries count
 
     HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL *)aligned_malloc(sizeof(HBA_CMD_TBL), 10);
     memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
@@ -287,9 +286,91 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
         return -EAGAIN;
     }
 
+    mtx_lock(&cmd_notify);
     port->ci = 1 << slot; // Issue command
     // Wait for completion
+    mtx_lock(&cmd_notify);
+    mtx_unlock(&cmd_notify);
 
+    // Check again
+    if (port->is & HBA_PxIS::TFES)
+    {
+        printf("Disk read failed\n");
+        return -EIO;
+    }
+
+    return 0;
+}
+
+int sata_blk_vnode::bwrite(ssize_t position, size_t size, char *data, int *bytesWrite)
+{
+    uint64_t physical_address = 0;
+
+    int spin = 0; // Spin lock timeout counter
+    int slot = getCommandSlot();
+    if (slot == -1)
+        return -EBUSY;
+    sync lock(port_lock);
+    HBA_CMD_HEADER volatile *cmdheader = &command_list[slot];
+    cmdheader->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t); // Command FIS size
+    cmdheader->w = 0;                                        // Read from device
+    cmdheader->prdtl = (uint16_t)((size - 1) >> 22) + 1;     // PRDT entries count
+
+    HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL *)aligned_malloc(sizeof(HBA_CMD_TBL), 10);
+    memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
+    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address))
+    {
+        printf("Failed to get physical address\n");
+        asm("cli;hlt");
+    }
+    Save_64BitPtr(cmdheader->ctba, physical_address);
+
+    for (size_t i = 0, total_size = 0; i < cmdheader->prdtl; i++, total_size += 0x800000)
+    {
+        if (PageManager::getPhysicalAddress((uint64_t)data + (i * 0x800000), physical_address))
+        {
+            printf("Failed to get physical address\n");
+            asm("cli;hlt");
+        }
+        Save_64BitPtr(cmdtbl->prdt_entry[i].dba, physical_address);
+        cmdtbl->prdt_entry[i].dbc = min(0x800000ul, ((512 * size) - total_size)) - 1;
+        cmdtbl->prdt_entry[i].i = 0;
+    }
+    // cmdtbl->prdt_entry[cmdheader->prdtl - 1].i = 1;
+    // Setup command
+    FIS_REG_H2D *cmdfis = (FIS_REG_H2D *)(&cmdtbl->cfis);
+
+    cmdfis->fis_type = FIS_TYPE_REG_H2D;
+    cmdfis->c = 1; // Command
+    cmdfis->command = ATA_COMMAND::WRITE_DMA_EXT;
+
+    cmdfis->lba0 = (uint8_t)position;
+    cmdfis->lba1 = (uint8_t)(position >> 8);
+    cmdfis->lba2 = (uint8_t)(position >> 16);
+    cmdfis->device = 1 << 6; // LBA mode
+
+    cmdfis->lba3 = (uint8_t)(position >> 24);
+    cmdfis->lba4 = (uint8_t)(position >> 32);
+    cmdfis->lba5 = (uint8_t)(position >> 40);
+
+    cmdfis->countl = size & 0xFF;
+    cmdfis->counth = (size >> 8) & 0xFF;
+
+    // The below loop waits until the port is no longer busy before issuing a new
+    // command
+    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000)
+    {
+        spin++;
+    }
+    if (spin == 1000000)
+    {
+        printf("Drive is busy\n");
+        return -EAGAIN;
+    }
+
+    mtx_lock(&cmd_notify);
+    port->ci = 1 << slot; // Issue command
+    // Wait for completion
     mtx_lock(&cmd_notify);
     mtx_unlock(&cmd_notify);
 
@@ -305,17 +386,24 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
 
 int sata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
 {
+    int ret = 0;
     switch (command)
     {
-    case BLKGETSIZE64:
-    {
-        ata_identity identity;
-        identify(identity);
-        *((uint64_t *)data) = identity.MAX_LBA;
-        return 0;
-    }
-    default:
-        return -EINVAL;
+        case BLKPBSZGET:
+        {
+            *((uint64_t *)data) = 512;
+            return 0;
+        }
+        case BLKGETSIZE64:
+        {
+            ata_identity identity = {};
+            if ((ret = identify(identity)) < 0)
+                return ret;
+            *((uint64_t *)data) = identity.MAX_LBA;
+            return 0;
+        }
+        default:
+            return -EINVAL;
     }
     return 0;
 }

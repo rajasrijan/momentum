@@ -19,22 +19,11 @@
 
 #include "apic.h"
 #include "acpi.h"
-#include "timer.h"
 #include "interrupts.h"
+#include "timer.h"
+#include <arch/x86_64/paging.h>
 #include <kernel/sys_info.h>
 ioapic_t volatile *ioapic;
-// static void* find_rspd(void);
-
-/*
- * Very basic and file private memory compare(memcmp).
- */
-// static uint8_t kmemcmp(const char* src, const char* dst, uint32_t size)
-// {
-// 	for (uint32_t i = 0; i < size; i++)
-// 		if ((src[i] - dst[i]) != 0)
-// 			return (uint8_t)(src[i] - dst[i]);
-// 	return 0;
-// }
 
 /*
  * Initilize IO-APIC.
@@ -79,6 +68,7 @@ void apic_pin_enable(uint32_t pin)
 {
     write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
 }
+
 static uint64_t tick = 0;
 void simple_tick_counter(retStack_t *stack, general_registers_t *regs)
 {
@@ -96,48 +86,8 @@ void init_apic_timer(uint32_t frequency)
     sys_info.local_apic->lvt_timer = 0x00020020;
     sys_info.local_apic->div_conf = 0x02;
     sys_info.local_apic->init_count = frequency;
-    // outb(0x70, 0);
-    // uint8_t prev_sec = inb(0x71);
-    // uint8_t sec = prev_sec;
-    // tick = 0;
-    // asm("sti");
-    // do
-    // {
-    // 	outb(0x70, 0);
-    // 	sec = inb(0x71);
-    // } while ((sec - prev_sec) <= 0);
-    // asm("cli");
-    // printf("[%d] ticks in [%d]s\n", tick, (sec - prev_sec));
-    // float correction_factor = (float)tick / (1000.0*(sec - prev_sec));
-    // sys_info.local_apic->init_count = correction_factor * frequency;
     register_interrupt_handler(32, apic_timer_callback);
 }
-
-/*
- * Find ACPI rsdp.
- */
-// static void* find_rspd()
-// {
-// 	uint8_t* ptr;
-// 	ptr = (uint8_t*)0x40E;
-// 	ptr = (uint8_t*)((uint32_t*)(ptr));
-// 	for (uint32_t i = 0; i < 1024; i += 2)
-// 	{
-// 		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-// 		{
-// 			return (void*)(&ptr[i]);
-// 		}
-// 	}
-// 	ptr = (uint8_t*)0xE0000;
-// 	for (uint32_t i = 0; i < 0x20000; i += 2)
-// 	{
-// 		if (!kmemcmp((char*)(&ptr[i]), ACPI_RSDP_SIGNATURE, 8))
-// 		{
-// 			return (void*)(&ptr[i]);
-// 		}
-// 	}
-// 	return 0;
-// }
 
 /*
  * Send End of interrupt to APIC. INCOMPLETE.
@@ -145,4 +95,71 @@ void init_apic_timer(uint32_t frequency)
 void send_eoi()
 {
     sys_info.local_apic->eoi = 0;
+}
+
+void apic_interrupt_command_init(bool isShorthand, uint64_t dest)
+{
+    if (isShorthand)
+    {
+        sys_info.local_apic->icr_hi = 0;
+        sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_INIT | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | dest;
+    }
+    else
+    {
+        sys_info.local_apic->icr_hi = dest & 0xFF000000;
+        sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_INIT | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | APIC_ICR_DEST_NONE;
+    }
+    //  wait for it to complete
+    while (sys_info.local_apic->icr_lo & APIC_ICR_DELIVERY_STATUS)
+    {
+        asm("pause");
+    }
+}
+
+void apic_interrupt_command_sipi(bool isShorthand, uint64_t dest, uint8_t vector)
+{
+    if (isShorthand)
+    {
+        sys_info.local_apic->icr_hi = 0;
+        sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_STARTUP | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | dest | vector;
+    }
+    else
+    {
+        sys_info.local_apic->icr_hi = dest & 0xFF000000;
+        sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_STARTUP | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | APIC_ICR_DEST_NONE | vector;
+    }
+    //  wait for it to complete
+    while (sys_info.local_apic->icr_lo & APIC_ICR_DELIVERY_STATUS)
+    {
+        asm("pause");
+    }
+}
+
+int init_symmetric_multi_processor()
+{
+    int ret = 0;
+    extern unsigned char arch_x86_64_trampolin_blob[];
+    extern unsigned int arch_x86_64_trampolin_blob_len;
+
+    if ((ret = PageManager::IdentityMapPages(0x8000, arch_x86_64_trampolin_blob_len)) < 0)
+    {
+        printf("Failed to map pages\n");
+        return ret;
+    }
+
+    //  copy trampolin code to 0x8000
+    memcpy((void *)0x8000, arch_x86_64_trampolin_blob, arch_x86_64_trampolin_blob_len);
+
+    apic_interrupt_command_init(true, APIC_ICR_DEST_ALL_NOSELF);
+    //  start at 0x8000
+    apic_interrupt_command_sipi(true, APIC_ICR_DEST_ALL_NOSELF, 0x8);
+
+    //  unmap memory
+    if ((ret = PageManager::freeVirtualMemory(0x8000, arch_x86_64_trampolin_blob_len)) < 0)
+    {
+        printf("Failed to freeVirtualMemory\n");
+        return ret;
+    }
+
+    return 0;
 }

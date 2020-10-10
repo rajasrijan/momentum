@@ -50,22 +50,22 @@ struct bpb
     uint8_t BS_VolLab[11];
     uint8_t BS_FilSysType[8];
 
-    uint32_t getRootDirSectorCount()
+    uint32_t getRootDirSectorCount() const
     {
         return ((BPB_RootEntCnt * 32) + (BPB_BytsPerSec - 1)) / BPB_BytsPerSec;
     }
 
-    uint32_t getFatSize()
+    uint32_t getFatSize() const
     {
         return (BPB_FATSz16 != 0) ? BPB_FATSz16 : BPB_FATSz32;
     }
 
-    uint32_t getFirstDataSector()
+    uint32_t getFirstDataSector() const
     {
         return BPB_RsvdSecCnt + (BPB_NumFATs * getFatSize()) + getRootDirSectorCount();
     }
 
-    uint32_t getFirstSectorOfCluster(uint32_t N)
+    uint32_t getFirstSectorOfCluster(uint32_t N) const
     {
         return ((N - 2) * BPB_SecPerClus) + getFirstDataSector();
     }

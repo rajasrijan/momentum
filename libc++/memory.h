@@ -202,7 +202,7 @@ class shared_ptr
         lock = new mtx_t;
         mtx_init(lock, 0);
         __refCount = new unsigned int;
-        __refCount[0]++;
+        __refCount[0] = 1;
         return *this;
     }
 

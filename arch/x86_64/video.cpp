@@ -26,6 +26,8 @@
 #include <arch/x86_64/font.h>
 #include <stdio.h>
 #include <kernel/config.h>
+#include <xmmintrin.h>
+#include <tmmintrin.h>
 
 static uint8_t *videomemory = nullptr;
 static size_t screen_width = 0, screen_height = 0;
@@ -77,9 +79,11 @@ void setColor_text(uint8_t c)
 {
     color = (uint16_t)(((uint32_t)c) << 8);
 }
+
 //  --------------------------------------------------------------------------------
 //  VGA functions
 //  --------------------------------------------------------------------------------
+
 void putcharacter_vga(const uint8_t ch, uint32_t x, uint32_t y)
 {
     for (size_t i = 0; i < font_height; i++)
@@ -105,6 +109,9 @@ void setColor_vga(uint8_t c)
 {
     color = (uint16_t)(((uint32_t)c) << 8);
 }
+
+//  --------------------------------------------------------------------------------
+//  VGA functions
 //  --------------------------------------------------------------------------------
 
 void init_font()
@@ -119,6 +126,8 @@ void init_font()
 int init_video(multiboot_tag_framebuffer *mbi)
 {
     int ret = 0;
+    extern uint64_t PAGE_DIRECTORY;
+    extern uint64_t DIR_OFFSET;
     videomemory = (uint8_t *)mbi->common.framebuffer_addr;
     screen_width = mbi->common.framebuffer_width;
     screen_height = mbi->common.framebuffer_height;
@@ -126,24 +135,33 @@ int init_video(multiboot_tag_framebuffer *mbi)
     depth = mbi->common.framebuffer_bpp / 8;
     color = 0x0F00;
     //  Paging is not initialized yet, so use 1GB temp paging structure.
-    uint64_t *pml4t = (uint64_t *)KERNEL_TEMP_PAGE_TABLE_LOCATION;
+    uint64_t *pml4t = (uint64_t *)PAGE_DIRECTORY;
     if ((pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 3) != 3)
     {
         //  page structure doesn't exist. Can't continue.
         asm("cli;hlt");
     }
     uint64_t *pdpt = (uint64_t *)(pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 0xFFFFFFFFFFFFF000);
-    if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) == 3)
+    if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) != 3)
     {
-        //  already mapped. Check if mapping is same as what we need, else can't continue.
-        if ((mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) != (pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 0xFFFFFFFFC0000000))
-            asm("cli;hlt");
+        pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] = (PAGE_DIRECTORY + DIR_OFFSET) | 0x3;
+        DIR_OFFSET += 0x1000;
     }
-    else
-        pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] = (mbi->common.framebuffer_addr & 0xFFFFFFFFC0000000) | 0x83;
+    uint64_t *pte = (uint64_t *)(pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 0xFFFFFFFFFFFFF000);
+    for (uint64_t addr = mbi->common.framebuffer_addr; addr < (mbi->common.framebuffer_addr + mbi->common.size); addr += 0x200000)
+    {
+        if ((pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] & 3) == 3)
+        {
+            //  already mapped. Check if mapping is same as what we need, else can't continue.
+            if ((mbi->common.framebuffer_addr & 0xFFFFFFFFFFF00000) != (pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] & 0xFFFFFFFFFFF00000))
+                asm("cli;hlt");
+        }
+        else
+            pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] = (mbi->common.framebuffer_addr & 0xFFFFFFFFFFF00000) | 0x83;
+    }
     //  flush page cache
     asm volatile("invlpg (%0)" ::"r"(mbi->common.framebuffer_addr));
-    //  keep record to readd pages later.
+    //  keep record to read pages later.
     ret = PageManager::add_early_kernel_mapping(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, pitch * screen_height);
     if (ret < 0)
     {

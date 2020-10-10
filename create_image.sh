@@ -2,12 +2,12 @@
 # This file is part of momentum project Copyright 2009-2020 Srijan Kumar Sharma
 # Check LICENSE file
 echo 'Deleting old image..'
-rm momentum.raw
+rm $1
 echo 'Creating image disk..'
-#dd if=/dev/zero of=momentum.raw bs=512 count=4194304  status=progress
-truncate -s 2G momentum.raw
+#dd if=/dev/zero of=$1 bs=512 count=4194304  status=progress
+truncate -s 256M $1
 echo 'Creating partition table..'
-echo "start=2048,type=c,bootable" | sfdisk -q momentum.raw
+echo "start=2048,type=c,bootable" | sfdisk -q $1
 echo 'Creating file system..'
 LODRIVE=$(losetup -f)
 LOPART="$LODRIVE""p1"

@@ -17,9 +17,9 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "global.h"
 #include "interrupts.h"
 #include "apic.h"
+#include "global.h"
 #include <kernel/sys_info.h>
 
 isr_t interrupt_handlers[256] = {0};
@@ -51,22 +51,27 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
         {
             printf("GP Error code [0x%llx]\n", stack->err);
         }
-        // print call stack.
-        // printf("Call stack:\n");
-        // uint64_t rsp = regs->rsp, rbp = regs->rbp, rip = stack->rip;
-        // for (size_t i = 0; i < 3; i++)
-        // {
-        // 	printf("RIP [0x%lx], RSP [0x%lx], RBP [0x%lx]\n", rip, rsp, rbp);
-        // 	rsp = rbp;
-        // 	rbp = ((uint64_t *)rsp)[0];
-        // 	rip = ((uint64_t *)rsp)[1];
-        // 	if (rip == 0xDEADBEEFDEADBEEF || rbp == 0xDEADBEEFDEADBEEF)
-        // 	{
-        // 		break;
-        // 	}
-        // }
-        __asm__("cli");
-        __asm__("hlt");
+        //  print context
+        printf("RAX%016llX,RBX%016llX,RCX%016llX,RDX%016llX", regs->rax, regs->rbx, regs->rcx, regs->rdx);
+        printf("RDI%016llX,RSI%016llX,RBP%016llX,RSP%016llX", regs->rdi, regs->rsi, regs->rbp, regs->rsp);
+        printf("R08%016llX,R09%016llX,R10%016llX,R11%016llX", regs->R8, regs->R9, regs->R10, regs->R11);
+        printf("R12%016llX,R13%016llX,R14%016llX,R15%016llX", regs->R12, regs->R13, regs->R14, regs->R15);
+        printf("RIP%016llX,RFLAGS%016llX,CS%08X,SS%08X", stack->rip, stack->rflags, stack->cs, stack->ss);
+        //  print call stack.
+        printf("Call stack:\n");
+        uint64_t rsp = regs->rsp, rbp = regs->rbp, rip = stack->rip;
+        for (size_t i = 0; i < 5; i++)
+        {
+            printf("RIP [0x%lx], RSP [0x%lx], RBP [0x%lx]\n", rip, rsp, rbp);
+            rsp = rbp;
+            rbp = ((uint64_t *)rsp)[0];
+            rip = ((uint64_t *)rsp)[1];
+            if (rip == 0xDEADBEEFDEADBEEF || rbp == 0xDEADBEEFDEADBEEF)
+            {
+                break;
+            }
+        }
+        __asm__("cli;hlt");
     }
 }
 

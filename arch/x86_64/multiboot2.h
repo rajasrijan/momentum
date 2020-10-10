@@ -293,7 +293,8 @@ struct multiboot_tag_framebuffer
 {
     struct multiboot_tag_framebuffer_common common;
 
-    union {
+    union
+    {
         struct
         {
             multiboot_uint16_t framebuffer_palette_num_colors;
@@ -415,7 +416,7 @@ struct multiboot_information
 {
     multiboot_uint32_t size;
     multiboot_uint32_t resv;
-    multiboot_tag multiboot_tags[0];
+    struct multiboot_tag multiboot_tags[0];
 };
 
 #endif /* ! ASM_FILE */

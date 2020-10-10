@@ -6,13 +6,17 @@ CFLAGS :=
 CXXFLAGS := 
 
 CFLAGS += -g -O0
+CFLAGS_32 += -g -O0
 CXXFLAGS += -g -O0
 
-CFLAGS += --target=$(TARGET) -m64 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow --std=c11 -mno-red-zone\
+CFLAGS += --target=$(TARGET) -m64 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -fstack-protector-all -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow --std=c11 -mno-red-zone\
+	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/ -I . -fno-function-sections -I acpica/include -mssse3
+
+CFLAGS_32 += --target=$(TARGET) -m32 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow --std=c11 -mno-red-zone\
 	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/ -I . -fno-function-sections -I acpica/include
 
-CXXFLAGS += --target=$(TARGET) -m64 -Wall -Wextra -Wunused-result -Wshadow -Wpointer-arith -mno-red-zone -Wwrite-strings -Werror -Wno-unused-parameter -Wno-null-pointer-arithmetic -Wno-missing-braces -fno-exceptions -fno-rtti -Weffc++ -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel -ffreestanding -std=c++20  -D_MOMENTUM_ \
-	    -I libc/ -I libc++/ -I .  -I acpica/include $(CXXINCLUDE) -fno-function-sections
+CXXFLAGS += --target=$(TARGET) -m64 -Wall -Wextra -Wunused-result -Wshadow -Wpointer-arith -fstack-protector-all -mno-red-zone -Wwrite-strings -Werror -Wno-unused-parameter -Wno-null-pointer-arithmetic -Wno-missing-braces -fno-exceptions -fno-rtti -Weffc++ -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel -ffreestanding -std=c++20  -D_MOMENTUM_ \
+	    -I libc/ -I libc++/ -I .  -I acpica/include $(CXXINCLUDE) -fno-function-sections -mssse3
 
 LDFLAGS:= -T x86_64.ld -z max-page-size=0x1000
 
@@ -26,7 +30,11 @@ OBJECT := arch/x86_64/loader.o libc/string.o libc++/string.o arch/x86_64/arch_ha
 	arch/x86_64/multiboot2.o arch/x86_64/keyboard.o arch/x86_64/rtc.o libc/stdio.o libc/vsprintf.o libc/stdlib.o libc/threads.o libc++/new.o \
 	kernel/vfs.o kernel/vfsops.o kernel/ELFLoader.o kernel/ELFFile.o kernel/sys_info.o kernel/multitask.o kernel/gui.o \
 	DDI/driver.o DDI/ddi.o DDI/pci_driver.o DDI/block_driver.o driver/disk/ata.o driver/disk/sata.o driver/disk/ide.o driver/ramdrive.o driver/fatgen.o driver/binary_loader.o\
-	driver/usb/uhci.o kernel/acpica_glue.o $(acpica_objects) main.o cxxglue.o stack_protector.o
+	driver/usb/uhci.o kernel/acpica_glue.o $(acpica_objects) main.o cxxglue.o stack_protector.o arch/x86_64/trampolin.blob.o
+
+OBJECT_32 := arch/x86_64/bootstrap_functions.o
+
+BLOBS := arch/x86_64/trampolin.bin
 
 CC := clang
 CXX := clang++
@@ -37,15 +45,15 @@ all: kernel.elf
 	$(MAKE) -C hosted_libc CC=$(CC)
 	$(MAKE) -C tools CC=$(CC)
 
-kernel.elf:$(OBJECT) x86_64.ld
-	$(LD) $(LDFLAGS) -o $@ $(OBJECT)
+kernel.elf: $(OBJECT) $(OBJECT_32) x86_64.ld
+	$(LD) $(LDFLAGS) -o $@ $(OBJECT) $(OBJECT_32)
 	objdump -x kernel.elf > objdump.txt
 	objdump -d -M intel -S kernel.elf -j .text -j .text0> kernel.s
 	
 clean:
 	$(MAKE) -C hosted_libc clean
 	$(MAKE) -C tools clean
-	$(RM) $(OBJECT)
+	$(RM) $(OBJECT) $(OBJECT_32) $(BLOBS)
 	$(RM) kernel.elf kernel.s
 
 backup:
@@ -71,3 +79,15 @@ analyze:
 
 %.s:%.s.in
 	$(CC) -I . -E -x c -P -o $@ $^
+
+%.blob:%.s
+	nasm -f bin -o $@ $^
+
+%.blob.cpp:%.blob
+	xxd -i $^ > $@
+
+#	add target for 32bit files
+$(OBJECT_32): %.o: %.c
+	$(CC) $(CFLAGS_32) -c -o $@.tmp $^
+	objcopy -O elf64-x86-64 $@.tmp $@
+	$(RM) $@.tmp

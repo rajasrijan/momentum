@@ -25,7 +25,9 @@ extern "C"
 {
 #endif
 
-#define cpuid(in, a, b, c, d) __asm__ volatile("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
+#define cpuid(in, a, b, c, d) __asm__ volatile("cpuid"                              \
+                                               : "=a"(a), "=b"(b), "=c"(c), "=d"(d) \
+                                               : "a"(in));
 
 #ifdef __cplusplus
 }

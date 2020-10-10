@@ -17,9 +17,9 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include <arch/x86_64/rtc.h>
 #include "global.h"
+#include <arch/x86_64/rtc.h>
+#include <stdint.h>
 
 void init_rtc()
 {

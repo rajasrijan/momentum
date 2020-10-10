@@ -19,8 +19,8 @@
 
 #include "keyboard.h"
 #include "apic.h"
-#include "interrupts.h"
 #include "global.h"
+#include "interrupts.h"
 #include <kernel/multitask.h>
 
 #define max_key (256)

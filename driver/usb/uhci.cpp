@@ -479,6 +479,10 @@ class uhci_char_interface : public vnode
     {
         return ENOSYS;
     }
+    int bwrite(ssize_t position, size_t size, char *data, int *bytesRead)
+    {
+        return ENOSYS;
+    }
     int read(size_t offset, size_t count, void *data)
     {
         printf("%s not implemented\n", __FUNCTION__);
@@ -559,4 +563,4 @@ void uhci_init()
 }
 
 //  add to module list
-MODULT_INIT(uhci_init)
+//  MODULT_INIT(uhci_init)

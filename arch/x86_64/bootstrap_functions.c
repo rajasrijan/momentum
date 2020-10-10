@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2009-2020 Srijan Kumar Sharma
  *
@@ -18,8 +19,107 @@
  */
 
 #include <stdint.h>
+#include <stddef.h>
+#include "multiboot2.h"
+#include <kernel/config.h>
 
-const uint8_t null_font[] = {
+uint64_t __attribute__((section(".data0"))) framebuffer_ptr = 0xb800;
+uint64_t __attribute__((section(".data0"))) PAGE_DIRECTORY = 0x0000000000000000;
+uint64_t __attribute__((section(".data0"))) DIR_OFFSET = 0x0000000000000000;
+__attribute__((section(".text0"))) static uint64_t max(uint64_t a, uint64_t b)
+{
+    return (a >= b) ? a : b;
+}
+__attribute__((section(".text0"))) void find_framebuffer(struct multiboot_information *mbi)
+{
+    struct multiboot_tag *mbt = mbi->multiboot_tags;
+    while (mbt->type != MULTIBOOT_TAG_TYPE_END)
+    {
+        if (mbt->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER)
+        {
+            struct multiboot_tag_framebuffer *mbt_fb = mbt;
+            framebuffer_ptr = mbt_fb->common.framebuffer_addr;
+        }
+        else if (mbt->type == MULTIBOOT_TAG_TYPE_MMAP)
+        {
+            struct multiboot_tag_mmap *mbt_mmap = mbt;
+            struct multiboot_mmap_entry *mmap = mbt_mmap->entries;
+            while ((uint32_t)mmap < (uint32_t)mmap + mbt_mmap->size - sizeof(struct multiboot_tag_mmap))
+            {
+                if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && ((mmap->addr + mmap->len) >= KERNEL_TEMP_PAGE_TABLE_LOCATION))
+                {
+                    PAGE_DIRECTORY = max(KERNEL_TEMP_PAGE_TABLE_LOCATION, mmap->addr);
+                    break;
+                }
+
+                mmap = (struct multiboot_mmap_entry *)((uint32_t)mmap + mbt_mmap->entry_size);
+            }
+        }
+        mbt = (struct multiboot_tag *)(((uint32_t)mbt + mbt->size + 7) & 0xFFFFFFF8);
+    }
+    return;
+}
+__attribute__((section(".text0"))) void create_page_directory()
+{
+    uint64_t *page_dir = (uint64_t *)(PAGE_DIRECTORY);
+    //  clear 2MB
+    for (int i = 0; i < 2 * 1024 * 1024 / 8; i++)
+    {
+        page_dir[i] = 0;
+    }
+
+    // identity map kernel
+    DIR_OFFSET += 0x1000;
+    page_dir[0] = (uint64_t)&page_dir[512] | 0x3;
+    page_dir = (uint64_t *)(PAGE_DIRECTORY + DIR_OFFSET);
+    DIR_OFFSET += 0x1000;
+    page_dir[0] = (uint64_t)&page_dir[512] | 0x3;
+    page_dir = (uint64_t *)(PAGE_DIRECTORY + DIR_OFFSET);
+    DIR_OFFSET += 0x1000;
+    for (int i = 0; i < 512; i++)
+        page_dir[i] = (0x200000 * i) | 0x83;
+
+    // map kernel to higher half
+    page_dir = (uint64_t *)PAGE_DIRECTORY;
+    if ((page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] & 3) != 3)
+    {
+        page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
+        DIR_OFFSET += 0x1000;
+    }
+    page_dir = (uint64_t *)(page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
+
+    if ((page_dir[((KERNEL_BASE_PTR >> 30) & 0x1FF)] & 3) != 3)
+    {
+        page_dir[((KERNEL_BASE_PTR >> 30) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
+        DIR_OFFSET += 0x1000;
+    }
+    page_dir = (uint64_t *)(page_dir[((KERNEL_BASE_PTR >> 30) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
+
+    for (int i = 0; i < 512; i++)
+        page_dir[i] = (0x200000 * i) | 0x83;
+
+    // map video memory
+    page_dir = (uint64_t *)PAGE_DIRECTORY;
+    if ((page_dir[((framebuffer_ptr >> 39) & 0x1FF)] & 3) != 3)
+    {
+        page_dir[((framebuffer_ptr >> 39) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
+        DIR_OFFSET += 0x1000;
+    }
+    page_dir = (uint64_t *)(page_dir[((framebuffer_ptr >> 39) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
+
+    if ((page_dir[((framebuffer_ptr >> 30) & 0x1FF)] & 3) != 3)
+    {
+        page_dir[((framebuffer_ptr >> 30) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
+        DIR_OFFSET += 0x1000;
+    }
+    page_dir = (uint64_t *)(page_dir[((framebuffer_ptr >> 30) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
+
+    if ((page_dir[((framebuffer_ptr >> 21) & 0x1FF)] & 3) != 3)
+    {
+        page_dir[((framebuffer_ptr >> 21) & 0x1FF)] = (framebuffer_ptr & 0xfffffffffffff000) | 0x83;
+    }
+}
+static const uint8_t null_font[] __attribute__((section(".rodata0"))) = {
     0xF0,
     0xF0,
     0xF0,
@@ -35,9 +135,9 @@ const uint8_t null_font[] = {
     0xF0,
     0xF0,
     0xF0,
-    0xF0,
+    0x00,
 };
-const uint8_t char0[] = {
+static const uint8_t char0[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xDA,
@@ -55,7 +155,7 @@ const uint8_t char0[] = {
     0x00,
     0x00,
 };
-const uint8_t space[] = {
+static const uint8_t space[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -73,7 +173,7 @@ const uint8_t space[] = {
     0x00,
     0x00,
 };
-const uint8_t exclam[] = {
+static const uint8_t exclam[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -91,7 +191,7 @@ const uint8_t exclam[] = {
     0x00,
     0x00,
 };
-const uint8_t quotedbl[] = {
+static const uint8_t quotedbl[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x66,
     0x66,
@@ -109,7 +209,7 @@ const uint8_t quotedbl[] = {
     0x00,
     0x00,
 };
-const uint8_t numbersign[] = {
+static const uint8_t numbersign[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -127,7 +227,7 @@ const uint8_t numbersign[] = {
     0x00,
     0x00,
 };
-const uint8_t dollar[] = {
+static const uint8_t dollar[] __attribute__((section(".rodata0"))) = {
     0x18,
     0x18,
     0x7C,
@@ -145,7 +245,7 @@ const uint8_t dollar[] = {
     0x00,
     0x00,
 };
-const uint8_t percent[] = {
+static const uint8_t percent[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -163,7 +263,7 @@ const uint8_t percent[] = {
     0x00,
     0x00,
 };
-const uint8_t ampersand[] = {
+static const uint8_t ampersand[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x38,
@@ -181,7 +281,7 @@ const uint8_t ampersand[] = {
     0x00,
     0x00,
 };
-const uint8_t quotesingle[] = {
+static const uint8_t quotesingle[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x30,
     0x30,
@@ -199,7 +299,7 @@ const uint8_t quotesingle[] = {
     0x00,
     0x00,
 };
-const uint8_t parenleft[] = {
+static const uint8_t parenleft[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -217,7 +317,7 @@ const uint8_t parenleft[] = {
     0x00,
     0x00,
 };
-const uint8_t parenright[] = {
+static const uint8_t parenright[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x30,
@@ -235,7 +335,7 @@ const uint8_t parenright[] = {
     0x00,
     0x00,
 };
-const uint8_t asterisk[] = {
+static const uint8_t asterisk[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -253,7 +353,7 @@ const uint8_t asterisk[] = {
     0x00,
     0x00,
 };
-const uint8_t plus[] = {
+static const uint8_t plus[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -271,7 +371,7 @@ const uint8_t plus[] = {
     0x00,
     0x00,
 };
-const uint8_t comma[] = {
+static const uint8_t comma[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -289,7 +389,7 @@ const uint8_t comma[] = {
     0x00,
     0x00,
 };
-const uint8_t hyphen[] = {
+static const uint8_t hyphen[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -307,7 +407,7 @@ const uint8_t hyphen[] = {
     0x00,
     0x00,
 };
-const uint8_t period[] = {
+static const uint8_t period[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -325,7 +425,7 @@ const uint8_t period[] = {
     0x00,
     0x00,
 };
-const uint8_t slash[] = {
+static const uint8_t slash[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -343,7 +443,7 @@ const uint8_t slash[] = {
     0x00,
     0x00,
 };
-const uint8_t zero[] = {
+static const uint8_t zero[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x38,
@@ -361,7 +461,7 @@ const uint8_t zero[] = {
     0x00,
     0x00,
 };
-const uint8_t one[] = {
+static const uint8_t one[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -379,7 +479,7 @@ const uint8_t one[] = {
     0x00,
     0x00,
 };
-const uint8_t two[] = {
+static const uint8_t two[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -397,7 +497,7 @@ const uint8_t two[] = {
     0x00,
     0x00,
 };
-const uint8_t three[] = {
+static const uint8_t three[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -415,7 +515,7 @@ const uint8_t three[] = {
     0x00,
     0x00,
 };
-const uint8_t four[] = {
+static const uint8_t four[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -433,7 +533,7 @@ const uint8_t four[] = {
     0x00,
     0x00,
 };
-const uint8_t five[] = {
+static const uint8_t five[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFE,
@@ -451,7 +551,7 @@ const uint8_t five[] = {
     0x00,
     0x00,
 };
-const uint8_t six[] = {
+static const uint8_t six[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x38,
@@ -469,7 +569,7 @@ const uint8_t six[] = {
     0x00,
     0x00,
 };
-const uint8_t seven[] = {
+static const uint8_t seven[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFE,
@@ -487,7 +587,7 @@ const uint8_t seven[] = {
     0x00,
     0x00,
 };
-const uint8_t eight[] = {
+static const uint8_t eight[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -505,7 +605,7 @@ const uint8_t eight[] = {
     0x00,
     0x00,
 };
-const uint8_t nine[] = {
+static const uint8_t nine[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -523,7 +623,7 @@ const uint8_t nine[] = {
     0x00,
     0x00,
 };
-const uint8_t colon[] = {
+static const uint8_t colon[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -541,7 +641,7 @@ const uint8_t colon[] = {
     0x00,
     0x00,
 };
-const uint8_t semicolon[] = {
+static const uint8_t semicolon[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -559,7 +659,7 @@ const uint8_t semicolon[] = {
     0x00,
     0x00,
 };
-const uint8_t less[] = {
+static const uint8_t less[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -577,7 +677,7 @@ const uint8_t less[] = {
     0x00,
     0x00,
 };
-const uint8_t equal[] = {
+static const uint8_t equal[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -595,7 +695,7 @@ const uint8_t equal[] = {
     0x00,
     0x00,
 };
-const uint8_t greater[] = {
+static const uint8_t greater[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -613,7 +713,7 @@ const uint8_t greater[] = {
     0x00,
     0x00,
 };
-const uint8_t question[] = {
+static const uint8_t question[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -631,7 +731,7 @@ const uint8_t question[] = {
     0x00,
     0x00,
 };
-const uint8_t at[] = {
+static const uint8_t at[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -649,7 +749,7 @@ const uint8_t at[] = {
     0x00,
     0x00,
 };
-const uint8_t A[] = {
+static const uint8_t A[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x10,
@@ -667,7 +767,7 @@ const uint8_t A[] = {
     0x00,
     0x00,
 };
-const uint8_t B[] = {
+static const uint8_t B[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFC,
@@ -685,7 +785,7 @@ const uint8_t B[] = {
     0x00,
     0x00,
 };
-const uint8_t C[] = {
+static const uint8_t C[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -703,7 +803,7 @@ const uint8_t C[] = {
     0x00,
     0x00,
 };
-const uint8_t D[] = {
+static const uint8_t D[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xF8,
@@ -721,7 +821,7 @@ const uint8_t D[] = {
     0x00,
     0x00,
 };
-const uint8_t E[] = {
+static const uint8_t E[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFE,
@@ -739,7 +839,7 @@ const uint8_t E[] = {
     0x00,
     0x00,
 };
-const uint8_t F[] = {
+static const uint8_t F[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFE,
@@ -757,7 +857,7 @@ const uint8_t F[] = {
     0x00,
     0x00,
 };
-const uint8_t G[] = {
+static const uint8_t G[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -775,7 +875,7 @@ const uint8_t G[] = {
     0x00,
     0x00,
 };
-const uint8_t H[] = {
+static const uint8_t H[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -793,7 +893,7 @@ const uint8_t H[] = {
     0x00,
     0x00,
 };
-const uint8_t I[] = {
+static const uint8_t I[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -811,7 +911,7 @@ const uint8_t I[] = {
     0x00,
     0x00,
 };
-const uint8_t J[] = {
+static const uint8_t J[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x1E,
@@ -829,7 +929,7 @@ const uint8_t J[] = {
     0x00,
     0x00,
 };
-const uint8_t K[] = {
+static const uint8_t K[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xE6,
@@ -847,7 +947,7 @@ const uint8_t K[] = {
     0x00,
     0x00,
 };
-const uint8_t L[] = {
+static const uint8_t L[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xF0,
@@ -865,7 +965,7 @@ const uint8_t L[] = {
     0x00,
     0x00,
 };
-const uint8_t M[] = {
+static const uint8_t M[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -883,7 +983,7 @@ const uint8_t M[] = {
     0x00,
     0x00,
 };
-const uint8_t N[] = {
+static const uint8_t N[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -901,7 +1001,7 @@ const uint8_t N[] = {
     0x00,
     0x00,
 };
-const uint8_t O[] = {
+static const uint8_t O[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -919,7 +1019,7 @@ const uint8_t O[] = {
     0x00,
     0x00,
 };
-const uint8_t P[] = {
+static const uint8_t P[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFC,
@@ -937,7 +1037,7 @@ const uint8_t P[] = {
     0x00,
     0x00,
 };
-const uint8_t Q[] = {
+static const uint8_t Q[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -955,7 +1055,7 @@ const uint8_t Q[] = {
     0x00,
     0x00,
 };
-const uint8_t R[] = {
+static const uint8_t R[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFC,
@@ -973,7 +1073,7 @@ const uint8_t R[] = {
     0x00,
     0x00,
 };
-const uint8_t S[] = {
+static const uint8_t S[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7C,
@@ -991,7 +1091,7 @@ const uint8_t S[] = {
     0x00,
     0x00,
 };
-const uint8_t T[] = {
+static const uint8_t T[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7E,
@@ -1009,7 +1109,7 @@ const uint8_t T[] = {
     0x00,
     0x00,
 };
-const uint8_t U[] = {
+static const uint8_t U[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -1027,7 +1127,7 @@ const uint8_t U[] = {
     0x00,
     0x00,
 };
-const uint8_t V[] = {
+static const uint8_t V[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -1045,7 +1145,7 @@ const uint8_t V[] = {
     0x00,
     0x00,
 };
-const uint8_t W[] = {
+static const uint8_t W[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -1063,7 +1163,7 @@ const uint8_t W[] = {
     0x00,
     0x00,
 };
-const uint8_t X[] = {
+static const uint8_t X[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xC6,
@@ -1081,7 +1181,7 @@ const uint8_t X[] = {
     0x00,
     0x00,
 };
-const uint8_t Y[] = {
+static const uint8_t Y[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x66,
@@ -1099,7 +1199,7 @@ const uint8_t Y[] = {
     0x00,
     0x00,
 };
-const uint8_t Z[] = {
+static const uint8_t Z[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xFE,
@@ -1117,7 +1217,7 @@ const uint8_t Z[] = {
     0x00,
     0x00,
 };
-const uint8_t bracketleft[] = {
+static const uint8_t bracketleft[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -1135,7 +1235,7 @@ const uint8_t bracketleft[] = {
     0x00,
     0x00,
 };
-const uint8_t backslash[] = {
+static const uint8_t backslash[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1153,7 +1253,7 @@ const uint8_t backslash[] = {
     0x00,
     0x00,
 };
-const uint8_t bracketright[] = {
+static const uint8_t bracketright[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -1171,7 +1271,7 @@ const uint8_t bracketright[] = {
     0x00,
     0x00,
 };
-const uint8_t asciicircum[] = {
+static const uint8_t asciicircum[] __attribute__((section(".rodata0"))) = {
     0x10,
     0x38,
     0x6C,
@@ -1189,7 +1289,7 @@ const uint8_t asciicircum[] = {
     0x00,
     0x00,
 };
-const uint8_t underscore[] = {
+static const uint8_t underscore[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1207,7 +1307,7 @@ const uint8_t underscore[] = {
     0x00,
     0x00,
 };
-const uint8_t grave[] = {
+static const uint8_t grave[] __attribute__((section(".rodata0"))) = {
     0x30,
     0x30,
     0x18,
@@ -1225,7 +1325,7 @@ const uint8_t grave[] = {
     0x00,
     0x00,
 };
-const uint8_t a[] = {
+static const uint8_t a[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1243,7 +1343,7 @@ const uint8_t a[] = {
     0x00,
     0x00,
 };
-const uint8_t b[] = {
+static const uint8_t b[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xE0,
@@ -1261,7 +1361,7 @@ const uint8_t b[] = {
     0x00,
     0x00,
 };
-const uint8_t c[] = {
+static const uint8_t c[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1279,7 +1379,7 @@ const uint8_t c[] = {
     0x00,
     0x00,
 };
-const uint8_t d[] = {
+static const uint8_t d[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x1C,
@@ -1297,7 +1397,7 @@ const uint8_t d[] = {
     0x00,
     0x00,
 };
-const uint8_t e[] = {
+static const uint8_t e[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1315,7 +1415,7 @@ const uint8_t e[] = {
     0x00,
     0x00,
 };
-const uint8_t f[] = {
+static const uint8_t f[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x38,
@@ -1333,7 +1433,7 @@ const uint8_t f[] = {
     0x00,
     0x00,
 };
-const uint8_t g[] = {
+static const uint8_t g[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1351,7 +1451,7 @@ const uint8_t g[] = {
     0x78,
     0x00,
 };
-const uint8_t h[] = {
+static const uint8_t h[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xE0,
@@ -1369,7 +1469,7 @@ const uint8_t h[] = {
     0x00,
     0x00,
 };
-const uint8_t i[] = {
+static const uint8_t i[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -1387,7 +1487,7 @@ const uint8_t i[] = {
     0x00,
     0x00,
 };
-const uint8_t j[] = {
+static const uint8_t j[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x06,
@@ -1405,7 +1505,7 @@ const uint8_t j[] = {
     0x3C,
     0x00,
 };
-const uint8_t k[] = {
+static const uint8_t k[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xE0,
@@ -1423,7 +1523,7 @@ const uint8_t k[] = {
     0x00,
     0x00,
 };
-const uint8_t l[] = {
+static const uint8_t l[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x38,
@@ -1441,7 +1541,7 @@ const uint8_t l[] = {
     0x00,
     0x00,
 };
-const uint8_t m[] = {
+static const uint8_t m[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1459,7 +1559,7 @@ const uint8_t m[] = {
     0x00,
     0x00,
 };
-const uint8_t n[] = {
+static const uint8_t n[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1477,7 +1577,7 @@ const uint8_t n[] = {
     0x00,
     0x00,
 };
-const uint8_t o[] = {
+static const uint8_t o[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1495,7 +1595,7 @@ const uint8_t o[] = {
     0x00,
     0x00,
 };
-const uint8_t p[] = {
+static const uint8_t p[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1513,7 +1613,7 @@ const uint8_t p[] = {
     0xF0,
     0x00,
 };
-const uint8_t q[] = {
+static const uint8_t q[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1531,7 +1631,7 @@ const uint8_t q[] = {
     0x1E,
     0x00,
 };
-const uint8_t r[] = {
+static const uint8_t r[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1549,7 +1649,7 @@ const uint8_t r[] = {
     0x00,
     0x00,
 };
-const uint8_t s[] = {
+static const uint8_t s[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1567,7 +1667,7 @@ const uint8_t s[] = {
     0x00,
     0x00,
 };
-const uint8_t t[] = {
+static const uint8_t t[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x10,
@@ -1585,7 +1685,7 @@ const uint8_t t[] = {
     0x00,
     0x00,
 };
-const uint8_t u[] = {
+static const uint8_t u[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1603,7 +1703,7 @@ const uint8_t u[] = {
     0x00,
     0x00,
 };
-const uint8_t v[] = {
+static const uint8_t v[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1621,7 +1721,7 @@ const uint8_t v[] = {
     0x00,
     0x00,
 };
-const uint8_t w[] = {
+static const uint8_t w[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1639,7 +1739,7 @@ const uint8_t w[] = {
     0x00,
     0x00,
 };
-const uint8_t x[] = {
+static const uint8_t x[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1657,7 +1757,7 @@ const uint8_t x[] = {
     0x00,
     0x00,
 };
-const uint8_t y[] = {
+static const uint8_t y[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1675,7 +1775,7 @@ const uint8_t y[] = {
     0xF8,
     0x00,
 };
-const uint8_t z[] = {
+static const uint8_t z[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1693,7 +1793,7 @@ const uint8_t z[] = {
     0x00,
     0x00,
 };
-const uint8_t braceleft[] = {
+static const uint8_t braceleft[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0E,
@@ -1711,7 +1811,7 @@ const uint8_t braceleft[] = {
     0x00,
     0x00,
 };
-const uint8_t bar[] = {
+static const uint8_t bar[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -1729,7 +1829,7 @@ const uint8_t bar[] = {
     0x00,
     0x00,
 };
-const uint8_t braceright[] = {
+static const uint8_t braceright[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x70,
@@ -1747,7 +1847,7 @@ const uint8_t braceright[] = {
     0x00,
     0x00,
 };
-const uint8_t asciitilde[] = {
+static const uint8_t asciitilde[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x76,
@@ -1765,7 +1865,7 @@ const uint8_t asciitilde[] = {
     0x00,
     0x00,
 };
-const uint8_t char127[] = {
+static const uint8_t char127[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1783,9 +1883,9 @@ const uint8_t char127[] = {
     0x00,
     0x00,
 };
-// const uint8_t space[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+// static const uint8_t space[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 // 0x00, };
-const uint8_t exclamdown[] = {
+static const uint8_t exclamdown[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -1803,7 +1903,7 @@ const uint8_t exclamdown[] = {
     0x00,
     0x00,
 };
-const uint8_t cent[] = {
+static const uint8_t cent[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x18,
     0x18,
@@ -1821,7 +1921,7 @@ const uint8_t cent[] = {
     0x00,
     0x00,
 };
-const uint8_t sterling[] = {
+static const uint8_t sterling[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x38,
     0x6C,
@@ -1839,7 +1939,7 @@ const uint8_t sterling[] = {
     0x00,
     0x00,
 };
-const uint8_t currency[] = {
+static const uint8_t currency[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1857,7 +1957,7 @@ const uint8_t currency[] = {
     0x00,
     0x00,
 };
-const uint8_t yen[] = {
+static const uint8_t yen[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x66,
@@ -1875,7 +1975,7 @@ const uint8_t yen[] = {
     0x00,
     0x00,
 };
-const uint8_t brokenbar[] = {
+static const uint8_t brokenbar[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -1893,7 +1993,7 @@ const uint8_t brokenbar[] = {
     0x00,
     0x00,
 };
-const uint8_t section[] = {
+static const uint8_t section[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x7C,
     0xC6,
@@ -1911,7 +2011,7 @@ const uint8_t section[] = {
     0x00,
     0x00,
 };
-const uint8_t dieresis[] = {
+static const uint8_t dieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x6C,
@@ -1929,7 +2029,7 @@ const uint8_t dieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t copyright[] = {
+static const uint8_t copyright[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -1947,7 +2047,7 @@ const uint8_t copyright[] = {
     0x00,
     0x00,
 };
-const uint8_t ordfeminine[] = {
+static const uint8_t ordfeminine[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x3C,
     0x6C,
@@ -1965,7 +2065,7 @@ const uint8_t ordfeminine[] = {
     0x00,
     0x00,
 };
-const uint8_t guillemotleft[] = {
+static const uint8_t guillemotleft[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -1983,7 +2083,7 @@ const uint8_t guillemotleft[] = {
     0x00,
     0x00,
 };
-const uint8_t logicalnot[] = {
+static const uint8_t logicalnot[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2001,9 +2101,9 @@ const uint8_t logicalnot[] = {
     0x00,
     0x00,
 };
-// const uint8_t hyphen[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+// static const uint8_t hyphen[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 // 0x00, };
-const uint8_t registered[] = {
+static const uint8_t registered[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x38,
@@ -2021,7 +2121,7 @@ const uint8_t registered[] = {
     0x00,
     0x00,
 };
-const uint8_t macron[] = {
+static const uint8_t macron[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2039,7 +2139,7 @@ const uint8_t macron[] = {
     0x00,
     0x00,
 };
-const uint8_t degree[] = {
+static const uint8_t degree[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x38,
     0x6C,
@@ -2057,7 +2157,7 @@ const uint8_t degree[] = {
     0x00,
     0x00,
 };
-const uint8_t plusminus[] = {
+static const uint8_t plusminus[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2075,7 +2175,7 @@ const uint8_t plusminus[] = {
     0x00,
     0x00,
 };
-const uint8_t twosuperior[] = {
+static const uint8_t twosuperior[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x70,
     0xD8,
@@ -2093,7 +2193,7 @@ const uint8_t twosuperior[] = {
     0x00,
     0x00,
 };
-const uint8_t threesuperior[] = {
+static const uint8_t threesuperior[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x70,
     0xD8,
@@ -2111,7 +2211,7 @@ const uint8_t threesuperior[] = {
     0x00,
     0x00,
 };
-const uint8_t acute[] = {
+static const uint8_t acute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -2129,7 +2229,7 @@ const uint8_t acute[] = {
     0x00,
     0x00,
 };
-const uint8_t mu[] = {
+static const uint8_t mu[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2147,7 +2247,7 @@ const uint8_t mu[] = {
     0xC0,
     0x00,
 };
-const uint8_t paragraph[] = {
+static const uint8_t paragraph[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7F,
@@ -2165,7 +2265,7 @@ const uint8_t paragraph[] = {
     0x00,
     0x00,
 };
-const uint8_t periodcentered[] = {
+static const uint8_t periodcentered[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2183,7 +2283,7 @@ const uint8_t periodcentered[] = {
     0x00,
     0x00,
 };
-const uint8_t cedilla[] = {
+static const uint8_t cedilla[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2201,7 +2301,7 @@ const uint8_t cedilla[] = {
     0x38,
     0x00,
 };
-const uint8_t onesuperior[] = {
+static const uint8_t onesuperior[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x30,
     0x70,
@@ -2219,7 +2319,7 @@ const uint8_t onesuperior[] = {
     0x00,
     0x00,
 };
-const uint8_t ordmasculine[] = {
+static const uint8_t ordmasculine[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x38,
     0x6C,
@@ -2237,7 +2337,7 @@ const uint8_t ordmasculine[] = {
     0x00,
     0x00,
 };
-const uint8_t guillemotright[] = {
+static const uint8_t guillemotright[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2255,7 +2355,7 @@ const uint8_t guillemotright[] = {
     0x00,
     0x00,
 };
-const uint8_t onequarter[] = {
+static const uint8_t onequarter[] __attribute__((section(".rodata0"))) = {
     0x00,
     0xC0,
     0xC0,
@@ -2273,7 +2373,7 @@ const uint8_t onequarter[] = {
     0x00,
     0x00,
 };
-const uint8_t onehalf[] = {
+static const uint8_t onehalf[] __attribute__((section(".rodata0"))) = {
     0x00,
     0xC0,
     0xC0,
@@ -2291,7 +2391,7 @@ const uint8_t onehalf[] = {
     0x00,
     0x00,
 };
-const uint8_t threequarters[] = {
+static const uint8_t threequarters[] __attribute__((section(".rodata0"))) = {
     0x00,
     0xE0,
     0x30,
@@ -2309,7 +2409,7 @@ const uint8_t threequarters[] = {
     0x00,
     0x00,
 };
-const uint8_t questiondown[] = {
+static const uint8_t questiondown[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x30,
@@ -2327,7 +2427,7 @@ const uint8_t questiondown[] = {
     0x00,
     0x00,
 };
-const uint8_t Agrave[] = {
+static const uint8_t Agrave[] __attribute__((section(".rodata0"))) = {
     0x60,
     0x30,
     0x00,
@@ -2345,7 +2445,7 @@ const uint8_t Agrave[] = {
     0x00,
     0x00,
 };
-const uint8_t Aacute[] = {
+static const uint8_t Aacute[] __attribute__((section(".rodata0"))) = {
     0x0C,
     0x18,
     0x00,
@@ -2363,7 +2463,7 @@ const uint8_t Aacute[] = {
     0x00,
     0x00,
 };
-const uint8_t Acircumflex[] = {
+static const uint8_t Acircumflex[] __attribute__((section(".rodata0"))) = {
     0x10,
     0x38,
     0x6C,
@@ -2381,7 +2481,7 @@ const uint8_t Acircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t Atilde[] = {
+static const uint8_t Atilde[] __attribute__((section(".rodata0"))) = {
     0x76,
     0xDC,
     0x00,
@@ -2399,7 +2499,7 @@ const uint8_t Atilde[] = {
     0x00,
     0x00,
 };
-const uint8_t Adieresis[] = {
+static const uint8_t Adieresis[] __attribute__((section(".rodata0"))) = {
     0x6C,
     0x6C,
     0x00,
@@ -2417,7 +2517,7 @@ const uint8_t Adieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t Aring[] = {
+static const uint8_t Aring[] __attribute__((section(".rodata0"))) = {
     0x38,
     0x6C,
     0x38,
@@ -2435,7 +2535,7 @@ const uint8_t Aring[] = {
     0x00,
     0x00,
 };
-const uint8_t AE[] = {
+static const uint8_t AE[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3E,
@@ -2453,7 +2553,7 @@ const uint8_t AE[] = {
     0x00,
     0x00,
 };
-const uint8_t Ccedilla[] = {
+static const uint8_t Ccedilla[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -2471,7 +2571,7 @@ const uint8_t Ccedilla[] = {
     0x38,
     0x00,
 };
-const uint8_t Egrave[] = {
+static const uint8_t Egrave[] __attribute__((section(".rodata0"))) = {
     0x30,
     0x18,
     0x00,
@@ -2489,7 +2589,7 @@ const uint8_t Egrave[] = {
     0x00,
     0x00,
 };
-const uint8_t Eacute[] = {
+static const uint8_t Eacute[] __attribute__((section(".rodata0"))) = {
     0x0C,
     0x18,
     0x00,
@@ -2507,7 +2607,7 @@ const uint8_t Eacute[] = {
     0x00,
     0x00,
 };
-const uint8_t Ecircumflex[] = {
+static const uint8_t Ecircumflex[] __attribute__((section(".rodata0"))) = {
     0x10,
     0x38,
     0x44,
@@ -2525,7 +2625,7 @@ const uint8_t Ecircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t Edieresis[] = {
+static const uint8_t Edieresis[] __attribute__((section(".rodata0"))) = {
     0x6C,
     0x6C,
     0x00,
@@ -2543,7 +2643,7 @@ const uint8_t Edieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t Igrave[] = {
+static const uint8_t Igrave[] __attribute__((section(".rodata0"))) = {
     0x30,
     0x18,
     0x00,
@@ -2561,7 +2661,7 @@ const uint8_t Igrave[] = {
     0x00,
     0x00,
 };
-const uint8_t Iacute[] = {
+static const uint8_t Iacute[] __attribute__((section(".rodata0"))) = {
     0x0C,
     0x18,
     0x00,
@@ -2579,7 +2679,7 @@ const uint8_t Iacute[] = {
     0x00,
     0x00,
 };
-const uint8_t Icircumflex[] = {
+static const uint8_t Icircumflex[] __attribute__((section(".rodata0"))) = {
     0x18,
     0x3C,
     0x42,
@@ -2597,7 +2697,7 @@ const uint8_t Icircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t Idieresis[] = {
+static const uint8_t Idieresis[] __attribute__((section(".rodata0"))) = {
     0x66,
     0x66,
     0x00,
@@ -2615,7 +2715,7 @@ const uint8_t Idieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t Eth[] = {
+static const uint8_t Eth[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xF8,
@@ -2633,7 +2733,7 @@ const uint8_t Eth[] = {
     0x00,
     0x00,
 };
-const uint8_t Ntilde[] = {
+static const uint8_t Ntilde[] __attribute__((section(".rodata0"))) = {
     0x76,
     0xDC,
     0x00,
@@ -2651,7 +2751,7 @@ const uint8_t Ntilde[] = {
     0x00,
     0x00,
 };
-const uint8_t Ograve[] = {
+static const uint8_t Ograve[] __attribute__((section(".rodata0"))) = {
     0x60,
     0x30,
     0x00,
@@ -2669,7 +2769,7 @@ const uint8_t Ograve[] = {
     0x00,
     0x00,
 };
-const uint8_t Oacute[] = {
+static const uint8_t Oacute[] __attribute__((section(".rodata0"))) = {
     0x0C,
     0x18,
     0x00,
@@ -2687,7 +2787,7 @@ const uint8_t Oacute[] = {
     0x00,
     0x00,
 };
-const uint8_t Ocircumflex[] = {
+static const uint8_t Ocircumflex[] __attribute__((section(".rodata0"))) = {
     0x10,
     0x38,
     0x44,
@@ -2705,7 +2805,7 @@ const uint8_t Ocircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t Otilde[] = {
+static const uint8_t Otilde[] __attribute__((section(".rodata0"))) = {
     0x76,
     0xDC,
     0x00,
@@ -2723,7 +2823,7 @@ const uint8_t Otilde[] = {
     0x00,
     0x00,
 };
-const uint8_t Odieresis[] = {
+static const uint8_t Odieresis[] __attribute__((section(".rodata0"))) = {
     0x6C,
     0x6C,
     0x00,
@@ -2741,7 +2841,7 @@ const uint8_t Odieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t multiply[] = {
+static const uint8_t multiply[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -2759,7 +2859,7 @@ const uint8_t multiply[] = {
     0x00,
     0x00,
 };
-const uint8_t Oslash[] = {
+static const uint8_t Oslash[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x7A,
@@ -2777,7 +2877,7 @@ const uint8_t Oslash[] = {
     0x00,
     0x00,
 };
-const uint8_t Ugrave[] = {
+static const uint8_t Ugrave[] __attribute__((section(".rodata0"))) = {
     0x60,
     0x30,
     0x00,
@@ -2795,7 +2895,7 @@ const uint8_t Ugrave[] = {
     0x00,
     0x00,
 };
-const uint8_t Uacute[] = {
+static const uint8_t Uacute[] __attribute__((section(".rodata0"))) = {
     0x0C,
     0x18,
     0x00,
@@ -2813,7 +2913,7 @@ const uint8_t Uacute[] = {
     0x00,
     0x00,
 };
-const uint8_t Ucircumflex[] = {
+static const uint8_t Ucircumflex[] __attribute__((section(".rodata0"))) = {
     0x10,
     0x38,
     0x44,
@@ -2831,7 +2931,7 @@ const uint8_t Ucircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t Udieresis[] = {
+static const uint8_t Udieresis[] __attribute__((section(".rodata0"))) = {
     0x6C,
     0x6C,
     0x00,
@@ -2849,7 +2949,7 @@ const uint8_t Udieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t Yacute[] = {
+static const uint8_t Yacute[] __attribute__((section(".rodata0"))) = {
     0x0C,
     0x18,
     0x00,
@@ -2867,7 +2967,7 @@ const uint8_t Yacute[] = {
     0x00,
     0x00,
 };
-const uint8_t Thorn[] = {
+static const uint8_t Thorn[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xF0,
@@ -2885,7 +2985,7 @@ const uint8_t Thorn[] = {
     0x00,
     0x00,
 };
-const uint8_t germandbls[] = {
+static const uint8_t germandbls[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x3C,
@@ -2903,7 +3003,7 @@ const uint8_t germandbls[] = {
     0x00,
     0x00,
 };
-const uint8_t agrave[] = {
+static const uint8_t agrave[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x60,
@@ -2921,7 +3021,7 @@ const uint8_t agrave[] = {
     0x00,
     0x00,
 };
-const uint8_t aacute[] = {
+static const uint8_t aacute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -2939,7 +3039,7 @@ const uint8_t aacute[] = {
     0x00,
     0x00,
 };
-const uint8_t acircumflex[] = {
+static const uint8_t acircumflex[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x10,
     0x38,
@@ -2957,7 +3057,7 @@ const uint8_t acircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t atilde[] = {
+static const uint8_t atilde[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x76,
@@ -2975,7 +3075,7 @@ const uint8_t atilde[] = {
     0x00,
     0x00,
 };
-const uint8_t adieresis[] = {
+static const uint8_t adieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x6C,
@@ -2993,7 +3093,7 @@ const uint8_t adieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t aring[] = {
+static const uint8_t aring[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x38,
     0x6C,
@@ -3011,7 +3111,7 @@ const uint8_t aring[] = {
     0x00,
     0x00,
 };
-const uint8_t ae[] = {
+static const uint8_t ae[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -3029,7 +3129,7 @@ const uint8_t ae[] = {
     0x00,
     0x00,
 };
-const uint8_t ccedilla[] = {
+static const uint8_t ccedilla[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -3047,7 +3147,7 @@ const uint8_t ccedilla[] = {
     0x38,
     0x00,
 };
-const uint8_t egrave[] = {
+static const uint8_t egrave[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x60,
@@ -3065,7 +3165,7 @@ const uint8_t egrave[] = {
     0x00,
     0x00,
 };
-const uint8_t eacute[] = {
+static const uint8_t eacute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -3083,7 +3183,7 @@ const uint8_t eacute[] = {
     0x00,
     0x00,
 };
-const uint8_t ecircumflex[] = {
+static const uint8_t ecircumflex[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x10,
     0x38,
@@ -3101,7 +3201,7 @@ const uint8_t ecircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t edieresis[] = {
+static const uint8_t edieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x6C,
@@ -3119,7 +3219,7 @@ const uint8_t edieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t igrave[] = {
+static const uint8_t igrave[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x30,
@@ -3137,7 +3237,7 @@ const uint8_t igrave[] = {
     0x00,
     0x00,
 };
-const uint8_t iacute[] = {
+static const uint8_t iacute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -3155,7 +3255,7 @@ const uint8_t iacute[] = {
     0x00,
     0x00,
 };
-const uint8_t icircumflex[] = {
+static const uint8_t icircumflex[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x10,
     0x38,
@@ -3173,7 +3273,7 @@ const uint8_t icircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t idieresis[] = {
+static const uint8_t idieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x66,
@@ -3191,7 +3291,7 @@ const uint8_t idieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t eth[] = {
+static const uint8_t eth[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x76,
@@ -3209,7 +3309,7 @@ const uint8_t eth[] = {
     0x00,
     0x00,
 };
-const uint8_t ntilde[] = {
+static const uint8_t ntilde[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x76,
@@ -3227,7 +3327,7 @@ const uint8_t ntilde[] = {
     0x00,
     0x00,
 };
-const uint8_t ograve[] = {
+static const uint8_t ograve[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x60,
@@ -3245,7 +3345,7 @@ const uint8_t ograve[] = {
     0x00,
     0x00,
 };
-const uint8_t oacute[] = {
+static const uint8_t oacute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -3263,7 +3363,7 @@ const uint8_t oacute[] = {
     0x00,
     0x00,
 };
-const uint8_t ocircumflex[] = {
+static const uint8_t ocircumflex[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x10,
     0x38,
@@ -3281,7 +3381,7 @@ const uint8_t ocircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t otilde[] = {
+static const uint8_t otilde[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x76,
@@ -3299,7 +3399,7 @@ const uint8_t otilde[] = {
     0x00,
     0x00,
 };
-const uint8_t odieresis[] = {
+static const uint8_t odieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x6C,
@@ -3317,7 +3417,7 @@ const uint8_t odieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t divide[] = {
+static const uint8_t divide[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -3335,7 +3435,7 @@ const uint8_t divide[] = {
     0x00,
     0x00,
 };
-const uint8_t oslash[] = {
+static const uint8_t oslash[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x00,
@@ -3353,7 +3453,7 @@ const uint8_t oslash[] = {
     0x00,
     0x00,
 };
-const uint8_t ugrave[] = {
+static const uint8_t ugrave[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x60,
@@ -3371,7 +3471,7 @@ const uint8_t ugrave[] = {
     0x00,
     0x00,
 };
-const uint8_t uacute[] = {
+static const uint8_t uacute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x18,
@@ -3389,7 +3489,7 @@ const uint8_t uacute[] = {
     0x00,
     0x00,
 };
-const uint8_t ucircumflex[] = {
+static const uint8_t ucircumflex[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x10,
     0x38,
@@ -3407,7 +3507,7 @@ const uint8_t ucircumflex[] = {
     0x00,
     0x00,
 };
-const uint8_t udieresis[] = {
+static const uint8_t udieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xCC,
@@ -3425,7 +3525,7 @@ const uint8_t udieresis[] = {
     0x00,
     0x00,
 };
-const uint8_t yacute[] = {
+static const uint8_t yacute[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x0C,
@@ -3443,7 +3543,7 @@ const uint8_t yacute[] = {
     0xF8,
     0x00,
 };
-const uint8_t thorn[] = {
+static const uint8_t thorn[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0xE0,
@@ -3461,7 +3561,7 @@ const uint8_t thorn[] = {
     0xF0,
     0x00,
 };
-const uint8_t ydieresis[] = {
+static const uint8_t ydieresis[] __attribute__((section(".rodata0"))) = {
     0x00,
     0x00,
     0x6C,
@@ -3479,7 +3579,7 @@ const uint8_t ydieresis[] = {
     0xF8,
     0x00,
 };
-const uint8_t *vga_font[] = {
+static const uint8_t *vga_font[] __attribute__((section(".data0"))) = {
     char0,
     null_font,
     null_font,
@@ -3737,3 +3837,23 @@ const uint8_t *vga_font[] = {
     thorn,
     ydieresis,
 };
+
+__attribute__((section(".text0"))) void early_print(char *str)
+{
+    char *videomemory = framebuffer_ptr;
+    static unsigned int __attribute__((section(".data0"))) x = 0, y = 0;
+    for (size_t idx = 0; str[idx] != 0; idx++)
+    {
+        int ch = str[idx];
+        uint32_t *p = &videomemory[(y * 1024 * 16 * 4) + (x * 8 * 4)];
+        for (size_t i = 0; i < 16; i++)
+        {
+            for (size_t j = 0; j < 8; j++)
+            {
+                uint32_t tmp = (vga_font[ch][i] & (0x80 >> j)) ? 0xFFFFFFFF : 0x00000000;
+                p[(i * 1024) + j] = tmp;
+            }
+        }
+        x++;
+    }
+}

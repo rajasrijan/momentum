@@ -54,10 +54,7 @@ const retStack_t defaultThreadContext = {
     return local_random_generator;
 }
 
-void init_multitask()
-{
-    multitask::getInstance()->initilize();
-}
+void init_multitask() { multitask::getInstance()->initilize(); }
 
 /*
  * WARNING: THIS FUNCTION CANT HAVE ANY CLASS VARIABLES.
@@ -101,7 +98,9 @@ void thread_end()
     }
 }
 
-multitask::multitask() : multitaskMutex(0), uiThreadIterator(0), uiCurrentThreadIndex(0), threadList(), processList()
+multitask::multitask()
+    : multitaskMutex(0), uiThreadIterator(0), uiCurrentThreadIndex(0),
+      threadList(), processList()
 {
     printf("NOT MORE THAN ONCE\n");
 }
@@ -131,14 +130,9 @@ int multitask::allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManage
     return ret;
 }
 
-thread_t multitask::getKernelThread()
-{
-    return threadList[0];
-}
+thread_t multitask::getKernelThread() { return threadList[0]; }
 
-multitask::~multitask()
-{
-}
+multitask::~multitask() {}
 
 multitask *multitask::getInstance()
 {
@@ -178,7 +172,7 @@ int multitask::initilize()
     extern void (*system_call)();
     //	set system call function pointer
     wrmsr(0xC0000082, (uint64_t)&system_call);
-    // wrmsr(0xC0000084, 0x200);
+    //wrmsr(0xC0000084, 0x00);
     //	set cs
     wrmsr(0xC0000081, (0x08l << 32) | (0x10l << 48));
     return 0;
@@ -189,10 +183,7 @@ process_t multitask::getCurrentProcess()
     return threadList[uiCurrentThreadIndex]->parentProcess;
 }
 
-process_t multitask::getKernelProcess()
-{
-    return threadList[0]->parentProcess;
-}
+process_t multitask::getKernelProcess() { return threadList[0]->parentProcess; }
 
 process_t multitask::getActiveProcess()
 {
@@ -223,6 +214,7 @@ int multitask::createProcess(process_t &prs, const char *processName, int ring, 
         prs->setMemoryMap(mem_map);
         prs->setEntry(entry);
         prs->setRing(ring);
+        prs->flags = PROCESS_BUSY;
     }
     createThread(prs, thd, threadName, (void *(*)(void *))entry, nullptr);
     setActiveProcess(prs);
@@ -245,7 +237,7 @@ void multitask::destroyProcess(int status)
                 break;
             }
         }
-        delete prs;
+        prs->release();
     }
     //  set kernel thread as active.
     setActiveProcess(getKernelProcess());
@@ -290,19 +282,19 @@ int multitask::createThread(process_t prs, thread_t &thd, const char *threadName
     thd->regs.rbp = thd->context.rsp;
     switch (thd->context.cs & 3)
     {
-    case 0:
-        thd->context.rip = (uint64_t)&thread_info::thread_start_point;
-        thd->regs.rdi = (uint64_t)thd;
-        break;
-    case 1:
-    case 2:
-    case 3:
-        thd->context.rip = (uint64_t)thd->pfnStartRoutine;
-        thd->regs.rdi = (uint64_t)thd->arg;
-        break;
-    default:
-        printf("Invalid CPL");
-        asm("cli;hlt");
+        case 0:
+            thd->context.rip = (uint64_t)&thread_info::thread_start_point;
+            thd->regs.rdi = (uint64_t)thd;
+            break;
+        case 1:
+        case 2:
+        case 3:
+            thd->context.rip = (uint64_t)thd->pfnStartRoutine;
+            thd->regs.rdi = (uint64_t)thd->arg;
+            break;
+        default:
+            printf("Invalid CPL");
+            asm("cli;hlt");
     };
     printf("Creating P:%x,T:%x\n", (uint32_t)prs->getProcessId(), (uint32_t)thd->getThreadID());
     return 0;
@@ -316,33 +308,45 @@ thread_t multitask::getNextThread(retStack_t *stack, general_registers_t *regs)
     if (mtx_trylock_notimeout(&multitaskMutex) == thrd_success)
     {
         mtx_unlock(&threadList[uiCurrentThreadIndex]->mtx);
-        const size_t uiThreadCount = threadList.size();
-        do
+        while (true)
         {
-            uiThreadIterator = (uiThreadIterator + 1) % uiThreadCount;
-        } while ((mtx_trylock_notimeout(&threadList[uiThreadIterator]->mtx) != thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
-        //  if there is a process switch, need to change page directory.
-        if (threadList[uiCurrentThreadIndex]->parentProcess != threadList[uiThreadIterator]->parentProcess)
-        {
-            //  remove old page directory
-            PageManager::removeMemoryMap(threadList[uiCurrentThreadIndex]->parentProcess->memory_map);
-            //  apply new page directory
-            PageManager::applyMemoryMap(threadList[uiThreadIterator]->parentProcess->memory_map, PageManager::Privilege::User, PageManager::PageType::Read_Write);
-        }
-        if (threadList[uiCurrentThreadIndex]->flags == THREAD_STOP && uiCurrentThreadIndex != uiThreadIterator)
-        {
-            printf("Thread needs cleanup\n");
-            delete threadList[uiCurrentThreadIndex];
-            threadList.erase(threadList.begin() + uiCurrentThreadIndex);
-        }
+            const size_t uiThreadCount = threadList.size();
+            do
+            {
+                uiThreadIterator = (uiThreadIterator + 1) % uiThreadCount;
+            } while ((mtx_trylock_notimeout(&threadList[uiThreadIterator]->mtx) != thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
+            //  if there is a process switch, need to change page directory.
+            if (threadList[uiCurrentThreadIndex]->parentProcess != threadList[uiThreadIterator]->parentProcess)
+            {
+                //  remove old page directory
+                PageManager::removeMemoryMap(threadList[uiCurrentThreadIndex]->parentProcess->memory_map);
+                //  apply new page directory
+                PageManager::applyMemoryMap(threadList[uiThreadIterator]->parentProcess->memory_map, PageManager::Privilege::User, PageManager::PageType::Read_Write);
+            }
+            if (threadList[uiCurrentThreadIndex]->flags == THREAD_STOP && uiCurrentThreadIndex != uiThreadIterator)
+            {
+                printf("Thread needs cleanup\n");
+                auto prs = threadList[uiCurrentThreadIndex]->parentProcess;
+                prs->removeThread(threadList[uiCurrentThreadIndex]);
 
+                delete threadList[uiCurrentThreadIndex];
+                threadList.erase(threadList.begin() + uiCurrentThreadIndex);
+                if (prs->isStopped())
+                    delete prs;
+                if (uiCurrentThreadIndex < uiThreadIterator)
+                    uiThreadIterator--;
+            }
+            break;
+        }
         uiCurrentThreadIndex = uiThreadIterator;
         mtx_unlock(&multitaskMutex);
     }
     return threadList[uiCurrentThreadIndex];
 }
 
-thread_info::thread_info(const char *threadName, process_t _parentProcess) : mtx(0), flags(0), stackSize(0), context({}), regs({}), parentProcess(nullptr), uiThreadId(0), pfnStartRoutine(), arg(nullptr)
+thread_info::thread_info(const char *threadName, process_t _parentProcess)
+    : mtx(0), flags(0), stackSize(0), context({}), regs({}),
+      parentProcess(nullptr), uiThreadId(0), pfnStartRoutine(), arg(nullptr)
 {
     parentProcess = _parentProcess;
     uiThreadId = ++thread_id_counter;
@@ -357,14 +361,9 @@ thread_info &thread_info::operator=(const thread_info &t)
     return *this;
 }
 
-thread_info::~thread_info()
-{
-}
+thread_info::~thread_info() {}
 
-uint64_t thread_info::getThreadID() const
-{
-    return uiThreadId;
-}
+uint64_t thread_info::getThreadID() const { return uiThreadId; }
 
 void thread_info::thread_start_point(thread_info *thread)
 {
@@ -376,12 +375,10 @@ void thread_info::thread_start_point(thread_info *thread)
     }
 }
 
-void thread_info::release()
-{
-    flags = THREAD_STOP;
-}
+void thread_info::release() { flags = THREAD_STOP; }
 
-process_info::process_info(const char *processName) : memory_map(), m_uiProcessId(0), uiEntry(0), threads(), ring(0)
+process_info::process_info(const char *processName)
+    : memory_map(), m_uiProcessId(0), uiEntry(0), threads(), ring(0)
 {
     m_uiProcessId = ++process_id_counter;
     strcpy(p_szProcessName, processName);
@@ -389,13 +386,7 @@ process_info::process_info(const char *processName) : memory_map(), m_uiProcessI
 
 process_info::~process_info()
 {
-    for (size_t i = 0; i < threads.size(); i++)
-    {
-        threads[i]->release();
-    }
     threads.clear();
-    //  remove mapping
-    PageManager::removeMemoryMap(memory_map);
     //  reclaim physical memory
     for (const auto &mmap : memory_map)
     {
@@ -404,6 +395,13 @@ process_info::~process_info()
             rel_2mb_block(mmap.paddr + i);
         }
     }
+}
+
+int process_info::removeThread(thread_t thread)
+{
+    auto thrdIt = find(threads.begin(), threads.end(), thread);
+    threads.erase(thrdIt);
+    return 0;
 }
 
 uint64_t process_info::get_cs()
@@ -442,64 +440,76 @@ uint64_t process_info::get_ss()
     }
 }
 
+void process_info::release()
+{
+    flags = PROCESS_STOP;
+    for (size_t i = 0; i < threads.size(); i++)
+    {
+        threads[i]->release();
+    }
+}
+
 extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
 {
     switch (callid)
     {
-    case SYSCALL_EXIT:
-    {
-        multitask::getInstance()->destroyProcess(arg0);
-        //  there is nothing left to return to. Wait for reschedule and cleanup.
-        while (true)
+        case SYSCALL_EXIT:
         {
-            asm("pause;hlt");
+            multitask::getInstance()->destroyProcess(arg0);
+            asm("sti");
+            //  there is nothing left to return to. Wait for reschedule and cleanup.
+            while (true)
+            {
+                asm("pause;hlt");
+            }
         }
-    }
-    case SYSCALL_PUTCHAR:
-    {
-        return putchar(arg0);
-    }
-    case SYSCALL_GETCHAR:
-    {
-        return getchar();
-    }
-    case SYSCALL_GETCWD:
-    {
-        std::string curDir = getCurrentPath();
-        strncpy((char *)arg0, curDir.c_str(), min((unsigned long)arg1, curDir.size() + 1));
-        return arg0;
-    }
-    case SYSCALL_CHDIR:
-    {
-        return chdir((const char *)arg0);
-    }
-    case SYSCALL_CLOSE:
-    {
-        return close(arg0);
-    }
-    case SYSCALL_OPENAT:
-    {
-        openat_args *args = (openat_args *)arg0;
-        return openat(args->dirfd, args->pathname, args->flags, 0);
-    }
-    case SYSCALL_GETDENTS:
-    {
-        getdents_args *args = (getdents_args *)arg0;
-        vector<string> dir;
-        int ret = getdents(args->fd, dir);
-        auto dent_sz = dir.size();
-        for (size_t i = 0; i < min(dent_sz, args->count); i++)
+        case SYSCALL_PUTCHAR:
         {
-            strncpy(args->dirp[i].d_name, dir[i].c_str(), NAME_MAX);
+            return putchar(arg0);
         }
-        ret = min(dent_sz, args->count);
-        return ret;
-    }
-    default:
-    {
-        printf("Unknown syscall: %d\n", callid);
-        asm("cli;hlt");
-    }
+        case SYSCALL_GETCHAR:
+        {
+            return getchar();
+        }
+        case SYSCALL_GETCWD:
+        {
+            std::string curDir = getCurrentPath();
+            strncpy((char *)arg0, curDir.c_str(), min((unsigned long)arg1, curDir.size() + 1));
+            return arg0;
+        }
+        case SYSCALL_CHDIR:
+        {
+            return chdir((const char *)arg0);
+        }
+        case SYSCALL_CLOSE:
+        {
+            return close(arg0);
+        }
+        case SYSCALL_OPENAT:
+        {
+            openat_args *args = (openat_args *)arg0;
+            return openat(args->dirfd, args->pathname, args->flags, 0);
+        }
+        case SYSCALL_GETDENTS:
+        {
+            getdents_args *args = (getdents_args *)arg0;
+            vector<string> dir;
+            int ret = getdents(args->fd, dir);
+            if (ret < 0)
+                return ret;
+            auto dent_sz = dir.size();
+            for (size_t i = 0; i < min(dent_sz, args->count); i++)
+            {
+                strncpy(args->dirp[i].d_name, dir[i].c_str(), NAME_MAX);
+            }
+            ret = min(dent_sz, args->count);
+            return ret;
+        }
+        default:
+        {
+            printf("Unknown syscall: %d\n", callid);
+            asm("cli;hlt");
+        }
     }
     return 0;
 }

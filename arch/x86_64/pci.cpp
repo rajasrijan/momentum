@@ -128,7 +128,7 @@ void pci_init_devices()
                 if (!device.has_irq)
                 {
                     printf("Route not found\n");
-                    asm("cli;hlt");
+                    //asm("cli;hlt");
                 }
             }
             device.bIsProcessed = false;

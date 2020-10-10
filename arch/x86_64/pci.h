@@ -121,7 +121,8 @@ struct PCI_COMMON_CONFIG
     uint8_t HeaderType;
     uint8_t BIST;
 
-    union {
+    union
+    {
         struct _PCI_HEADER_TYPE_0 type0;
         struct _PCI_HEADER_TYPE_1 type1;
         struct _PCI_HEADER_TYPE_2 type2;
@@ -143,7 +144,8 @@ struct pci_device_id
 
 struct pci_device_t
 {
-    union {
+    union
+    {
         struct
         {
             uint8_t resv1;

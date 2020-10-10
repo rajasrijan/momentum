@@ -22,14 +22,17 @@
 
 #include <stdint.h>
 
+#define HEAP_EMPTY (1 << 0)
+#define HEAP_FULL (1 << 1)
+
 typedef struct _heap_
 {
     uint64_t size;
-#define HEAP_EMPTY (0)
-#define HEAP_FULL (1)
-    uint8_t flags;
+    struct _heap_ *next;
+    uint64_t flags : 56;
     uint8_t checksum;
 } heap_t;
+
 int initilize_memorymanager(struct multiboot_tag_mmap *mbi);
 int create_kernel_heap(void);
 uint64_t get_2mb_block(void);

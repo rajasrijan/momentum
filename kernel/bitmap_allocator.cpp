@@ -17,10 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include <errno.h>
 #include "bitmap_allocator.h"
+#include <errno.h>
+#include <stdint.h>
 
-void test()
-{
-}
+void test() {}

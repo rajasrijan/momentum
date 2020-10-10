@@ -67,22 +67,23 @@
 #define PT_LOPROC 0x70000000
 #define PT_HIPROC 0x7fffffff
 
-#define DEFINE_STRING(x)                                                                                                                                                                                                                       \
-    {                                                                                                                                                                                                                                          \
-        x, #x                                                                                                                                                                                                                                  \
+#define DEFINE_STRING(x) \
+    {                    \
+        x, #x            \
     }
 
-pair<uint32_t, const char *> elf_type[] = {{ET_NONE, "No file type"},
-                                           {ET_REL, "Relocatable file"},
-                                           {ET_EXEC, "Executable file"},
-                                           {ET_DYN, "Shared object file"},
-                                           {ET_CORE, "Core file"},
-                                           {ET_LOOS, "Operating system - specific"},
-                                           {ET_HIOS, "Operating system - specific"},
-                                           {ET_LOPROC, "Processor - specific"},
-                                           {ET_HIPROC, "Processor - specific"}};
-pair<uint32_t, const char *> program_type[] = {DEFINE_STRING(PT_NULL), DEFINE_STRING(PT_LOAD), DEFINE_STRING(PT_DYNAMIC), DEFINE_STRING(PT_INTERP), DEFINE_STRING(PT_NOTE),   DEFINE_STRING(PT_SHLIB),
-                                               DEFINE_STRING(PT_PHDR), DEFINE_STRING(PT_TLS),  DEFINE_STRING(PT_LOOS),    DEFINE_STRING(PT_HIOS),   DEFINE_STRING(PT_LOPROC), DEFINE_STRING(PT_HIPROC)};
+pair<uint32_t, const char *> elf_type[] = {
+    {ET_NONE, "No file type"},
+    {ET_REL, "Relocatable file"},
+    {ET_EXEC, "Executable file"},
+    {ET_DYN, "Shared object file"},
+    {ET_CORE, "Core file"},
+    {ET_LOOS, "Operating system - specific"},
+    {ET_HIOS, "Operating system - specific"},
+    {ET_LOPROC, "Processor - specific"},
+    {ET_HIPROC, "Processor - specific"}};
+pair<uint32_t, const char *> program_type[] = {
+    DEFINE_STRING(PT_NULL), DEFINE_STRING(PT_LOAD), DEFINE_STRING(PT_DYNAMIC), DEFINE_STRING(PT_INTERP), DEFINE_STRING(PT_NOTE), DEFINE_STRING(PT_SHLIB), DEFINE_STRING(PT_PHDR), DEFINE_STRING(PT_TLS), DEFINE_STRING(PT_LOOS), DEFINE_STRING(PT_HIOS), DEFINE_STRING(PT_LOPROC), DEFINE_STRING(PT_HIPROC)};
 struct Elf32_Phdr
 {
     uint32_t p_type;
@@ -95,7 +96,10 @@ struct Elf32_Phdr
     uint32_t p_align;
     void printHeader()
     {
-        auto type = find_if(program_type, program_type + (sizeof(program_type) / sizeof(program_type[0])), [&](pair<uint32_t, const char *> e) { return e.first == p_type; });
+        auto type = find_if(
+            program_type,
+            program_type + (sizeof(program_type) / sizeof(program_type[0])),
+            [&](pair<uint32_t, const char *> e) { return e.first == p_type; });
         if (type == (program_type + (sizeof(program_type) / sizeof(program_type[0]))))
             return;
         printf("\nType [%s]", type->second);
@@ -128,31 +132,32 @@ struct Elf32_Ehdr
         printf("\nElf signature present");
         switch (e_ident[EI_CLASS])
         {
-        case ELFCLASSNONE:
-            return false;
-        case ELFCLASS32:
-            printf("\n32 bit binary");
-            break;
-        case ELFCLASS64:
-            printf("\n64 bit binary");
-            break;
-        default:
-            return false;
+            case ELFCLASSNONE:
+                return false;
+            case ELFCLASS32:
+                printf("\n32 bit binary");
+                break;
+            case ELFCLASS64:
+                printf("\n64 bit binary");
+                break;
+            default:
+                return false;
         }
         switch (e_ident[EI_DATA])
         {
-        case ELFDATANONE:
-            return false;
-        case ELFDATA2LSB:
-            printf("\nLSB data");
-            break;
-        case ELFDATA2MSB:
-            printf("\nMSB data");
-            break;
-        default:
-            return false;
+            case ELFDATANONE:
+                return false;
+            case ELFDATA2LSB:
+                printf("\nLSB data");
+                break;
+            case ELFDATA2MSB:
+                printf("\nMSB data");
+                break;
+            default:
+                return false;
         }
-        auto type = find_if(elf_type, elf_type + (sizeof(elf_type) / sizeof(elf_type[0])), [&](pair<uint32_t, const char *> e) { return e.first == e_type; });
+        auto type = find_if(
+            elf_type, elf_type + (sizeof(elf_type) / sizeof(elf_type[0])), [&](pair<uint32_t, const char *> e) { return e.first == e_type; });
         if (type == (elf_type + (sizeof(elf_type) / sizeof(elf_type[0]))))
             return false;
         printf("\nType [%s]", type->second);
@@ -179,13 +184,9 @@ typedef struct
     uint16_t e_shtrndx;
 } Elf64_Ehdr;
 
-ELFLoader::ELFLoader()
-{
-}
+ELFLoader::ELFLoader() {}
 
-ELFLoader::~ELFLoader()
-{
-}
+ELFLoader::~ELFLoader() {}
 
 int ELFLoader::loadFile(std::string filePath, ELFFile &elfFile)
 {
