@@ -94,6 +94,14 @@ extern "C"
 }
 #endif
 
+//  this is a 128 bytes long structure to help application processors to boot.
+struct trampolin_t
+{
+    uint16_t jmp;        //  jump instruction
+    uint16_t mtx;        //  trampolin mutex
+    uint32_t proc_count; // processor count
+};
+
 /**
  * @brief Send INIT interrut to destination cpu. This function is only used for AP startup.
  * 

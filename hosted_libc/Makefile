@@ -3,6 +3,7 @@ CXXFLAGS := --target=x86_64-pc-momentum-elf -O0 --std=c++11 -nostdlib -nostdinc+
 ASFLAGS:=-f elf64
 
 AS := nasm
+CC := clang
 
 libc_src = $(wildcard ../libc/*.c)
 libc_obj = $(patsubst ../libc/%.c,../hosted_libc/%.o,$(libc_src))

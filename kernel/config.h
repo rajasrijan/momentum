@@ -38,7 +38,7 @@
 #endif // KERNEL_TEMP_PAGE_TABLE_LOCATION
 
 #ifndef KERNEL_GRUB_VIDEO
-#define KERNEL_GRUB_VIDEO (1)
+#define KERNEL_GRUB_VIDEO (0)
 #endif
 
 #endif //_CONFIG_H_

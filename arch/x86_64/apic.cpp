@@ -146,6 +146,7 @@ int init_symmetric_multi_processor()
         printf("Failed to map pages\n");
         return ret;
     }
+    trampolin_t *tramp = (trampolin_t *)0x8000;
 
     //  copy trampolin code to 0x8000
     memcpy((void *)0x8000, arch_x86_64_trampolin_blob, arch_x86_64_trampolin_blob_len);
@@ -154,12 +155,20 @@ int init_symmetric_multi_processor()
     //  start at 0x8000
     apic_interrupt_command_sipi(true, APIC_ICR_DEST_ALL_NOSELF, 0x8);
 
+    while (tramp->proc_count == 0)
+    {
+        printf("Waiting for processor...\n");
+    }
+    printf("Processor found\n");
+
     //  unmap memory
     if ((ret = PageManager::freeVirtualMemory(0x8000, arch_x86_64_trampolin_blob_len)) < 0)
     {
-        printf("Failed to freeVirtualMemory\n");
+        printf("Failed to freeVirtualMemory()\n");
         return ret;
     }
+
+    asm("cli;hlt");
 
     return 0;
 }
