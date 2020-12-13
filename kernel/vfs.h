@@ -26,29 +26,15 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+#include <sys/types.h>
+#include <uuid.h>
 
 using namespace std;
 
 #define BLKPBSZGET 1
 #define BLKGETSIZE64 2
 
-enum vtype
-{
-    VNON = 0,
-    VREG = 1,
-    VDIR = 2,
-    VBLK = 3,
-    VCHR = 4,
-    VLNK = 5,
-    VSOCK = 6,
-    VBAD = 7
-};
-enum FS_TYPE_MAGIC
-{
+enum FS_TYPE_MAGIC {
     ADFS_SUPER_MAGIC = 0xadf5,
     AFFS_SUPER_MAGIC = 0xadff,
     AFS_SUPER_MAGIC = 0x5346414f,
@@ -134,8 +120,7 @@ enum FS_TYPE_MAGIC
     _XIAFS_SUPER_MAGIC = 0x012fd16d
 };
 
-struct statfs_t
-{
+struct statfs_t {
     uint64_t type;    /* Type of filesystem (see below) */
     uint64_t bsize;   /* Optimal transfer block size */
     uint64_t blocks;  /* Total data blocks in filesystem */
@@ -143,113 +128,20 @@ struct statfs_t
     uint64_t bavail;  /* Free blocks available to unprivileged user */
     uint64_t files;   /* Total file nodes in filesystem */
     uint64_t ffree;   /* Free file nodes in filesystem */
-    uint64_t fsid;    /* Filesystem ID */
+    uuid_t fsid;      /* Filesystem ID */
     uint32_t namelen; /* Maximum length of filenames */
     uint64_t frsize;  /* Fragment size (since Linux 2.6) */
     uint64_t flags;   /* Mount flags of filesystem*/
 };
 
-class vnode
-{
-  public:
-    uint16_t v_shlockc;          /* # of shared locks */
-    uint16_t v_exlockc;          /* # of exclusive locks */
-    uint32_t v_type;             /* vnode type */
-    class vfs *v_vfsmountedhere; /* covering vfs */
-    class vfs *v_vfsp;           /* vfs we are in */
-                                 // vnode *v_root;
-
-  private:
-    [[maybe_unused]] uint16_t v_flag; /* vnode flags */
-    string v_name;
-    [[maybe_unused]] uint64_t v_count; /* reference count */
-    vector<shared_ptr<vnode>> special_nodes;
-    vector<shared_ptr<vnode>> dnode_cache;
-    bool runOnce = false;
-    vector<shared_ptr<vnode>> ref_nodes;
-
-  protected:
-    void setName(const char *name);
-
-  public:
-    vnode(class vfs *vfsp);
-    vnode(const vnode &) = delete;
-    constexpr vnode &operator=(const vnode &) = delete;
-    virtual ~vnode();
-    virtual int access(void);
-    virtual int bmap(void);
-    virtual int bread(ssize_t position, size_t size, char *data, int *bytesRead) = 0;
-    virtual int bwrite(ssize_t position, size_t size, char *data, int *bytesWritten) = 0;
-    virtual int brelse(void);
-    virtual int close(void);
-    virtual int create(void);
-    int dolookup(const char *const path, shared_ptr<vnode> &foundNode);
-    int doreaddir(vector<shared_ptr<vnode>> &vnodes);
-    int doopen(shared_ptr<vnode> &node, uint32_t flags, class vfile **file);
-    virtual int fsync(void);
-    const string &getName() const;
-    virtual int getattr(void);
-    virtual int ioctl(uint32_t command, void *data, int fflag);
-    virtual int inactive(void);
-    virtual int link(void);
-    virtual int mkdir(std::string name, shared_ptr<vnode> &pDir);
-    int mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode);
-    int rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode);
-    virtual int rdwr(void);
-    virtual int rename(string name);
-    virtual int rmdir(void);
-    virtual int readlink(void);
-    virtual int remove(void);
-    virtual int select(void);
-    virtual int setattr(void);
-    virtual int symlink(void);
-    virtual int strategy(void);
-    virtual bool namecmp(const string &name) const;
-    virtual bool isPartitionable()
-    {
-        return true;
-    }
-    void addRef(shared_ptr<vnode> &node)
-    {
-        ref_nodes.push_back(node);
-    }
-    int removeRef(shared_ptr<vnode> &node)
-    {
-        auto result = find(ref_nodes.begin(), ref_nodes.end(), node);
-        if (result == ref_nodes.end())
-        {
-            return ENOENT;
-        }
-        ref_nodes.erase(result);
-        return 0;
-    }
-    bool isDirectory()
-    {
-        return (v_type == VDIR);
-    }
-    bool isFile()
-    {
-        return (v_type == VREG);
-    }
-    bool isBlockDevice()
-    {
-        return (v_type == VBLK);
-    }
-
-  protected:
-    virtual int lookup(const char *const path, shared_ptr<vnode> &foundNode);
-    virtual int readdir(vector<shared_ptr<vnode>> &vnodes) = 0;
-    virtual int open(uint64_t flags) = 0;
-};
-
 class vfile
 {
-    shared_ptr<vnode> _parent;
+    shared_ptr<class vnode> _parent;
     [[maybe_unused]] ssize_t posP, posG;
     [[maybe_unused]] mtx_t fileIOLock;
 
   public:
-    vfile(shared_ptr<vnode> parent);
+    vfile(shared_ptr<class vnode> parent);
     ~vfile();
     int read(char *data, size_t sz);
     int seekg(long int offset, int origin);
@@ -258,23 +150,22 @@ class vfile
 class vfs
 {
   public:
-    shared_ptr<vnode> vfs_vnodecovered; /* vnode we cover */
-    int flag;                           /* flags */
-                                        // void* vfs_data; /* private data */
+    shared_ptr<class vnode> vfs_vnodecovered; /* vnode we cover */
+    int flag;                                 /* flags */
+                                              // void* vfs_data; /* private data */
   public:
     vfs();
     virtual ~vfs();
-    virtual int mount(uint64_t flags, shared_ptr<vnode> blk_dev, shared_ptr<vnode> &fs_root_directory) = 0;
+    virtual int mount(uint64_t flags, shared_ptr<class vnode> blk_dev, shared_ptr<class vnode> &fs_root_directory) = 0;
     virtual int unmount(void) = 0;
-    virtual int root(vnode *&rootNode) = 0;
-    virtual int statfs(shared_ptr<vnode> rootNode, statfs_t &statfs) = 0;
+    virtual int root(class vnode *&rootNode) = 0;
+    virtual int statfs(shared_ptr<class vnode> rootNode, statfs_t &statfs) = 0;
     virtual int sync(void) = 0;
     virtual int fid(void) = 0;
     virtual int vget(void) = 0;
 };
 
-struct fileSystem
-{
+struct fileSystem {
     function<vfs *(void)> new_vfs;
     function<void(vfs *)> delete_vfs;
     // fileSystem(const fileSystem &fs) : new_vfs(fs.new_vfs), delete_vfs(fs.delete_vfs) {}
@@ -284,15 +175,14 @@ struct fileSystem
 void init_vfs(void);
 void register_filesystem(fileSystem fs, string fsName);
 void unregister_filesystem(fileSystem fs);
-int mknod(const char *pathname, shared_ptr<vnode> dev);
+int mknod(const char *pathname, shared_ptr<class vnode> dev);
 // extern std::vector<vfs*> vfs_list;
-extern shared_ptr<vnode> rnode; //	Pointer to root vnode.
-int mount_root(vnode *vn);
-int add_blk_dev(shared_ptr<vnode> blk_dev);
-vnode *open_bdev(string dev_path);
+extern shared_ptr<class vnode> rnode; //	Pointer to root vnode.
+int mount_root(class vnode *vn);
+int add_blk_dev(shared_ptr<class vnode> blk_dev);
+class vnode *open_bdev(string dev_path);
 
-enum OpenAt_Flags
-{
+enum OpenAt_Flags {
     FDCWD = -100,             /* Indicates that openat should use the current working
                                  directory. */
     SYMLINK_NOFOLLOW = 0x100, /* Do not follow symbolic links.  */
@@ -302,8 +192,7 @@ enum OpenAt_Flags
     EMPTY_PATH = 0x1000       /* Allow empty relative pathname */
 };
 
-enum Open_Flags
-{
+enum Open_Flags {
     O_RDONLY = 1 << 0,   //    Open for reading only.
     O_WRONLY = 1 << 1,   //    Open for writing only.
     O_RDWR = 1 << 2,     //    Open for reading and writing. The result is undefined
@@ -316,9 +205,9 @@ enum Open_Flags
     O_CLOEXEC = 1 << 5,
 };
 
-typedef uint64_t mode_t;
-int lookup(const char *path, shared_ptr<vnode> &node);
-int open(const string &name);
+int lookup(const char *path, shared_ptr<class vnode> &node);
+int create(const string &path, shared_ptr<class vnode> &node);
+int open(const string &name, int oflag);
 int openat(int dirfd, const string &pathname, int flags, mode_t mode);
 
 int read(int fd, char *dst, size_t size);

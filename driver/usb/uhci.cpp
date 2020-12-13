@@ -23,6 +23,7 @@
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
 #include <kernel/vfs.h>
+#include <kernel/vnode.h>
 #include <arch/x86_64/timer.h>
 #include <arch/x86_64/paging.h>
 #include <errno.h>

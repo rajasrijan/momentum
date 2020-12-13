@@ -30,6 +30,7 @@
 #include "stdio.h"
 #include "string.h"
 #include <kernel/vfs.h>
+#include <kernel/vnode.h>
 #include <kernel/sys_info.h>
 #include "pci.h"
 #include "../../DDI/pci_driver.h"
@@ -39,7 +40,7 @@
 #include <list>
 #include <map>
 #include <unistd.h>
-#include <driver/binary_loader.h>
+#include <kernel/binary_loader.h>
 #include "descriptor_tables.h"
 #include <arch/x86_64/video.h>
 #include <arch/x86_64/rtc.h>
@@ -47,6 +48,7 @@
 #include <arch/x86_64/multiboot.h>
 #include <memory>
 #include <kernel/gui.h>
+#include <kernel/logging.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -98,6 +100,7 @@ int exec(char *filename);
 int top(char *filename);
 int poweroff(char *args);
 int gui(char *args);
+int loglevel(char *args);
 
 cmd_t cmdMapping[] = {
     {"echo", echo},
@@ -108,11 +111,19 @@ cmd_t cmdMapping[] = {
     {"ls", ls},
     {"lspci", lspci},
     {"lsmem", lsmem},
+    {"loglevel", loglevel},
     {"poweroff", poweroff},
     {"top", top},
     {"version", ver},
     {"help", help},
 };
+
+int loglevel(char *args)
+{
+    int log_lvl = atoi(args);
+    set_log_lvl(log_lvl);
+    return 0;
+}
 
 int gui_init = 0;
 
@@ -134,7 +145,7 @@ int gui(char *args)
 
 int cat(char *filename)
 {
-    int fd = open(filename);
+    int fd = open(filename, O_RDONLY);
     if (fd == -1)
         return 1;
     char buffer[256] = {0};
@@ -168,8 +179,9 @@ int cd(char *args)
 
 int ls(char *args)
 {
+    string path = (!args) ? "." : args;
     vector<string> dirs;
-    int fd = openat(FDCWD, args, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC, 0);
+    int fd = openat(FDCWD, path, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC, 0);
     getdents(fd, dirs);
     close(fd);
     for (const string &entry : dirs)

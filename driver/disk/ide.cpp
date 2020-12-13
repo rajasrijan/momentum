@@ -22,6 +22,7 @@
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
 #include <kernel/vfs.h>
+#include <kernel/vnode.h>
 #include "ide.h"
 #include "ata.h"
 #include <string>

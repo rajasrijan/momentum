@@ -23,10 +23,16 @@
 #define SYSCALL_GETCWD (3)
 #define SYSCALL_CHDIR (4)
 #define SYSCALL_CLOSE (5)
-#define SYSCALL_OPENAT (6)
-#define SYSCALL_GETDENTS (7)
+#define SYSCALL_OPEN (6)
+#define SYSCALL_OPENAT (7)
+#define SYSCALL_GETDENTS (8)
 
 #pragma pack(push, 8)
+struct open_args
+{
+    const char *pathname;
+    int oflag;
+};
 struct openat_args
 {
     int dirfd;

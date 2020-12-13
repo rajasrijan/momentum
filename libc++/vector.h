@@ -24,8 +24,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-namespace std
-{
+namespace std {
 template <class T>
 class vector
 {
@@ -58,18 +57,15 @@ class vector
         _count = 0;
         mtx_init(&lock, 0);
         __data = (T *)calloc(_size, sizeof(T));
-        for (const auto &var : v)
-        {
+        for (const auto &var : v) {
             push_back(var);
         }
     }
 
     ~vector()
     {
-        if (__data != nullptr)
-        {
-            for (size_t index = 0; index < _count; index++)
-            {
+        if (__data != nullptr) {
+            for (size_t index = 0; index < _count; index++) {
                 __data[index].~T();
             }
             free(__data);
@@ -77,6 +73,16 @@ class vector
         }
         _size = 0;
         _count = 0;
+    }
+
+    void resize(size_t count)
+    {
+        for (; _count < count;) {
+            emplace_back();
+        }
+        for (; _count > count;) {
+            pop_back();
+        }
     }
 
     bool empty() const
@@ -92,8 +98,7 @@ class vector
     void push_back(const T &val)
     {
         sync local_lock(lock);
-        if (_count >= _size)
-        {
+        if (_count >= _size) {
             _size += 8;
             T *temp = (T *)calloc(_size, sizeof(T));
             copy(__data, &__data[_count], temp);
@@ -110,8 +115,7 @@ class vector
     void emplace_back(Args &&... args)
     {
         sync local_lock(lock);
-        if (_count >= _size)
-        {
+        if (_count >= _size) {
             _size += 8;
             T *temp = (T *)calloc(_size, sizeof(T));
             copy(__data, &__data[_count], temp);
@@ -134,8 +138,7 @@ class vector
     T &operator[](uint32_t index)
     {
 
-        if (index >= _count)
-        {
+        if (index >= _count) {
             asm("cli;hlt;");
         }
         void *tmp = (void *)((char *)__data + (element_size * index));
@@ -151,8 +154,7 @@ class vector
     vector &operator=(const vector &other)
     {
         sync local_lock(lock);
-        if (__data != nullptr)
-        {
+        if (__data != nullptr) {
             free(__data);
             __data = nullptr;
         }
@@ -178,10 +180,8 @@ class vector
     }
     void clear()
     {
-        if (__data != nullptr)
-        {
-            for (size_t index = 0; index < _count; index++)
-            {
+        if (__data != nullptr) {
+            for (size_t index = 0; index < _count; index++) {
                 __data[index].~T();
             }
             free(__data);
@@ -328,8 +328,7 @@ class vector
     {
         sync local_lock(lock);
         _count++;
-        if (_count >= _size)
-        {
+        if (_count >= _size) {
             _size += 8;
             T *temp = (T *)calloc(_size, sizeof(T));
             copy(__data, &__data[_count], temp);
@@ -351,8 +350,7 @@ class vector
         size_t element_count = last - first;
         size_t new_count = _count + element_count;
         T *temp = __data;
-        if (new_count >= _size)
-        {
+        if (new_count >= _size) {
             _size = std::max(new_count, (size_t)_size * 2);
             temp = (T *)calloc(_size, sizeof(T));
             copy(begin(), position, temp);
@@ -360,8 +358,7 @@ class vector
         temp += position - begin();
         copy(position, end(), temp + element_count);
         _count = new_count;
-        for (auto it = first; it != last; ++it)
-        {
+        for (auto it = first; it != last; ++it) {
             new ((void *)&(*position)) T(*it);
             ++position;
         }

@@ -22,27 +22,45 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
+
+#define EOF (-1)
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 #define DBG_OUTPUT printf("%s:%s():%d\n", __FILE__, __FUNCTION__, __LINE__);
 #ifdef __cplusplus
-#define EXT_TYP "C"
-#else
-#define EXT_TYP
+extern "C"
+{
 #endif
-extern EXT_TYP char getchar(void);
-extern EXT_TYP int printf(const char *format, ...);
-extern EXT_TYP int vsnprintf(char *buffer, size_t n, const char *format, va_list arg);
-extern EXT_TYP int snprintf(char *str, size_t n, const char *format, ...);
+    char getchar(void);
+    int printf(const char *format, ...);
+    int vprintf(const char *format, va_list arg);
+    int vsnprintf(char *buffer, size_t n, const char *format, va_list arg);
+    int snprintf(char *str, size_t n, const char *format, ...);
 
-extern EXT_TYP char *gets_s(char *str, size_t sz);
-extern EXT_TYP int putchar(int c);
-extern EXT_TYP void clrscr(void);
+    char *gets_s(char *str, size_t sz);
+    int putchar(int c);
+    void clrscr(void);
+#if __STDC_HOSTED__ == 1
+#ifndef FILE
+#define FILE void
+#endif //FILE
 
-#define assert(x)                                                                                                                                                                                                                              \
-    if (x)                                                                                                                                                                                                                                     \
-    {                                                                                                                                                                                                                                          \
-        printf("\nAssert at [%s],File [%s], Line [%d]", #x, __FILE__, __LINE__);                                                                                                                                                               \
-        __asm__("cli;hlt;");                                                                                                                                                                                                                   \
+    extern FILE *stdin, *stdout, *stderr;
+    FILE *fopen(const char *filename, const char *mode);
+    int fclose(FILE *file);
+    int ferror(FILE *file);
+#endif
+#ifdef __cplusplus
+}
+#endif
+#define assert(x)                                                                \
+    if (x)                                                                       \
+    {                                                                            \
+        printf("\nAssert at [%s],File [%s], Line [%d]", #x, __FILE__, __LINE__); \
+        __asm__("cli;hlt;");                                                     \
     }
 
 #endif /* STDIO_H */

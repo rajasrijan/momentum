@@ -21,6 +21,7 @@
 #include <arch/x86_64/mm.h>
 #include <kernel/syscall.h>
 #include <kernel/vfs.h>
+#include <kernel/vnode.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,7 +55,10 @@ const retStack_t defaultThreadContext = {
     return local_random_generator;
 }
 
-void init_multitask() { multitask::getInstance()->initilize(); }
+void init_multitask()
+{
+    multitask::getInstance()->initilize();
+}
 
 /*
  * WARNING: THIS FUNCTION CANT HAVE ANY CLASS VARIABLES.
@@ -70,12 +74,10 @@ __attribute__((noreturn)) void change_thread(const thread_t thread, bool enable_
     retStack_t context = thread->context;
     uint64_t rsp = ((context.rsp) / 0x10) * 0x10;
     // set maskable interrupt flag.
-    if (enable_interrupts)
-    {
+    if (enable_interrupts) {
         context.rflags |= 0x200;
     }
-    if (((context.cs) >> 3) == 0)
-    {
+    if (((context.cs) >> 3) == 0) {
         printf("\nInvalid Code section.Halting...");
         asm("cli;hlt;");
     }
@@ -84,16 +86,14 @@ __attribute__((noreturn)) void change_thread(const thread_t thread, bool enable_
     rsp -= sizeof(general_registers_t);
     memcpy((char *)rsp, (char *)&(thread->regs), sizeof(general_registers_t));
     switch_context(rsp, thread->context.ss);
-    while (1)
-    {
+    while (1) {
         asm("cli;hlt;");
     }
 }
 
 void thread_end()
 {
-    while (1)
-    {
+    while (1) {
         asm("sti;hlt;");
     }
 }
@@ -115,14 +115,12 @@ int multitask::allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManage
     stackSize = PageManager::roundToPageSize(stackSize);
     //	Find free space after 4GB mark.
     ret = PageManager::findFreeVirtualMemory(stackPtr, stackSize, 0x100000000);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         printf("failed to findFreeVirtualMemory\n");
         asm("cli;hlt");
     }
 
-    if (PageManager::setPageAllocation(stackPtr, stackSize, privilege, PageManager::Read_Write))
-    {
+    if (PageManager::setPageAllocation(stackPtr, stackSize, privilege, PageManager::Read_Write)) {
         printf("Failed to set page address\n");
         asm("cli;hlt");
     }
@@ -130,9 +128,14 @@ int multitask::allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManage
     return ret;
 }
 
-thread_t multitask::getKernelThread() { return threadList[0]; }
+thread_t multitask::getKernelThread()
+{
+    return threadList[0];
+}
 
-multitask::~multitask() {}
+multitask::~multitask()
+{
+}
 
 multitask *multitask::getInstance()
 {
@@ -156,8 +159,7 @@ int multitask::initilize()
     errCode = allocateStack(kernel_thread->stackSize, kernel_thread->context.rsp, PageManager::Supervisor);
     kernel_thread->context.rsp -= 8;
     kernel_thread->regs.rbp = kernel_thread->context.rsp;
-    if (errCode)
-    {
+    if (errCode) {
         printf("Error allocating stack for kernel thread\n");
         return errCode;
     }
@@ -183,7 +185,10 @@ process_t multitask::getCurrentProcess()
     return threadList[uiCurrentThreadIndex]->parentProcess;
 }
 
-process_t multitask::getKernelProcess() { return threadList[0]->parentProcess; }
+process_t multitask::getKernelProcess()
+{
+    return threadList[0]->parentProcess;
+}
 
 process_t multitask::getActiveProcess()
 {
@@ -229,10 +234,8 @@ void multitask::destroyProcess(int status)
         sync lock(multitaskMutex);
         thread_t thd = threadList[uiCurrentThreadIndex];
         prs = thd->parentProcess;
-        for (auto it = processList.begin(); it != processList.end(); it++)
-        {
-            if (*it == prs)
-            {
+        for (auto it = processList.begin(); it != processList.end(); it++) {
+            if (*it == prs) {
                 processList.erase(it);
                 break;
             }
@@ -265,23 +268,18 @@ int multitask::createThread(process_t prs, thread_t &thd, const char *threadName
     thd->context.ss = prs->get_ss();
     thd->context.rflags = get_rflags();
     thd->stackSize = KERNEL_STACK_SZ;
-    if ((thd->context.cs & 3) == 0)
-    {
+    if ((thd->context.cs & 3) == 0) {
         ret = allocateStack(thd->stackSize, thd->context.rsp, PageManager::Supervisor);
-    }
-    else
-    {
+    } else {
         ret = allocateStack(thd->stackSize, thd->context.rsp, PageManager::User);
     }
-    if (ret)
-    {
+    if (ret) {
         printf("Error allocating stack for thread\n");
         return ret;
     }
     thd->context.rsp -= 8;
     thd->regs.rbp = thd->context.rsp;
-    switch (thd->context.cs & 3)
-    {
+    switch (thd->context.cs & 3) {
         case 0:
             thd->context.rip = (uint64_t)&thread_info::thread_start_point;
             thd->regs.rdi = (uint64_t)thd;
@@ -305,26 +303,21 @@ thread_t multitask::getNextThread(retStack_t *stack, general_registers_t *regs)
     threadList[uiCurrentThreadIndex]->context = *stack;
     threadList[uiCurrentThreadIndex]->regs = *regs;
 
-    if (mtx_trylock_notimeout(&multitaskMutex) == thrd_success)
-    {
+    if (mtx_trylock_notimeout(&multitaskMutex) == thrd_success) {
         mtx_unlock(&threadList[uiCurrentThreadIndex]->mtx);
-        while (true)
-        {
+        while (true) {
             const size_t uiThreadCount = threadList.size();
-            do
-            {
+            do {
                 uiThreadIterator = (uiThreadIterator + 1) % uiThreadCount;
             } while ((mtx_trylock_notimeout(&threadList[uiThreadIterator]->mtx) != thrd_success) && uiCurrentThreadIndex != uiThreadIterator);
             //  if there is a process switch, need to change page directory.
-            if (threadList[uiCurrentThreadIndex]->parentProcess != threadList[uiThreadIterator]->parentProcess)
-            {
+            if (threadList[uiCurrentThreadIndex]->parentProcess != threadList[uiThreadIterator]->parentProcess) {
                 //  remove old page directory
                 PageManager::removeMemoryMap(threadList[uiCurrentThreadIndex]->parentProcess->memory_map);
                 //  apply new page directory
                 PageManager::applyMemoryMap(threadList[uiThreadIterator]->parentProcess->memory_map, PageManager::Privilege::User, PageManager::PageType::Read_Write);
             }
-            if (threadList[uiCurrentThreadIndex]->flags == THREAD_STOP && uiCurrentThreadIndex != uiThreadIterator)
-            {
+            if (threadList[uiCurrentThreadIndex]->flags == THREAD_STOP && uiCurrentThreadIndex != uiThreadIterator) {
                 printf("Thread needs cleanup\n");
                 auto prs = threadList[uiCurrentThreadIndex]->parentProcess;
                 prs->removeThread(threadList[uiCurrentThreadIndex]);
@@ -361,21 +354,28 @@ thread_info &thread_info::operator=(const thread_info &t)
     return *this;
 }
 
-thread_info::~thread_info() {}
+thread_info::~thread_info()
+{
+}
 
-uint64_t thread_info::getThreadID() const { return uiThreadId; }
+uint64_t thread_info::getThreadID() const
+{
+    return uiThreadId;
+}
 
 void thread_info::thread_start_point(thread_info *thread)
 {
     void *ret = thread->pfnStartRoutine(thread->arg);
     printf("Thread returned %x\n", (uint64_t)ret);
-    while (true)
-    {
+    while (true) {
         __asm__("pause");
     }
 }
 
-void thread_info::release() { flags = THREAD_STOP; }
+void thread_info::release()
+{
+    flags = THREAD_STOP;
+}
 
 process_info::process_info(const char *processName)
     : memory_map(), m_uiProcessId(0), uiEntry(0), threads(), ring(0)
@@ -388,10 +388,8 @@ process_info::~process_info()
 {
     threads.clear();
     //  reclaim physical memory
-    for (const auto &mmap : memory_map)
-    {
-        for (size_t i = 0; i < mmap.size; i += PageManager::PAGESIZE)
-        {
+    for (const auto &mmap : memory_map) {
+        for (size_t i = 0; i < mmap.size; i += PageManager::PAGESIZE) {
             rel_2mb_block(mmap.paddr + i);
         }
     }
@@ -406,16 +404,11 @@ int process_info::removeThread(thread_t thread)
 
 uint64_t process_info::get_cs()
 {
-    if (ring == 0)
-    {
+    if (ring == 0) {
         return 0x08;
-    }
-    else if (ring == 3)
-    {
+    } else if (ring == 3) {
         return 0x23;
-    }
-    else
-    {
+    } else {
         printf("Invalid RING");
         asm("cli;hlt");
         return 0x0;
@@ -424,16 +417,11 @@ uint64_t process_info::get_cs()
 
 uint64_t process_info::get_ss()
 {
-    if (ring == 0)
-    {
+    if (ring == 0) {
         return 0x10;
-    }
-    else if (ring == 3)
-    {
+    } else if (ring == 3) {
         return 0x1B;
-    }
-    else
-    {
+    } else {
         printf("Invalid RING");
         asm("cli;hlt");
         return 0x0;
@@ -443,70 +431,61 @@ uint64_t process_info::get_ss()
 void process_info::release()
 {
     flags = PROCESS_STOP;
-    for (size_t i = 0; i < threads.size(); i++)
-    {
+    for (size_t i = 0; i < threads.size(); i++) {
         threads[i]->release();
     }
 }
 
 extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
 {
-    switch (callid)
-    {
-        case SYSCALL_EXIT:
-        {
+    switch (callid) {
+        case SYSCALL_EXIT: {
             multitask::getInstance()->destroyProcess(arg0);
             asm("sti");
             //  there is nothing left to return to. Wait for reschedule and cleanup.
-            while (true)
-            {
+            while (true) {
                 asm("pause;hlt");
             }
         }
-        case SYSCALL_PUTCHAR:
-        {
+        case SYSCALL_PUTCHAR: {
             return putchar(arg0);
         }
-        case SYSCALL_GETCHAR:
-        {
+        case SYSCALL_GETCHAR: {
             return getchar();
         }
-        case SYSCALL_GETCWD:
-        {
+        case SYSCALL_GETCWD: {
             std::string curDir = getCurrentPath();
             strncpy((char *)arg0, curDir.c_str(), min((unsigned long)arg1, curDir.size() + 1));
             return arg0;
         }
-        case SYSCALL_CHDIR:
-        {
+        case SYSCALL_CHDIR: {
             return chdir((const char *)arg0);
         }
-        case SYSCALL_CLOSE:
-        {
+        case SYSCALL_CLOSE: {
             return close(arg0);
         }
-        case SYSCALL_OPENAT:
-        {
+        case SYSCALL_OPEN: {
+            open_args *args = (open_args *)arg0;
+            return open(args->pathname, args->oflag);
+        }
+        case SYSCALL_OPENAT: {
             openat_args *args = (openat_args *)arg0;
             return openat(args->dirfd, args->pathname, args->flags, 0);
         }
-        case SYSCALL_GETDENTS:
-        {
+        case SYSCALL_GETDENTS: {
             getdents_args *args = (getdents_args *)arg0;
             vector<string> dir;
             int ret = getdents(args->fd, dir);
             if (ret < 0)
                 return ret;
             auto dent_sz = dir.size();
-            for (size_t i = 0; i < min(dent_sz, args->count); i++)
-            {
+            for (size_t i = 0; i < min(dent_sz, args->count); i++) {
                 strncpy(args->dirp[i].d_name, dir[i].c_str(), NAME_MAX);
             }
             ret = min(dent_sz, args->count);
             return ret;
         }
-        default:
-        {
+        default: {
             printf("Unknown syscall: %d\n", callid);
             asm("cli;hlt");
         }

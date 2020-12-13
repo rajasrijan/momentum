@@ -1,5 +1,6 @@
 #include <arch/x86_64/descriptor_tables.h>
 #include <stdint.h>
+#include <uuid.h>
 
 #pragma pack(push, 1)
 typedef struct system_info
@@ -12,7 +13,7 @@ typedef struct system_info
     struct local_apic_structure *local_apic;
     idt_t idt;
     struct acpi_rsdp *rsdp;
-    uint64_t root_drive_uuid;
+    uuid_t root_drive_uuid;
 } system_info_t;
 #pragma pack(pop)
 

@@ -21,6 +21,7 @@
 #define STRING_H
 
 #include <stddef.h>
+#include <sys/types.h>
 #ifdef __cplusplus
 extern "C"
 {

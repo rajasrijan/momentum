@@ -16,8 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _LINUX_ERRNO_H
-#define _LINUX_ERRNO_H
+#ifndef _ERRNO_H
+#define _ERRNO_H
+
+#if __STDC_HOSTED__ == 1
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+    extern int errno;
+#ifdef __cplusplus
+}
+#endif
+#endif
 
 #define EPERM 1   /* Operation not permitted */
 #define ENOFILE 2 /* No such file or directory */

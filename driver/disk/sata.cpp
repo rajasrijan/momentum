@@ -26,6 +26,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+#include <memory>
+#include <kernel/vnode.h>
 #include "ide.h"
 #include "sata.h"
 #include "sata3.0.h"

@@ -24,12 +24,9 @@
 #include <DDI/driver.h>
 #include <errno.h>
 #include <kernel/vfs.h>
+#include <kernel/vnode.h>
 #include <string>
 #include <ctype.h>
-
-#define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]", x);
-#define LOGSTR(x) printf("\n\"" #x "\" :[%s]", x);
-#define DBG_OUTPUT printf("%s:%s():%d\n", __FILE__, __FUNCTION__, __LINE__);
 
 using namespace std;
 
@@ -147,10 +144,7 @@ class fat_vnode : public vnode
 
     int getMountedDevice(shared_ptr<vnode> &devNode);
 
-    bool namecmp(const string &name) const
-    {
-        return !stricmp(name.c_str(), getName().c_str());
-    }
+    int create(const string &path, shared_ptr<vnode> &created_node);
 };
 
 class fat : public vfs
@@ -217,8 +211,8 @@ class fat : public vfs
         if (memcmp(bfat.BS_FilSysType, "FAT32   ", 8))
             return -EINVAL;
 
-        uint64_t uuid = calculate_uuid((char *)&bfat);
-        printf("Device UUID [%x-%x]\n", (uuid & 0xFFFF0000) >> 16, (uuid & 0x0000FFFF));
+        uuid_t uuid = calculate_uuid((char *)&bfat);
+        printf("Device UUID [%s]\n", std::to_string(uuid).c_str());
 
         uint32_t TotSec = 0;
         if (bfat.BPB_TotSec16 != 0)
@@ -268,9 +262,10 @@ class fat : public vfs
         parent_dev->bwrite(bfat.BPB_RsvdSecCnt, ((CountofClusters * sizeof(uint32_t)) + bfat.BPB_BytsPerSec - 1) / bfat.BPB_BytsPerSec, (char *)fatlist.get(), nullptr);
     }
 
-    uint64_t calculate_uuid(char *sector)
+    uuid_t calculate_uuid(char *sector)
     {
-        uint64_t fat_uuid = *(uint32_t *)(&sector[0x43]);
+        uuid_t fat_uuid = {};
+        fat_uuid.ui32[2] = *(uint32_t *)(&sector[0x43]);
         return fat_uuid;
     }
 
@@ -310,7 +305,7 @@ void fat_init()
 int fat_vnode::lookup(const char *const path, shared_ptr<vnode> &foundNode)
 {
     if (v_type != VDIR)
-        return ENOTDIR;
+        return -ENOTDIR;
     auto vfat_vfs = reinterpret_cast<fat *>(v_vfsp);
     shared_ptr<char> clusterData(new char[bfat.BPB_BytsPerSec * bfat.BPB_SecPerClus]);
 
@@ -332,13 +327,13 @@ int fat_vnode::lookup(const char *const path, shared_ptr<vnode> &foundNode)
         {
             continue;
         }
-        if (!stricmp(dirArr[idx].getName().c_str(), path))
+        if (!strcmp(dirArr[idx].getName().c_str(), path))
         {
             foundNode = make_shared<fat_vnode>(v_vfsp, bfat, dirArr[idx].getFirstCluster(), &dirArr[idx]);
             return 0;
         }
     }
-    return ENOFILE;
+    return -ENOFILE;
 }
 
 int fat_vnode::open(uint64_t flags)
@@ -507,5 +502,9 @@ int fat_vnode::mkdir(std::string name, shared_ptr<vnode> &pDir)
     pDir = make_shared<fat_vnode>(v_vfsp, bfat, freeCluster, &dirArr[idx]);
     vfat_vfs->flush_cluster_chain();
     return 0;
+}
+int fat_vnode::create(const string &path, shared_ptr<vnode> &created_node)
+{
+    return -EPERM;
 }
 MODULT_INIT(fat_init)

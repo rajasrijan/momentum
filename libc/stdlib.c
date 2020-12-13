@@ -21,7 +21,9 @@
 #include "stdint.h"
 #include "string.h"
 #include "stdio.h"
+#include <ctype.h>
 #include <kernel/syscall.h>
+
 #if __STDC_HOSTED__ == 0
 extern void *_malloc(uint32_t length);
 extern void _free(void *ptr);
@@ -43,7 +45,8 @@ void *_aligned_malloc(uint32_t len, int n)
 }
 __attribute__((noreturn)) void exit(int status)
 {
-    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0) : "rcx", "r11");
+    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)
+                     : "rcx", "r11");
     while (1)
     {
         __asm__("pause");
@@ -51,6 +54,21 @@ __attribute__((noreturn)) void exit(int status)
 }
 #endif
 size_t mem_used = 0;
+
+int atoi(const char *str)
+{
+    int number = 0;
+    int index = 0;
+    // skip till first digit
+    for (index = 0; str[index] != 0 && !isdigit(str[index]); index++)
+        ;
+    for (; str[index] != 0 && isdigit(str[index]); index++)
+    {
+        number = ((number * 10) + (str[index] - '0'));
+    }
+
+    return number;
+}
 
 void *aligned_malloc(size_t size, int n)
 {

@@ -22,10 +22,13 @@
 #include <ctype.h>
 #include "string.h"
 #include <kernel/syscall.h>
+#include <errno.h>
 #if __STDC_HOSTED__ == 0
 #include <native_sync.h>
 #include <stddef.h>
 #include <arch/x86_64/video.h>
+#else
+#include <fcntl.h>
 #endif
 
 #if __STDC_HOSTED__ == 0
@@ -84,16 +87,43 @@ int putchar(int c)
     return c;
 }
 #else
+FILE *stdin = NULL, *stdout = NULL, *stderr = NULL;
 int putchar(int c)
 {
-    __asm__ volatile("syscall" ::"D"(SYSCALL_PUTCHAR), "S"(c), "d"(0) : "rcx", "r11");
+    __asm__ volatile("syscall" ::"D"(SYSCALL_PUTCHAR), "S"(c), "d"(0)
+                     : "rcx", "r11");
     return c;
 }
 char getchar()
 {
     uint64_t ch = 0;
-    __asm__ volatile("syscall" : "=a"(ch) : "D"(SYSCALL_GETCHAR), "S"(NULL), "d"(0) : "rcx", "r11");
+    __asm__ volatile("syscall"
+                     : "=a"(ch)
+                     : "D"(SYSCALL_GETCHAR), "S"(NULL), "d"(0)
+                     : "rcx", "r11");
     return ch;
+}
+
+struct file_descriptor
+{
+    int fd;
+};
+
+FILE *fopen(const char *filename, const char *mode)
+{
+    int oflag = 0;
+    if (mode[0] == 'w')
+    {
+        oflag |= O_WRONLY | O_CREAT;
+    }
+
+    int fd = open(filename, oflag);
+    if (fd < 0)
+    {
+        errno = ENOSYS;
+        return NULL;
+    }
+    return (FILE *)fd;
 }
 #endif
 static void print_num32(uint32_t arg, uint32_t base)
@@ -156,6 +186,26 @@ int printf(const char *format, ...)
     return 0;
 }
 
+int vprintf(const char *format, va_list arg)
+{
+#if __STDC_HOSTED__ == 0
+    static mtx_t lock = 0;
+    mtx_lock(&lock);
+#endif
+
+    int ret = 0;
+    char buffer[1024];
+    ret = vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), format, arg);
+    for (int i = 0; i < ret; i++)
+    {
+        putchar(buffer[i]);
+    }
+#if __STDC_HOSTED__ == 0
+    mtx_unlock(&lock);
+#endif
+    return 0;
+}
+
 char *gets_s(char *str, size_t sz)
 {
     size_t it = 0;
@@ -165,14 +215,14 @@ char *gets_s(char *str, size_t sz)
         ch = getchar();
         switch (ch)
         {
-        case '\b':
-            it--;
-            str[it] = 0;
-            break;
-        default:
-            str[it] = ch;
-            it++;
-            break;
+            case '\b':
+                it--;
+                str[it] = 0;
+                break;
+            default:
+                str[it] = ch;
+                it++;
+                break;
         }
     } while (it < sz && ch != '\n');
     if (it >= 1)

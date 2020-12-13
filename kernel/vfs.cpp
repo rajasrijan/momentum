@@ -18,6 +18,7 @@
  */
 #define VFS_C
 #include "vfs.h"
+#include <kernel/vnode.h>
 #include <DDI/partition_table.h>
 #include <arch/x86_64/arch_hal.h>
 #include <kernel/multitask.h>
@@ -26,6 +27,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <fcntl.h>
+#include <kernel/logging.h>
 
 using namespace std;
 vector<pair<fileSystem, string>> fs_list; //	List of all fs in system.
@@ -47,26 +50,24 @@ class root_vnode : public vnode
     root_vnode(const char *name /*, root_vnode *root*/)
         : vnode(nullptr), children()
     {
-        if (name)
-        {
+        if (name) {
             setName(name);
         }
         // v_root = root;
     }
-    ~root_vnode() {}
+    ~root_vnode()
+    {
+    }
     int lookup(char const *fileName, shared_ptr<vnode> &pVnode)
     {
         pVnode = nullptr;
-        for (const auto &vn : children)
-        {
-            if (vn->getName().compare(fileName) == 0)
-            {
+        for (const auto &vn : children) {
+            if (vn->getName().compare(fileName) == 0) {
                 pVnode = vn;
                 break;
             }
         }
-        if (pVnode == nullptr)
-        {
+        if (pVnode == nullptr) {
             return -ENOFILE;
         }
         return 0;
@@ -90,13 +91,15 @@ class root_vnode : public vnode
 
     int readdir(vector<shared_ptr<vnode>> &vnodes)
     {
-        for (auto node : children)
-        {
+        for (auto node : children) {
             vnodes.push_back(node);
         }
         return 0;
     }
-    int open(uint64_t flags) { return -ENOSYS; }
+    int open(uint64_t flags)
+    {
+        return -ENOSYS;
+    }
 };
 class partition_vnode : public vnode
 {
@@ -107,20 +110,20 @@ class partition_vnode : public vnode
     partition_vnode(const char *name, shared_ptr<vnode> parent_vnode, size_t start_blk, size_t size_blk)
         : vnode(nullptr), v_parent(parent_vnode), v_start_blk(0), v_size_blk(0)
     {
-        if (name)
-        {
+        if (name) {
             setName(name);
         }
         v_start_blk = start_blk;
         v_size_blk = size_blk;
         v_type = VBLK;
     }
-    ~partition_vnode() {}
+    ~partition_vnode()
+    {
+    }
     int bread(ssize_t position, size_t size, char *data, int *bytesRead)
     {
         int errorcode = 0;
-        if (size >= v_size_blk)
-        {
+        if (size >= v_size_blk) {
             return EINVAL;
         }
         errorcode = v_parent->bread(v_start_blk + position, size, data, bytesRead);
@@ -129,15 +132,20 @@ class partition_vnode : public vnode
     int bwrite(ssize_t position, size_t size, char *data, int *bytesRead)
     {
         int errorcode = 0;
-        if (size >= v_size_blk)
-        {
+        if (size >= v_size_blk) {
             return EINVAL;
         }
         errorcode = v_parent->bwrite(v_start_blk + position, size, data, bytesRead);
         return errorcode;
     }
-    int readdir(vector<shared_ptr<vnode>> &vnodes) { return ENOTDIR; }
-    int open(uint64_t flags) { return -ENOSYS; }
+    int readdir(vector<shared_ptr<vnode>> &vnodes)
+    {
+        return ENOTDIR;
+    }
+    int open(uint64_t flags)
+    {
+        return -ENOSYS;
+    }
     int ioctl(unsigned int cmd, void *data, int flags)
     {
         return v_parent->ioctl(cmd, data, flags);
@@ -153,13 +161,11 @@ int create_partition_dev(vnode *blk_dev);
 int get_vnode_from_abspath(const char *pathname, shared_ptr<vnode> &pathNode);
 int mount_root(void)
 {
-    if (rnode == nullptr)
-    {
+    if (rnode == nullptr) {
         rnode = new root_vnode(nullptr);
         rnode->v_type = VDIR;
     }
-    if (root_devfs == nullptr)
-    {
+    if (root_devfs == nullptr) {
         rnode->mkdir("dev", root_devfs);
         rnode->mkdir("mnt", root_mnt);
     }
@@ -169,16 +175,14 @@ int mount_root(void)
 void init_vfs(void)
 {
     printf("Creating vfs.\n");
-    if (mount_root())
-    {
-        printf("Failed to mount root vfs\n");
+    if (mount_root()) {
+        log_error("Failed to mount root vfs\n");
     }
     multitask::getInstance()->getKernelProcess()->path_history.push_back(rnode);
 }
 int mount_root(vnode *vn)
 {
-    if (vn == 0)
-    {
+    if (vn == 0) {
         return EFAULT;
     }
     rnode = vn;
@@ -190,25 +194,20 @@ int clone_path(shared_ptr<vnode> &dst, shared_ptr<vnode> &src)
     int result = 0;
     vector<shared_ptr<vnode>> children;
     src->doreaddir(children);
-    for (auto &child : children)
-    {
+    for (auto &child : children) {
         string name = child->getName();
-        if (child->isDirectory())
-        {
+        if (child->isDirectory()) {
             shared_ptr<vnode> dst_child;
             result = dst->dolookup(name.c_str(), dst_child);
-            if (result)
-            {
+            if (result < 0) {
+                log_error("Failed to clone root file system. File not found. [%s]\n", name.c_str());
                 return result;
             }
             result = clone_path(dst_child, child);
-            if (result)
-            {
+            if (result < 0) {
                 return result;
             }
-        }
-        else if (child->isBlockDevice())
-        {
+        } else if (child->isBlockDevice()) {
             dst->mknod(dst, child);
             src->rmnod(src, child);
         }
@@ -222,14 +221,12 @@ int auto_mount_partition(shared_ptr<vnode> blk_dev)
     vfs *fs_vfs = nullptr;
     shared_ptr<vnode> fs_root_vnode = nullptr;
     sync lock(vfsMtx);
-    for (const pair<fileSystem, string> &fs : fs_list)
-    {
+    for (const pair<fileSystem, string> &fs : fs_list) {
         printf("Trying to mount as [%s]\n", fs.second.c_str());
         fs_vfs = fs.first.new_vfs();
         fs_root_vnode = nullptr;
         ret = fs_vfs->mount(0, blk_dev, fs_root_vnode);
-        if (!ret)
-        {
+        if (!ret) {
             vfs_list.push_back(fs_vfs);
             printf("Successfully mounted\n");
             break;
@@ -238,35 +235,39 @@ int auto_mount_partition(shared_ptr<vnode> blk_dev)
         fs_vfs = nullptr;
     }
     //	FS mounted.
-    if (!ret && fs_vfs && fs_root_vnode != nullptr)
-    {
+    if (!ret && fs_vfs && fs_root_vnode != nullptr) {
         statfs_t statfs = {};
         fs_vfs->vfs_vnodecovered = fs_root_vnode;
-        fs_vfs->statfs(fs_root_vnode, statfs);
-        printf("Partition UUID [%llx]\n", statfs.fsid);
-        if (statfs.fsid == sys_info.root_drive_uuid)
-        {
+        ret = fs_vfs->statfs(fs_root_vnode, statfs);
+        if (ret < 0) {
+            log_error("Failed to stat fs\n");
+            goto error_exit;
+        }
+        printf("Partition UUID [%s]\n", to_string(statfs.fsid).c_str());
+        if (statfs.fsid == sys_info.root_drive_uuid) {
             // root is mounted at '/'
-            clone_path(fs_root_vnode, rnode);
+            ret = clone_path(fs_root_vnode, rnode);
+            if (ret < 0) {
+                log_error("Failed to mount root file system.\n");
+                asm("cli;hlt");
+            }
             rnode = fs_root_vnode;
             multitask::getInstance()->getKernelProcess()->path_history[0] = rnode;
-        }
-        else
-        {
+        } else {
             shared_ptr<vnode> mnt_node = nullptr, mnt_pt = nullptr;
             static unsigned drive_id = 0;
             string mount_point_name = "drive_" + to_string(drive_id++);
             get_vnode_from_abspath("/mnt", mnt_node);
-            if (mnt_node == nullptr)
-            {
+            if (mnt_node == nullptr) {
                 return -ENOFILE;
             }
             ret = mnt_node->dolookup(mount_point_name.c_str(), mnt_pt);
-            if (ret < 0)
-            {
+            if (ret < 0) {
                 ret = mnt_node->mkdir(mount_point_name.c_str(), mnt_pt);
-                if (ret < 0)
+                if (ret < 0) {
+                    log_error("failed to create mount moint directory [%s]. error [%d]", mount_point_name.c_str(), ret);
                     goto error_exit;
+                }
             }
             mnt_pt->v_vfsmountedhere = fs_vfs;
         }
@@ -275,16 +276,14 @@ int auto_mount_partition(shared_ptr<vnode> blk_dev)
 error_exit:
     return ret;
 }
-int create_blockdevice_subview(shared_ptr<vnode> blk_dev,
-                               const char *output_name,
-                               size_t start_blk,
-                               size_t size_blk,
-                               shared_ptr<vnode> &out_blk_dev)
+
+int create_blockdevice_subview(shared_ptr<vnode> blk_dev, const char *output_name, size_t start_blk, size_t size_blk, shared_ptr<vnode> &out_blk_dev)
 {
     int ret = 0;
     out_blk_dev = make_shared<partition_vnode>(output_name, blk_dev, start_blk, size_blk);
     return ret;
 }
+
 int create_partition_dev(shared_ptr<vnode> blk_dev)
 {
     int ret = 0;
@@ -294,45 +293,38 @@ int create_partition_dev(shared_ptr<vnode> blk_dev)
     int no_of_partitions = 0;
     uint64_t disk_size = 0;
     ret = blk_dev->ioctl(BLKGETSIZE64, &disk_size, 0);
-    if (ret)
-    {
-        printf("Failed to BLKGETSIZE64. error(%d)\n", ret);
+    if (ret) {
+        log_error("Failed to BLKGETSIZE64. error(%d)\n", ret);
         return ret;
     }
     ret = blk_dev->bread(0, 1, (char *)&pTable, nullptr);
     printf("Boot signature [%x]\n", (uint32_t)pTable.boot_signature);
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
         const auto &p = pTable.partition[i];
-        if (p.count > 0 && p.startLBA > 1 && p.startLBA + p.count <= disk_size)
-        {
+        if (p.count > 0 && p.startLBA > 1 && p.startLBA + p.count <= disk_size) {
             printf("Partition [%d]\n", i);
             char partition_name[256] = {0};
             no_of_partitions++;
             snprintf(partition_name, 256, "%sp%d", blk_dev->getName().c_str(), i + 1);
             shared_ptr<vnode> partition_node = nullptr;
             create_blockdevice_subview(blk_dev, partition_name, pTable.partition[i].startLBA, pTable.partition[i].count, partition_node);
-            if (partition_node == nullptr)
-            {
-                printf("failed to create partition vnode\n");
+            if (partition_node == nullptr) {
+                log_error("failed to create partition vnode\n");
                 continue;
             }
             mknod("/dev/", partition_node);
-            if (auto_mount_partition(partition_node))
-            {
-                printf("No matching file system found\n");
+            if (auto_mount_partition(partition_node)) {
+                log_error("No matching file system found\n");
                 continue;
             }
         }
     }
-    if (no_of_partitions != 0)
-    {
+    if (no_of_partitions != 0) {
         return ret;
     }
     printf("No partitions detected. Will treat whole disk as partition\n");
-    if (auto_mount_partition(blk_dev))
-    {
-        printf("No matching file system found\n");
+    if (auto_mount_partition(blk_dev)) {
+        log_error("No matching file system found\n");
     }
     return ret;
 }
@@ -344,62 +336,73 @@ int add_blk_dev(shared_ptr<vnode> blk_dev)
     else
         return 0;
 }
-vfs::vfs(void) : vfs_vnodecovered(nullptr), flag(0)
+vfs::vfs(void)
+    : vfs_vnodecovered(nullptr), flag(0)
 {
     printf("Initializing VFS\n");
 }
-vfs::~vfs(void) { printf("de-Initialisint vfs\n"); }
-
-vnode::vnode(class vfs *vfsp) : v_shlockc(0), v_exlockc(0), v_type(0), v_vfsmountedhere(nullptr), v_vfsp(vfsp), v_flag(0), v_name(), v_count(0), special_nodes(), dnode_cache(), ref_nodes() {}
-
-vnode::~vnode() { printf("vnode deleted\n"); }
-
-const string &vnode::getName() const { return v_name; }
-
-int vnode::ioctl(unsigned int, void *, int) { return -ENOSYS; }
-
-bool vnode::namecmp(const string &name) const
+vfs::~vfs(void)
 {
-    return !strcmp(name.c_str(), getName().c_str());
+    printf("de-Initialisint vfs\n");
+}
+
+vnode::vnode(class vfs *vfsp)
+    : v_shlockc(0), v_exlockc(0), v_type(0), v_vfsmountedhere(nullptr), v_vfsp(vfsp), v_flag(0), v_name(), v_count(0), special_nodes(), dnode_cache(), ref_nodes()
+{
+}
+
+vnode::~vnode()
+{
+    printf("vnode deleted\n");
+}
+
+const string &vnode::getName() const
+{
+    return v_name;
+}
+
+int vnode::ioctl(unsigned int, void *, int)
+{
+    return -ENOSYS;
 }
 
 int vnode::dolookup(const char *const path, shared_ptr<vnode> &foundNode)
 {
     char sub_path[256] = {0};
     // copy till '/' or eos.
-    for (size_t i = 0; path[i] != 0 && path[i] != '/'; i++)
-    {
+    for (size_t i = 0; path[i] != 0 && path[i] != '/'; i++) {
         sub_path[i] = path[i];
     }
     auto found_itr = find_if(dnode_cache.begin(), dnode_cache.end(), [sub_path](const shared_ptr<vnode> &node) {
-        return node->namecmp(sub_path);
+        return !strcmp(node->v_name.c_str(), sub_path);
     });
-    if (found_itr != dnode_cache.end())
-    {
+    if (found_itr != dnode_cache.end()) {
         foundNode = *found_itr;
         return 0;
     }
     int ret = 0;
-    if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
-    {
+    if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr) {
         ret = v_vfsmountedhere->vfs_vnodecovered->dolookup(path, foundNode);
-    }
-    else
-    {
+    } else {
         ret = lookup(path, foundNode);
     }
-    if (!ret)
-    {
+    if (!ret) {
         dnode_cache.push_back(foundNode);
     }
+    return ret;
+}
+
+int vnode::docreate(const string &path, shared_ptr<vnode> &node)
+{
+    int ret = 0;
+    ret = create(path, node);
     return ret;
 }
 
 int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
 {
     int ret = 0;
-    if (runOnce && !dnode_cache.empty())
-    {
+    if (runOnce && !dnode_cache.empty()) {
         vnodes = dnode_cache;
         goto exit;
     }
@@ -407,24 +410,20 @@ int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
         ret = v_vfsmountedhere->vfs_vnodecovered->doreaddir(vnodes);
     else
         ret = readdir(vnodes);
-    if (ret)
-    {
+    if (ret) {
         return ret;
     }
     //	add to cache
-    for (auto &var : vnodes)
-    {
+    for (auto &var : vnodes) {
         if (dnode_cache.end() == find_if(dnode_cache.begin(), dnode_cache.end(), [&var](const shared_ptr<vnode> &node) {
-                return node->namecmp(var->getName());
-            }))
-        {
+                return (node->v_name == var->getName());
+            })) {
             dnode_cache.push_back(var);
         }
     }
     runOnce = true;
 exit:
-    for (auto &var : special_nodes)
-    {
+    for (auto &var : special_nodes) {
         vnodes.push_back(var);
     }
     return ret;
@@ -433,33 +432,92 @@ int vnode::doopen(shared_ptr<vnode> &node, uint32_t flags, vfile **file)
 {
     if (node != this || !file)
         return -EINVAL;
-    if (v_type != VREG)
-    {
+    if (v_type != VREG) {
         return ENOFILE;
     }
     *file = new vfile(node);
     return 0;
 }
-int vnode::lookup(char const *, shared_ptr<vnode> &) { return -ENOSYS; }
-int vnode::mkdir(string name, shared_ptr<vnode> &pDir) { return -ENOSYS; }
-int vnode::rename(string name) { return -ENOSYS; }
-int vnode::close(void) { return -ENOSYS; }
-int vnode::rdwr(void) { return -ENOSYS; }
-int vnode::select(void) { return -ENOSYS; }
-int vnode::getattr(void) { return -ENOSYS; }
-int vnode::setattr(void) { return -ENOSYS; }
-int vnode::access(void) { return -ENOSYS; }
-int vnode::create(void) { return -ENOSYS; }
-int vnode::remove(void) { return -ENOSYS; }
-int vnode::link(void) { return -ENOSYS; }
-int vnode::rmdir(void) { return -ENOSYS; }
-int vnode::symlink(void) { return -ENOSYS; }
-int vnode::readlink(void) { return -ENOSYS; }
-int vnode::fsync(void) { return -ENOSYS; }
-int vnode::inactive(void) { return -ENOSYS; }
-int vnode::bmap(void) { return -ENOSYS; }
-int vnode::strategy(void) { return -ENOSYS; }
-int vnode::brelse(void) { return -ENOSYS; }
+int vnode::lookup(char const *, shared_ptr<vnode> &)
+{
+    return -ENOSYS;
+}
+int vnode::mkdir(string name, shared_ptr<vnode> &pDir)
+{
+    return -ENOSYS;
+}
+int vnode::rename(string name)
+{
+    return -ENOSYS;
+}
+int vnode::close(void)
+{
+    return -ENOSYS;
+}
+int vnode::rdwr(void)
+{
+    return -ENOSYS;
+}
+int vnode::select(void)
+{
+    return -ENOSYS;
+}
+int vnode::getattr(void)
+{
+    return -ENOSYS;
+}
+int vnode::setattr(void)
+{
+    return -ENOSYS;
+}
+int vnode::access(void)
+{
+    return -ENOSYS;
+}
+int vnode::create(const string &path, shared_ptr<vnode> &created_node)
+{
+    return -ENOSYS;
+}
+int vnode::remove(void)
+{
+    return -ENOSYS;
+}
+int vnode::link(void)
+{
+    return -ENOSYS;
+}
+int vnode::rmdir(void)
+{
+    return -ENOSYS;
+}
+int vnode::symlink(void)
+{
+    return -ENOSYS;
+}
+int vnode::readlink(void)
+{
+    return -ENOSYS;
+}
+int vnode::fsync(void)
+{
+    return -ENOSYS;
+}
+int vnode::inactive(void)
+{
+    return -ENOSYS;
+}
+int vnode::bmap(void)
+{
+    return -ENOSYS;
+}
+int vnode::strategy(void)
+{
+    return -ENOSYS;
+}
+int vnode::brelse(void)
+{
+    return -ENOSYS;
+}
 
 int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
@@ -471,8 +529,7 @@ int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
     auto result = find(special_nodes.begin(), special_nodes.end(), pNode);
-    if (result == special_nodes.end())
-    {
+    if (result == special_nodes.end()) {
         return ENOENT;
     }
     special_nodes.erase(result);
@@ -482,9 +539,8 @@ int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 
 void vnode::setName(const char *name)
 {
-    if (strchar(name, '/') != nullptr)
-    {
-        printf("Illegal character in filename\nHALT...");
+    if (strchar(name, '/') != nullptr) {
+        log_error("Illegal character in filename\nHALT...");
         asm("cli;hlt;");
     }
     v_name = name;
@@ -494,8 +550,7 @@ vnode *open_bdev(string dev_path)
 {
     vnode *device = dev_list[dev_path];
     // printf("device %x,flag %x\n", device, device->v_type);
-    if ((device != 0) && (device->v_type == VBLK))
-    {
+    if ((device != 0) && (device->v_type == VBLK)) {
         return device;
     }
     return NULL;
@@ -508,7 +563,10 @@ vfile::vfile(shared_ptr<vnode> parent)
     //_parent->v_count++;
 }
 
-vfile::~vfile() { _parent = 0; }
+vfile::~vfile()
+{
+    _parent = 0;
+}
 
 int vfile::read(char *data, size_t sz)
 {
@@ -524,8 +582,7 @@ int vfile::read(char *data, size_t sz)
 
 int vfile::seekg(long int offset, int origin)
 {
-    switch (origin)
-    {
+    switch (origin) {
         case SEEK_SET:
             posG = offset;
             break;
@@ -540,20 +597,38 @@ int vfile::seekg(long int offset, int origin)
     return 0;
 }
 
-int mount(string mountPoint, string mountSource) { return 0; }
-
-int open(const string &name)
+int mount(string mountPoint, string mountSource)
 {
-    int errorCode = 0;
+    return 0;
+}
+
+int open(const string &name, int oflag)
+{
     int fd = 0;
+    int errorCode = 0;
     shared_ptr<vnode> node = nullptr;
     vfile *file = nullptr;
     errorCode = lookup(name.c_str(), node);
-    if (errorCode || node == 0)
-        return -1;
-    errorCode = node->doopen(node, 0, &file);
-    if (errorCode || !file)
-        return -1;
+
+    //  if file doesn't exit and not creating it, then return error
+    if (errorCode < 0 && !(oflag & O_CREAT)) {
+        return -ENOFILE;
+    }
+
+    // doesn't exist and create flag set, then create
+    if (errorCode < 0 && (oflag & O_CREAT)) {
+        errorCode = create(name.c_str(), node);
+        if (errorCode < 0) {
+            log_error("Failed to create file. error [%d]\n", errorCode);
+            return errorCode;
+        }
+    } else // try to open it
+    {
+        errorCode = node->doopen(node, 0, &file);
+        if (errorCode || !file)
+            return -1;
+    }
+    //  create descriptor
     {
         sync fileSyncronisation(openFileMutex);
         openFiles.push_back(file);
@@ -602,25 +677,19 @@ int get_vnode_from_abspath(const char *pathname, shared_ptr<vnode> &pathNode)
 {
     char path[256] = {0};
     const char *pathIt = pathname;
-    if (!pathname)
-    {
+    if (!pathname) {
         return EINVAL;
     }
-    if (pathname[0] != '/')
-    {
+    if (pathname[0] != '/') {
         return ENOFILE;
     }
     pathIt++;
     shared_ptr<vnode> current_vnode = rnode;
-    while (pathIt && pathIt[0] && current_vnode != nullptr)
-    {
+    while (pathIt && pathIt[0] && current_vnode != nullptr) {
         const char *pathItEnd = strchar(pathIt, '/');
-        if (pathItEnd)
-        {
+        if (pathItEnd) {
             copy(pathIt, pathItEnd, path);
-        }
-        else
-        {
+        } else {
             strcpy(path, pathIt);
         }
         pathIt = pathItEnd;
@@ -628,8 +697,7 @@ int get_vnode_from_abspath(const char *pathname, shared_ptr<vnode> &pathNode)
         current_vnode->dolookup(path, subnode);
         current_vnode = subnode;
     }
-    if (current_vnode == nullptr)
-    {
+    if (current_vnode == nullptr) {
         return ENOFILE;
     }
     pathNode = current_vnode;
@@ -641,27 +709,21 @@ int mknod(const char *pathname, shared_ptr<vnode> dev)
     char fileName[256] = {0};
     char folderName[256] = {0};
     shared_ptr<vnode> folderNode;
-    if (const char *fn = strrchar(pathname, '/'))
-    {
+    if (const char *fn = strrchar(pathname, '/')) {
         strcpy(fileName, fn + 1);
         copy(pathname, fn, folderName);
-    }
-    else
-    {
+    } else {
         return ENOFILE;
     }
     ret = get_vnode_from_abspath(folderName, folderNode);
-    if (ret || folderNode == nullptr)
-    {
+    if (ret || folderNode == nullptr) {
         return ENOFILE;
     }
     ret = folderNode->mknod(folderNode, dev);
-    if (ret)
-    {
+    if (ret) {
         return ret;
     }
-    if (dev->v_type == VBLK)
-    {
+    if (dev->v_type == VBLK) {
         add_blk_dev(dev);
     }
     return 0;
@@ -675,8 +737,7 @@ string getCurrentPath()
 {
     string completePath = "";
     auto &path_history = multitask::getInstance()->getCurrentProcess()->path_history;
-    for (size_t i = 0; i < path_history.size(); i++)
-    {
+    for (size_t i = 0; i < path_history.size(); i++) {
         completePath += path_history[i]->getName() + "/";
     }
     return completePath;
@@ -689,13 +750,11 @@ vector<string> split_path(const string &path)
         return ret;
     size_t start_offset = 0;
     size_t end_offset = 0;
-    do
-    {
+    do {
         end_offset = path.find("/", start_offset);
         size_t length = (end_offset == string::npos) ? path.size() : end_offset - start_offset;
         // ignore empty
-        if (length == 0)
-        {
+        if (length == 0) {
             start_offset = end_offset + 1;
             continue;
         }
@@ -708,12 +767,10 @@ vector<string> split_path(const string &path)
 int openat(int dirfd, const string &pathname, int flags, mode_t mode)
 {
     int descriptor = -1;
-    if (dirfd == FDCWD)
-    {
+    if (dirfd == FDCWD) {
         shared_ptr<vnode> cdir;
-        if (lookup(pathname.c_str(), cdir))
-        {
-            printf("no such directory!");
+        if (lookup(pathname.c_str(), cdir)) {
+            log_error("no such directory!");
             return -ENOTDIR;
         }
         //	handles
@@ -728,27 +785,56 @@ int lookup(const char *path, shared_ptr<vnode> &node)
     if (!path)
         return -EINVAL;
     shared_ptr<vnode> cdir;
-    if (path[0] == '/')
-    {
+    if (path[0] == '/') {
         cdir = rnode;
-    }
-    else
-    {
+    } else {
         cdir = getCurrentDirectory();
     }
     auto path_components = split_path(path);
-    for (auto &path_component : path_components)
-    {
+    for (auto &path_component : path_components) {
         if (path_component == ".")
             continue;
-        else if (cdir->dolookup(path_component.c_str(), cdir) != 0)
-        {
-            printf("Invalid path\n");
+        else if (cdir->dolookup(path_component.c_str(), cdir) != 0) {
+            log_error("Invalid path\n");
             return -1;
         }
     }
     node = cdir;
     return 0;
+}
+
+int create(const string &path, shared_ptr<vnode> &node)
+{
+    int ret = 0;
+    if (path.empty())
+        return -EINVAL;
+    shared_ptr<vnode> cdir;
+    if (path[0] == '/') {
+        cdir = rnode;
+    } else {
+        cdir = getCurrentDirectory();
+    }
+    auto path_components = split_path(path);
+    const string file_name = path_components.back();
+    path_components.pop_back();
+    for (auto &path_component : path_components) {
+        if (path_component == ".")
+            continue;
+        else if (cdir->dolookup(path_component.c_str(), cdir) != 0) {
+            log_error("Invalid path\n");
+            return -ENOFILE;
+        }
+    }
+    if (!cdir->isDirectory()) {
+        log_error("Invalid path\n");
+        return -ENOFILE;
+    }
+    ret = cdir->docreate(file_name, node);
+    if (ret < 0) {
+        return ret;
+    }
+
+    return ret;
 }
 
 int chdir(const char *path)
@@ -757,33 +843,23 @@ int chdir(const char *path)
     shared_ptr<vnode> cdir;
     auto &path_history = multitask::getInstance()->getCurrentProcess()->path_history;
     vector<shared_ptr<vnode>> backup_path = path_history;
-    if (path[0] == '/')
-    {
+    if (path[0] == '/') {
         cdir = rnode;
         path_history.clear();
         path_history.push_back(rnode);
-    }
-    else
-    {
+    } else {
         cdir = path_history.back();
     }
     auto path_components = split_path(path);
-    for (auto &path_component : path_components)
-    {
-        if (path_component == ".")
-        {
+    for (auto &path_component : path_components) {
+        if (path_component == ".") {
             continue;
-        }
-        else if (path_component == "..")
-        {
+        } else if (path_component == "..") {
             path_history.pop_back();
             cdir = path_history.back();
-        }
-        else
-        {
-            if (cdir->dolookup(path_component.c_str(), cdir) != 0)
-            {
-                printf("Invalid path\n");
+        } else {
+            if (cdir->dolookup(path_component.c_str(), cdir) != 0) {
+                log_error("Invalid path\n");
                 return -1;
             }
             path_history.push_back(cdir);
@@ -794,7 +870,10 @@ int chdir(const char *path)
     return 0;
 }
 
-void close(int fd) { handles.erase(fd); }
+void close(int fd)
+{
+    handles.erase(fd);
+}
 
 int getdents(int fd, vector<string> &dir)
 {
@@ -806,8 +885,7 @@ int getdents(int fd, vector<string> &dir)
         return ENOTDIR;
     vector<shared_ptr<vnode>> dir_contents;
     dir_node->doreaddir(dir_contents);
-    for (const auto &node : dir_contents)
-    {
+    for (const auto &node : dir_contents) {
         dir.push_back(node->getName());
     }
     return 0;

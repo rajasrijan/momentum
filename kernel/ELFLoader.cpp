@@ -190,7 +190,7 @@ ELFLoader::~ELFLoader() {}
 
 int ELFLoader::loadFile(std::string filePath, ELFFile &elfFile)
 {
-    int elfFd = open(filePath);
+    int elfFd = open(filePath, O_RDONLY);
     if (elfFd < 0)
         return -ENOFILE;
     Elf32_Ehdr elfHeader;

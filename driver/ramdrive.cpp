@@ -21,6 +21,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include <kernel/vfs.h>
+#include <kernel/vnode.h>
 #include <utility>
 
 class ramfs_vfs : public vfs
@@ -76,7 +77,6 @@ class ramfs_vnode : public vnode
     int setattr(void);
     int access(void);
     int lookup(const char *const path, shared_ptr<vnode> &foundNode);
-    int create(void);
     int remove(void);
     int link(void);
     int rename(string name);

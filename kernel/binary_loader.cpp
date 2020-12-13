@@ -3,6 +3,8 @@
 #include <arch/x86_64/paging.h>
 #include <kernel/multitask.h>
 #include <utility>
+#include <kernel/logging.h>
+#include <kernel/vnode.h>
 
 binary_loader::binary_loader()
 {
@@ -16,43 +18,43 @@ const char endianness[][16] = {"little endian", "big endian"};
 const char target_os[][16] = {"System V", "HP-UX", "NetBSD", "Linux", "GNU Hurd", "Solaris", "AIX", "IRIX", "FreeBSD", "Tru64", "Novell Modesto", "OpenBSD", "OpenVMS", "NonStop Kernel", "AROS", "Fenix OS", "CloudABI"};
 void printElfHeader(const Elf64_Ehdr &hdr)
 {
-    printf("ELF Header:-\n");
-    printf("Magic:0x%x, %s, %s, version: [%x], OS [%s], "
-           "ABI Version: %x, Entry: %x, Program Header: %x, "
-           "Section Header: %x, flags: %x, Program Header size: %x, PH Count: "
-           "%x\n",
-           *(uint32_t *)hdr.e_ident,
-           bitness[(hdr.e_ident[EI_CLASS] - 1) % 2],
-           endianness[(hdr.e_ident[EI_DATA] - 1) % 2],
-           hdr.e_version,
-           target_os[hdr.e_ident[EI_OSABI]],
-           hdr.e_ident[EI_ABIVERSION],
-           //    hdr.type,
-           //    hdr.machine,
-           //    hdr.version2,
-           hdr.e_entry,
-           hdr.e_phoff,
-           hdr.e_shoff,
-           hdr.e_flags,
-           hdr.e_ehsize,
-           //    hdr.phentsize,
-           hdr.e_phnum
-           //   ,
-           //    hdr.shentsize,
-           //    hdr.shnum,
-           //    hdr.shstrndx
+    log_debug("ELF Header:-\n");
+    log_debug("Magic:0x%x, %s, %s, version: [%x], OS [%s], "
+              "ABI Version: %x, Entry: %x, Program Header: %x, "
+              "Section Header: %x, flags: %x, Program Header size: %x, PH Count: "
+              "%x\n",
+              *(uint32_t *)hdr.e_ident,
+              bitness[(hdr.e_ident[EI_CLASS] - 1) % 2],
+              endianness[(hdr.e_ident[EI_DATA] - 1) % 2],
+              hdr.e_version,
+              target_os[hdr.e_ident[EI_OSABI]],
+              hdr.e_ident[EI_ABIVERSION],
+              //    hdr.type,
+              //    hdr.machine,
+              //    hdr.version2,
+              hdr.e_entry,
+              hdr.e_phoff,
+              hdr.e_shoff,
+              hdr.e_flags,
+              hdr.e_ehsize,
+              //    hdr.phentsize,
+              hdr.e_phnum
+              //   ,
+              //    hdr.shentsize,
+              //    hdr.shnum,
+              //    hdr.shstrndx
     );
 }
 
 void printElfProgramHeader(const Elf64_Phdr *pheader)
 {
-    printf("Type: %x, vaddr: %x, paddr: %x, align: %d\n", pheader->p_type, pheader->p_vaddr, pheader->p_paddr, pheader->p_align);
+    log_debug("Type: %x, vaddr: %x, paddr: %x, align: %d\n", pheader->p_type, pheader->p_vaddr, pheader->p_paddr, pheader->p_align);
 }
 
 void printElfSectionHeader(const Elf64_Shdr *sheader)
 {
-    printf("Type: %x, addr: %x, offset: %x, align: %d ", sheader->sh_type, sheader->sh_addr, sheader->sh_offset, sheader->sh_addralign);
-    printf("size: %x, flags: %x\n", sheader->sh_size, sheader->sh_flags);
+    log_debug("Type: %x, addr: %x, offset: %x, align: %d ", sheader->sh_type, sheader->sh_addr, sheader->sh_offset, sheader->sh_addralign);
+    log_debug("size: %x, flags: %x\n", sheader->sh_size, sheader->sh_flags);
 }
 
 void binary_loader::load(shared_ptr<vnode> &node)
@@ -64,7 +66,7 @@ void binary_loader::load(shared_ptr<vnode> &node)
     // print program header
     Elf64_Phdr *pheader = new Elf64_Phdr[elf_hdr.e_phnum];
     node->bread(elf_hdr.e_phoff, elf_hdr.e_phentsize * elf_hdr.e_phnum, (char *)pheader, nullptr);
-    printf("ELF Program Header:-\n");
+    log_debug("ELF Program Header:-\n");
     for (size_t i = 0; i < elf_hdr.e_phnum; i++)
     {
         printElfProgramHeader(pheader + i);
@@ -108,19 +110,19 @@ void binary_loader::load(shared_ptr<vnode> &node)
         ret = PageManager::findFreeVirtualMemory(kpage.vaddr, page.size);
         if (ret < 0)
         {
-            printf("failed to findFreeVirtualMemory\n");
+            log_error("failed to findFreeVirtualMemory\n");
             asm("cli;hlt");
         }
 
         if (PageManager::setPageAllocation(kpage.vaddr, kpage.size, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write))
         {
-            printf("Failed to set page address\n");
+            log_error("Failed to set page address\n");
             asm("cli;hlt");
         }
 
         if (PageManager::getPhysicalAddress(kpage.vaddr, kpage.paddr))
         {
-            printf("Failed to get physical address\n");
+            log_error("Failed to get physical address\n");
             asm("cli;hlt");
         }
         page.paddr = kpage.paddr;
@@ -128,11 +130,11 @@ void binary_loader::load(shared_ptr<vnode> &node)
     }
 
     // process the section headers
-    printf("Processing ELF Section Headers:-\n");
+    log_debug("Processing ELF Section Headers:-\n");
     for (size_t i = 0; i < elf_hdr.e_shnum; i++)
     {
         Elf64_Shdr section_header = sheader[i];
-        printf("Section: %s\n", &string_table[section_header.sh_name]);
+        log_debug("Section: %s\n", &string_table[section_header.sh_name]);
         printElfSectionHeader(&section_header);
         if ((section_header.sh_type & SHT_PROGBITS) && section_header.sh_addr != 0)
         {
@@ -151,7 +153,7 @@ void binary_loader::load(shared_ptr<vnode> &node)
         ret = PageManager::freeVirtualMemory(page.vaddr, page.size);
         if (ret < 0)
         {
-            printf("failed to freeVirtualMemory\n");
+            log_error("failed to freeVirtualMemory\n");
             asm("cli;hlt");
         }
     }

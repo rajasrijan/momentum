@@ -29,8 +29,9 @@ OBJECT := arch/x86_64/loader.o libc/string.o libc++/string.o arch/x86_64/arch_ha
 	arch/x86_64/video.o arch/x86_64/timer.o arch/x86_64/apic.o arch/x86_64/pci.o arch/x86_64/font.o \
 	arch/x86_64/multiboot2.o arch/x86_64/keyboard.o arch/x86_64/rtc.o libc/stdio.o libc/vsprintf.o libc/stdlib.o libc/threads.o libc++/new.o \
 	kernel/vfs.o kernel/vfsops.o kernel/ELFLoader.o kernel/ELFFile.o kernel/sys_info.o kernel/multitask.o kernel/gui.o \
-	DDI/driver.o DDI/ddi.o DDI/pci_driver.o DDI/block_driver.o driver/disk/ata.o driver/disk/sata.o driver/disk/ide.o driver/ramdrive.o driver/fatgen.o driver/binary_loader.o\
-	driver/usb/uhci.o kernel/acpica_glue.o $(acpica_objects) main.o cxxglue.o stack_protector.o arch/x86_64/trampolin.blob.o
+	DDI/driver.o DDI/ddi.o DDI/pci_driver.o DDI/block_driver.o driver/disk/ata.o driver/disk/sata.o driver/disk/ide.o driver/ramdrive.o driver/fatgen.o kernel/binary_loader.o \
+	driver/ext/ext.o driver/ext/ext_vfs.o driver/ext/ext_vnode.o \
+	driver/usb/uhci.o kernel/acpica_glue.o $(acpica_objects) main.o cxxglue.o stack_protector.o arch/x86_64/trampolin.blob.o kernel/logging.o
 
 OBJECT_32 := arch/x86_64/bootstrap_functions.o
 
@@ -53,18 +54,29 @@ kernel.elf: $(OBJECT) $(OBJECT_32) x86_64.ld
 clean:
 	$(MAKE) -C hosted_libc clean
 	$(MAKE) -C tools clean
-	$(RM) $(OBJECT) $(OBJECT_32) $(BLOBS)
+	$(umount root_mnt)
+	$(umount drive_mnt)
+	$(RM) -rf $(OBJECT) $(OBJECT_32) $(BLOBS) drive_mnt root_mnt
 	$(RM) kernel.elf kernel.s
 
 backup:
 	tar -cf momentum.tar $(shell find -name '*.s') $(shell find -name '*.asm') $(shell find -name '*.c') $(shell find -name '*.h') $(shell find -name '*.cpp')
 	
-install:kernel.elf
-	$(MAKE) -C hosted_libc CC=$(CC)
-	$(MAKE) -C tools CC=$(CC)
-	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M kernel.elf ::kernel.elf
-	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/sh ::sh
-	MTOOLS_SKIP_CHECK=1 mcopy -o -i momentum.raw@@1M tools/ls ::ls
+install:kernel.elf tools/fusepart
+	mkdir drive_mnt
+	mkdir root_mnt
+	tools/fusepart momentum.raw drive_mnt
+	fuseext2 -o rw+ drive_mnt/disk_part0 root_mnt
+	cp kernel.elf root_mnt/kernel.elf
+	$(MAKE) -C hosted_libc install
+	$(MAKE) -C tools install
+	sync root_mnt
+	umount root_mnt
+	sync root_mnt
+	sync drive_mnt
+	umount drive_mnt
+	sync drive_mnt
+	$(RM) -r root_mnt drive_mnt
 
 tools/%:
 	$(MAKE) -C tools

@@ -17,6 +17,7 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <time.h>
 #include <stddef.h>
@@ -25,7 +26,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-struct dirent dir[INT16_MAX];
+struct dirent dir[128];
 
 int main()
 {

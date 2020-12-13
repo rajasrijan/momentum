@@ -330,6 +330,11 @@ int vsnprintf(char *buffer, size_t n, const char *format, va_list arg)
                     unsigned int number = va_arg(arg, unsigned int);
                     buffer_index += print_unsigned_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
                 }
+                else if (length == WidthFlags_h)
+                {
+                    unsigned short int number = va_arg(arg, unsigned short int);
+                    buffer_index += print_unsigned_number(number, 16, &buffer[buffer_index], flags, width, precision, length, specifier);
+                }
                 else if (length == WidthFlags_l)
                 {
                     unsigned long int number = va_arg(arg, unsigned long int);
