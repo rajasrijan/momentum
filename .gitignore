@@ -8,3 +8,4 @@ bochsrc.txt
 objdump.txt
 hosted_libc/libc.a
 images/.directory
+tools/sysroot

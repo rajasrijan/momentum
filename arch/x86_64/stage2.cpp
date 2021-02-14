@@ -51,8 +51,7 @@
 #include <kernel/logging.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 #include <acexcep.h>
 #include <aclocal.h>
@@ -81,8 +80,7 @@ char kernel_cmdline[4096] = {0};
 
 typedef int (*fncmd)(char *);
 
-struct cmd_t
-{
+struct cmd_t {
     const char *command;
     const function<int(char *)> Cmd;
 };
@@ -130,12 +128,10 @@ int gui_init = 0;
 int gui(char *args)
 {
     int ret = 0;
-    if (!gui_init)
-    {
+    if (!gui_init) {
         gui_init = 1;
         ret = initilize_graphics();
-        if (ret < 0)
-        {
+        if (ret < 0) {
             printf("failed to init graphics\n");
             return ret;
         }
@@ -150,8 +146,7 @@ int cat(char *filename)
         return 1;
     char buffer[256] = {0};
     int bytesRead = 0;
-    while ((bytesRead = read(fd, buffer, sizeof(buffer) - 1)) > 0)
-    {
+    while ((bytesRead = read(fd, buffer, sizeof(buffer) - 1)) > 0) {
         buffer[bytesRead] = 0;
         printf(buffer);
     }
@@ -167,7 +162,7 @@ int exec(char *filename)
         goto error;
     if (!exec_node->isFile())
         return -ENOFILE;
-    binary_loader::load(exec_node);
+    errorCode = binary_loader::load(exec_node);
 error:
     return errorCode;
 }
@@ -184,8 +179,7 @@ int ls(char *args)
     int fd = openat(FDCWD, path, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC, 0);
     getdents(fd, dirs);
     close(fd);
-    for (const string &entry : dirs)
-    {
+    for (const string &entry : dirs) {
         printf("%s\n", entry.c_str());
     }
     return 0;
@@ -195,17 +189,13 @@ int lspci([[maybe_unused]] char *args)
 {
     printf("Connected PCI devices:\n");
     std::vector<pci_device_t> &deviceList = pci_getDevices();
-    for (pci_device_t &device : deviceList)
-    {
+    for (pci_device_t &device : deviceList) {
         pci_device_id devId = {0, 0, 0, 0, 0, 0, 0};
         const char *driver_name = nullptr;
         device.getDeviceId(&devId);
-        if (device.pDriver && device.pDriver->name)
-        {
+        if (device.pDriver && device.pDriver->name) {
             driver_name = device.pDriver->name;
-        }
-        else
-        {
+        } else {
             driver_name = "None";
         }
         printf("\tPCI_%x_%x_%x_%x_%x_%x_%x\n", devId.VendorID, devId.DeviceID, devId.SubVendorID, devId.SubSystemID, devId.Class, devId.SubClass, devId.ProgIf);
@@ -219,13 +209,11 @@ int lsmem([[maybe_unused]] char *args)
     int ret = 0;
     vector<MemPage> memMap;
     ret = PageManager::getMemoryMap(memMap);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         printf("failed to getMemoryMap\n");
         asm("cli;hlt");
     }
-    for (const auto &page : memMap)
-    {
+    for (const auto &page : memMap) {
         printf("vaddr: [0x%lx], paddr: [0x%lx], size: [0x%lx]\n", page.vaddr, page.paddr, page.size);
     }
     return ret;
@@ -241,8 +229,7 @@ int echo(char *args)
 
 int top([[maybe_unused]] char *args)
 {
-    for (auto process : multitask::getInstance()->ListProcesses())
-    {
+    for (auto process : multitask::getInstance()->ListProcesses()) {
         printf("%s\n", process->getName());
     }
     return 0;
@@ -261,8 +248,7 @@ int poweroff([[maybe_unused]] char *args)
 int help([[maybe_unused]] char *args)
 {
     printf("Supported commands:\n");
-    for (size_t i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++)
-    {
+    for (size_t i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++) {
         printf("\t%s <args>\n", cmdMapping[i].command);
     }
     return 0;
@@ -273,8 +259,7 @@ int decode_commandline_args(const char *cmdline, [[maybe_unused]] map<string, st
 {
     const char *start_ptr = cmdline;
     const char *end_ptr = nullptr;
-    while ((end_ptr = strchar(cmdline, ',')))
-    {
+    while ((end_ptr = strchar(cmdline, ','))) {
         char tmp[256] = {0};
         std::copy(start_ptr, end_ptr, tmp);
     }
@@ -284,10 +269,8 @@ int decode_commandline_args(const char *cmdline, [[maybe_unused]] map<string, st
 void decode_cmdline(char *cmdLine)
 {
     auto arg = strtok(cmdLine, "= ");
-    while (arg != nullptr)
-    {
-        if (!stricmp("uuid", arg))
-        {
+    while (arg != nullptr) {
+        if (!stricmp("uuid", arg)) {
             arg = strtok(nullptr, "= ");
             sys_info.root_drive_uuid = std::to_uuid(arg);
         }
@@ -311,10 +294,8 @@ static multiboot_tag_mmap *mmap_mboot_tag = nullptr;
 int process_multiboot2_info(multiboot_information *mbi)
 {
     auto mboot_tag = mbi->multiboot_tags;
-    while (mboot_tag->type != MULTIBOOT_TAG_TYPE_END)
-    {
-        switch (mboot_tag->type)
-        {
+    while (mboot_tag->type != MULTIBOOT_TAG_TYPE_END) {
+        switch (mboot_tag->type) {
             case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
                 framebuffer_mboot_tag = (multiboot_tag_framebuffer *)mboot_tag;
                 break;
@@ -337,46 +318,38 @@ int process_multiboot2_info(multiboot_information *mbi)
 void stage2(multiboot_information *mbi)
 {
     //	IDT and Paging initialized before anything else
-    if (init_idt())
-    {
+    if (init_idt()) {
         printf("interrupt initialize failed\n");
         __asm__("cli;hlt;");
     }
-    if (process_multiboot2_info(mbi))
-    {
+    if (process_multiboot2_info(mbi)) {
         printf("multiboot initialize failed\n");
         __asm__("cli;hlt;");
     }
-    if (init_video(framebuffer_mboot_tag))
-    {
+    if (init_video(framebuffer_mboot_tag)) {
         printf("framebuffer initialize failed\n");
         __asm__("cli;hlt;");
     }
-    if (initilize_kernel_cmdline(commandline_mboot_tag))
-    {
+    if (initilize_kernel_cmdline(commandline_mboot_tag)) {
         printf("kernel command line initialize failed\n");
         __asm__("cli;hlt;");
     }
-    if (initilize_memorymanager(mmap_mboot_tag))
-    {
+    if (initilize_memorymanager(mmap_mboot_tag)) {
         printf("memory manager initialize failed\n");
         __asm__("cli;hlt;");
     }
 
-    if (PageManager::initialize())
-    {
+    if (PageManager::initialize()) {
         printf("Paging initialize failed\n");
         __asm__("cli;hlt;");
     }
 
-    if (create_kernel_heap())
-    {
+    if (create_kernel_heap()) {
         printf("Kernel heap initialize failed\n");
         __asm__("cli;hlt;");
     }
 
-    if (get_acpi_tables())
-    {
+    if (get_acpi_tables()) {
         printf("ACPI table failed\n");
         __asm__("cli;hlt;");
     }
@@ -386,8 +359,7 @@ void stage2(multiboot_information *mbi)
     init_keyboard();
     uint64_t noOfConstructors = (uint64_t)(&__CTOR_END__ - &__CTOR_LIST__);
     printf("No of constructors: %x\n", noOfConstructors);
-    for (uint64_t i = 0; i < noOfConstructors; i++)
-    {
+    for (uint64_t i = 0; i < noOfConstructors; i++) {
         printf("calling...[%lx]\n", (&__CTOR_LIST__)[i]);
         void (*constructor_fn)(void) = (void (*)(void))(&__CTOR_LIST__)[i];
         constructor_fn();
@@ -424,15 +396,12 @@ int ver([[maybe_unused]] char *args)
 void *pnpHotPlug([[maybe_unused]] void *arg)
 {
     //	PCI device detection loop
-    while (true)
-    {
+    while (true) {
         sleep(100);
         printf("Checking for PnP devices\n");
         std::vector<pci_device_t> &deviceList = pci_getDevices();
-        for (pci_device_t &device : deviceList)
-        {
-            if (!device.bIsProcessed)
-            {
+        for (pci_device_t &device : deviceList) {
+            if (!device.bIsProcessed) {
                 pci_find_compitable_driver(device);
             }
         }
@@ -451,10 +420,8 @@ void state_c0()
     init_drivers();
     printf("Checking for PnP devices\n");
     std::vector<pci_device_t> &deviceList = pci_getDevices();
-    for (pci_device_t &device : deviceList)
-    {
-        if (!device.bIsProcessed)
-        {
+    for (pci_device_t &device : deviceList) {
+        if (!device.bIsProcessed) {
             pci_find_compitable_driver(device);
         }
     }
@@ -468,17 +435,14 @@ void state_c0()
     //     printf("Graphics initilize failed\n");
     //     __asm__("cli;hlt;");
     // }
-    while (true)
-    {
+    while (true) {
         std::string curDir = getCurrentPath();
         printf("%s$", curDir.c_str());
         gets_s(input, sizeof(input) / sizeof(input[0]));
         char *cmd = input;
         char *subCmd = nullptr;
-        for (int i = 0; input[i] != 0; i++)
-        {
-            if (input[i] == ' ')
-            {
+        for (int i = 0; input[i] != 0; i++) {
+            if (input[i] == ' ') {
                 input[i] = 0;
                 if (input[i + 1] != 0)
                     subCmd = &input[i + 1];
@@ -486,22 +450,20 @@ void state_c0()
             }
         }
         bool cmdFound = false;
-        for (size_t i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++)
-        {
-            if (!strcmp(cmdMapping[i].command, cmd))
-            {
-                cmdMapping[i].Cmd(subCmd);
+        for (size_t i = 0; i < (sizeof(cmdMapping) / sizeof(cmdMapping[0])); i++) {
+            if (!strcmp(cmdMapping[i].command, cmd)) {
+                auto cmd_ret = cmdMapping[i].Cmd(subCmd);
                 cmdFound = true;
+                if (cmd_ret != 0)
+                    log_error("command failed with error code [%d]\n", cmd_ret);
                 break;
             }
         }
-        if (!cmdFound)
-        {
-            printf("Invalid command.\n");
+        if (!cmdFound) {
+            log_error("Invalid command.\n");
         }
     }
-    while (1)
-    {
+    while (1) {
         __asm__("hlt;");
     }
 }

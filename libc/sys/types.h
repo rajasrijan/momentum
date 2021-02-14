@@ -15,5 +15,6 @@ typedef uint64_t gid_t;
 #define __gid_t_defined
 typedef unsigned int u_int;
 typedef unsigned long u_long;
+typedef signed long ssize_t;
 
 #endif //TYPES_H

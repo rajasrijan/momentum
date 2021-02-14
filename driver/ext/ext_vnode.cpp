@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include "ext_vnode.h"
 #include <kernel/logging.h>
+#include <algorithm>
 
 directory *make_entry(directory *ent, const std::string &name, uint32_t _inode_id)
 {
@@ -82,7 +83,25 @@ ext_vnode::~ext_vnode()
 
 int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 {
-    return -ENOSYS;
+    int ret = 0;
+    ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
+    size_t read_count = 0;
+    shared_ptr<char> buffer = new char[v_ext_vfs->blk_sz];
+
+    for (size_t blkIdx = (position / v_ext_vfs->blk_sz); blkIdx < sizeof(_inode->direct_block_pointer) / sizeof(_inode->direct_block_pointer[0]); blkIdx++) {
+        if (read_count >= size) {
+            break;
+        }
+        v_ext_vfs->read_block(_inode->direct_block_pointer[blkIdx], buffer);
+        auto blk_offset = position % v_ext_vfs->blk_sz;
+        auto cpy_sz = min((uint64_t)size - read_count, v_ext_vfs->blk_sz - blk_offset);
+        memcpy(&data[read_count], &(buffer.get()[blk_offset]), cpy_sz);
+        read_count += cpy_sz;
+    }
+    if (bytesRead)
+        *bytesRead = read_count;
+
+    return ret;
 }
 int ext_vnode::bwrite(ssize_t position, size_t size, char *data, int *bytesWritten)
 {
@@ -93,33 +112,18 @@ int ext_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
     int ret = 0;
     if (v_type != VDIR)
         return -ENOTDIR;
-    auto size = _inode->size();
-    auto blk_sz = ((ext_vfs *)v_vfsp)->blk_sz;
 
-    shared_ptr<char> buffer(new char[blk_sz]);
+    auto end = directory_it_end();
+    for (auto current = directory_it_begin(); current != end; ++current) {
+        directory &dir = *current;
+        string name;
+        name.resize(dir.name_sz_lo);
+        memcpy(name.c_str(), dir.name, dir.name_sz_lo);
 
-    size_t remaining = 0;
-    while (remaining < size) {
-        ret = read_block(remaining / blk_sz, buffer);
-        if (ret < 0) {
-            log_error("Failed to read from disk\n");
-            return -EIO;
-        }
-
-        directory *dir = (directory *)buffer.get();
-        for (size_t idx = 0; idx < blk_sz; idx += dir->entry_size) {
-            dir = (directory *)(buffer.get() + idx);
-            string name;
-            name.resize(dir->name_sz_lo);
-            memcpy(name.c_str(), dir->name, dir->name_sz_lo);
-
-            auto tmp = new ext_vnode((ext_vfs *)v_vfsp, dir->_inode);
-            vnodes.emplace_back(tmp);
-            tmp->setName(name);
-        }
-        remaining += blk_sz;
+        auto tmp = new ext_vnode((ext_vfs *)v_vfsp, dir._inode);
+        vnodes.emplace_back(tmp);
+        tmp->setName(name);
     }
-
     return ret;
 }
 
@@ -129,21 +133,22 @@ int ext_vnode::mkdir(std::string name, std::shared_ptr<vnode> &pDir)
     if (v_type != VDIR)
         return -ENOTDIR;
     auto size = _inode->size();
-    auto blk_sz = ((ext_vfs *)v_vfsp)->blk_sz;
+    ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
+    auto blk_sz = v_ext_vfs->blk_sz;
 
     //  allocate new directory stuff
     size_t new_inode = 0;
     size_t new_block = 0;
     inode *new_dir_inode = nullptr;
-    ret = ((ext_vfs *)v_vfsp)->allocate_inode(new_inode);
-    ret = ((ext_vfs *)v_vfsp)->read_inode(new_inode, &new_dir_inode);
-    memset(new_dir_inode, 0, ((ext_vfs *)v_vfsp)->superblk.inode_size);
+    ret = v_ext_vfs->allocate_inode(new_inode, true);
+    ret = v_ext_vfs->read_inode(new_inode, &new_dir_inode);
+    memset(new_dir_inode, 0, v_ext_vfs->superblk.inode_size);
 
     new_dir_inode->type_permissions = INODE_TYPE_DIR;
-    ret = ((ext_vfs *)v_vfsp)->allocate_block(new_block);
+    ret = v_ext_vfs->allocate_block(new_block);
     new_dir_inode->direct_block_pointer[0] = new_block;
     new_dir_inode->size(blk_sz);
-    new_dir_inode->sector_count = new_dir_inode->size() / ((ext_vfs *)v_vfsp)->sector_sz;
+    new_dir_inode->sector_count = new_dir_inode->size() / v_ext_vfs->sector_sz;
     new_dir_inode->hard_links = 2;
 
     shared_ptr<char> buffer(new char[blk_sz]);
@@ -181,18 +186,18 @@ int ext_vnode::mkdir(std::string name, std::shared_ptr<vnode> &pDir)
     auto tmp_dir = make_entry((directory *)buffer.get(), ".", new_inode);
     tmp_dir->entry_size = blk_sz;
     tmp_dir = insert_entry_after(tmp_dir, "..", inode_id);
-    ret = ((ext_vfs *)v_vfsp)->write_block(new_dir_inode->direct_block_pointer[0], buffer);
+    ret = v_ext_vfs->write_block(new_dir_inode->direct_block_pointer[0], buffer);
     if (ret < 0) {
         log_error("Failed to write to disk\n");
         return -EIO;
     }
     _inode->hard_links++;
-    ret = ((ext_vfs *)v_vfsp)->write_inode(inode_id, _inode);
-    ret = ((ext_vfs *)v_vfsp)->write_inode(new_inode, new_dir_inode);
-    ret = ((ext_vfs *)v_vfsp)->flush_inode_bitmap();
-    ret = ((ext_vfs *)v_vfsp)->flush_block_bitmap();
-    ret = ((ext_vfs *)v_vfsp)->write_superblock();
-    
+    ret = v_ext_vfs->write_inode(inode_id, _inode);
+    ret = v_ext_vfs->write_inode(new_inode, new_dir_inode);
+    ret = v_ext_vfs->flush_inode_bitmap();
+    ret = v_ext_vfs->flush_block_bitmap();
+    ret = v_ext_vfs->write_superblock();
+
     pDir = make_shared<ext_vnode>((ext_vfs *)v_vfsp, new_inode);
     ((ext_vnode *)pDir.get())->setName(name.c_str());
     return ret;
@@ -206,39 +211,21 @@ int ext_vnode::open(uint64_t flags)
 }
 int ext_vnode::lookup(char const *path, shared_ptr<vnode> &node)
 {
-    int ret = 0;
     if (v_type != VDIR)
         return -ENOTDIR;
-    auto size = _inode->size();
-    auto blk_sz = ((ext_vfs *)v_vfsp)->blk_sz;
-
-    shared_ptr<char> buffer(new char[blk_sz]);
-
-    size_t remaining = 0;
-    while (remaining < size) {
-
-        ret = read_block(remaining / blk_sz, buffer);
-        if (ret < 0) {
-            log_error("Failed to read from disk\n");
-            return -EIO;
+    auto end = directory_it_end();
+    for (auto current = directory_it_begin(); current != end; ++current) {
+        directory &dir = *current;
+        string name;
+        name.resize(dir.name_sz_lo);
+        memcpy(name.c_str(), dir.name, dir.name_sz_lo);
+        if (name == path) {
+            ext_vnode *tmp = new ext_vnode((ext_vfs *)v_vfsp, dir._inode);
+            tmp->setName(name.c_str());
+            node = (vnode *)tmp;
+            return 0;
         }
-
-        directory *dir = (directory *)buffer.get();
-        for (size_t idx = 0; idx < blk_sz; idx += dir->entry_size) {
-            dir = (directory *)(buffer.get() + idx);
-            string name;
-            name.resize(dir->name_sz_lo);
-            memcpy(name.c_str(), dir->name, dir->name_sz_lo);
-            if (name == path) {
-                ext_vnode *tmp = new ext_vnode((ext_vfs *)v_vfsp, dir->_inode);
-                tmp->setName(name.c_str());
-                node = (vnode *)tmp;
-                return 0;
-            }
-        }
-        remaining += blk_sz;
     }
-
     return -ENOFILE;
 }
 
@@ -246,13 +233,14 @@ int ext_vnode::read_block(uint32_t block_index, shared_ptr<char> &buffer)
 {
     int ret = 0;
     auto size = _inode->size();
-    auto blk_sz = ((ext_vfs *)v_vfsp)->blk_sz;
+    ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
+    auto blk_sz = v_ext_vfs->blk_sz;
 
     if ((block_index * blk_sz) >= size)
         return -EINVAL;
     if (block_index >= 12)
         return -ENOSYS;
-    ret = ((ext_vfs *)v_vfsp)->read_block(_inode->direct_block_pointer[block_index], buffer);
+    ret = v_ext_vfs->read_block(_inode->direct_block_pointer[block_index], buffer);
     if (ret < 0) {
         log_error("Failed to read from disk\n");
         return -EIO;
@@ -264,16 +252,102 @@ int ext_vnode::write_block(uint32_t block_index, shared_ptr<char> &buffer)
 {
     int ret = 0;
     auto size = _inode->size();
-    auto blk_sz = ((ext_vfs *)v_vfsp)->blk_sz;
+    ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
+    auto blk_sz = v_ext_vfs->blk_sz;
 
     if ((block_index * blk_sz) >= size)
         return -EINVAL;
     if (block_index >= 12)
         return -ENOSYS;
-    ret = ((ext_vfs *)v_vfsp)->write_block(_inode->direct_block_pointer[block_index], buffer);
+    ret = v_ext_vfs->write_block(_inode->direct_block_pointer[block_index], buffer);
     if (ret < 0) {
         log_error("Failed to write to disk\n");
         return -EIO;
     }
     return ret;
+}
+
+int ext_vnode::create(const string &path, shared_ptr<vnode> &created_node)
+{
+    int ret = -ENOSYS;
+    if (v_type != VDIR) {
+        return -ENOTDIR;
+    }
+    ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
+    size_t new_inode_id = 0;
+    inode *new_inode = nullptr;
+    ret = v_ext_vfs->allocate_inode(new_inode_id, false);
+    ret = v_ext_vfs->read_inode(new_inode_id, &new_inode);
+    memset(new_inode, 0, v_ext_vfs->superblk.inode_size);
+    directory *new_dir_ent = make_entry(path, new_inode_id);
+
+    auto current = directory_it_begin();
+    auto end = directory_it_end();
+
+    //  find an empty directory entry
+    current = find_if(current, end, [new_dir_ent](const directory &dir) { return !dir.is_allocated() && (dir.entry_size == new_dir_ent->entry_size); });
+    if (current != end)
+        goto error_exit;
+error_exit:
+    free(new_dir_ent);
+    return ret;
+}
+
+ext_vnode::ext_dir_iterator ext_vnode::directory_it_begin()
+{
+    return ext_vnode::ext_dir_iterator(this, 0u);
+}
+ext_vnode::ext_dir_iterator ext_vnode::directory_it_end()
+{
+    return ext_vnode::ext_dir_iterator(this, _inode->size());
+}
+
+ext_vnode::ext_dir_iterator::ext_dir_iterator(ext_vnode *_parent_vnode, size_t _offset)
+    : parent_vnode(_parent_vnode), offset(_offset)
+{
+    ext_vfs *v_ext_vfs = (ext_vfs *)parent_vnode->v_vfsp;
+    if (offset < parent_vnode->_inode->size()) {
+        buffer = new char[v_ext_vfs->blk_sz];
+        parent_vnode->read_block(offset / v_ext_vfs->blk_sz, buffer);
+    }
+}
+
+ext_vnode::ext_dir_iterator::~ext_dir_iterator()
+{
+}
+
+void ext_vnode::ext_dir_iterator::operator++()
+{
+    ext_vfs *v_ext_vfs = (ext_vfs *)parent_vnode->v_vfsp;
+    const auto &dir = this->operator*();
+    auto new_offset = offset + dir.entry_size;
+    //  if offset crossed over to next block then read next block
+    if ((new_offset / v_ext_vfs->blk_sz) != (offset / v_ext_vfs->blk_sz)) {
+        parent_vnode->read_block(offset / v_ext_vfs->blk_sz, buffer);
+    }
+    offset = new_offset;
+}
+
+bool ext_vnode::ext_dir_iterator::operator!=(const ext_dir_iterator &rhs)
+{
+    return offset != rhs.offset;
+}
+
+void ext_vnode::ext_dir_iterator::operator=(const ext_dir_iterator &rhs)
+{
+    parent_vnode = rhs.parent_vnode;
+    offset = rhs.offset;
+    buffer = rhs.buffer;
+}
+
+directory &ext_vnode::ext_dir_iterator::operator*()
+{
+    ext_vfs *v_ext_vfs = (ext_vfs *)parent_vnode->v_vfsp;
+    auto i = offset % v_ext_vfs->blk_sz;
+    return *((directory *)&(buffer.get()[i]));
+}
+
+bool directory::is_allocated() const
+{
+    return (type_name_sz_hi & 2) == 2;
 }

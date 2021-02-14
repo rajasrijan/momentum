@@ -8,6 +8,24 @@
 class ext_vnode : public vnode
 {
   private:
+    class ext_dir_iterator
+    {
+      private:
+        ext_vnode *parent_vnode;
+        size_t offset;
+        shared_ptr<char> buffer;
+
+      public:
+        ext_dir_iterator(ext_vnode *_parent_vnode, size_t _offset);
+        ~ext_dir_iterator();
+        void operator++();
+        bool operator!=(const ext_dir_iterator &rhs);
+        void operator=(const ext_dir_iterator &rhs);
+        directory &operator*();
+    };
+    friend ext_dir_iterator;
+
+  private:
     uint32_t inode_id;
     inode *_inode;
 
@@ -20,9 +38,12 @@ class ext_vnode : public vnode
     int readdir(vector<shared_ptr<vnode>> &vnodes);
     int open(uint64_t flags);
     int lookup(char const *, shared_ptr<vnode> &);
+    int create(const string &path, shared_ptr<vnode> &created_node);
     int read_block(uint32_t block_index, shared_ptr<char> &buffer);
     int write_block(uint32_t block_index, shared_ptr<char> &buffer);
     int flush_inode(uint32_t inode_id);
+    ext_dir_iterator directory_it_begin();
+    ext_dir_iterator directory_it_end();
 };
 
 #endif //   EXT_VNODE_H

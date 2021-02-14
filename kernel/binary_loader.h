@@ -130,5 +130,5 @@ class binary_loader
   public:
     binary_loader(/* args */);
     ~binary_loader();
-    static void load(shared_ptr<vnode> &node);
+    static int load(shared_ptr<vnode> &node);
 };

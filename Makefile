@@ -55,16 +55,18 @@ clean:
 	$(MAKE) -C hosted_libc clean
 	$(MAKE) -C tools clean
 	$(umount root_mnt)
+	$(RM) -rf root_mnt
 	$(umount drive_mnt)
-	$(RM) -rf $(OBJECT) $(OBJECT_32) $(BLOBS) drive_mnt root_mnt
+	$(RM) -rf drive_mnt
+	$(RM) -rf $(OBJECT) $(OBJECT_32) $(BLOBS)
 	$(RM) kernel.elf kernel.s
 
 backup:
 	tar -cf momentum.tar $(shell find -name '*.s') $(shell find -name '*.asm') $(shell find -name '*.c') $(shell find -name '*.h') $(shell find -name '*.cpp')
 	
 install:kernel.elf tools/fusepart
-	mkdir drive_mnt
 	mkdir root_mnt
+	mkdir drive_mnt
 	tools/fusepart momentum.raw drive_mnt
 	fuseext2 -o rw+ drive_mnt/disk_part0 root_mnt
 	cp kernel.elf root_mnt/kernel.elf
@@ -76,7 +78,7 @@ install:kernel.elf tools/fusepart
 	sync drive_mnt
 	umount drive_mnt
 	sync drive_mnt
-	$(RM) -r root_mnt drive_mnt
+	$(RM) -rf root_mnt drive_mnt
 
 tools/%:
 	$(MAKE) -C tools

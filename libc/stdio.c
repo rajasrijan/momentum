@@ -48,38 +48,28 @@ int putchar(int c)
     if (!putcharacter || !scroll)
         return 0;
 
-    if (c == '\n')
-    {
+    if (c == '\n') {
         y += 1;
         x = 0;
-    }
-    else if (c == '\t')
-    {
-        for (int i = 0; i < 8; i++)
-        {
+    } else if (c == '\t') {
+        for (int i = 0; i < 8; i++) {
             putcharacter(' ', x, y);
             x++;
             y += (x / text_width);
             x %= text_width;
         }
-    }
-    else if (c == '\b')
-    {
-        if (x > 0)
-        {
+    } else if (c == '\b') {
+        if (x > 0) {
             x--;
             putcharacter(' ', x, y);
         }
-    }
-    else
-    {
+    } else {
         putcharacter(c, x, y);
         x++;
         y += (x / text_width);
         x %= text_width;
     }
-    if (y > (text_height - 1))
-    {
+    if (y > (text_height - 1)) {
         y = (text_height - 1);
         x = 0;
         scroll();
@@ -104,60 +94,61 @@ char getchar()
     return ch;
 }
 
-struct file_descriptor
-{
+struct file_descriptor {
     int fd;
 };
 
 FILE *fopen(const char *filename, const char *mode)
 {
     int oflag = 0;
-    if (mode[0] == 'w')
-    {
+    if (mode[0] == 'w') {
         oflag |= O_WRONLY | O_CREAT;
     }
 
     int fd = open(filename, oflag);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         errno = ENOSYS;
         return NULL;
     }
     return (FILE *)fd;
 }
+int ferror(FILE *file)
+{
+    return -ENOSYS;
+}
+int fclose(FILE *file)
+{
+    return -ENOSYS;
+}
 #endif
+
 static void print_num32(uint32_t arg, uint32_t base)
 {
     char str[12] = {0};
     str[11] = '0';
     char symbol[] = {"0123456789ABCDEFG"};
-    for (uint32_t i = arg, no = 11; (i > 0) && (no >= 0); i /= base, no--)
-    {
+    for (uint32_t i = arg, no = 11; (i > 0) && (no >= 0); i /= base, no--) {
         str[no] = symbol[(i % base)];
     }
 
-    for (int i = 0; i < 12; ++i)
-    {
-        if (str[i] != 0)
-        {
+    for (int i = 0; i < 12; ++i) {
+        if (str[i] != 0) {
             putchar(str[i]);
         }
     }
 }
+
 static void print_num64(uint64_t arg, uint32_t base)
 {
     char str[24] = {0};
     str[23] = '0';
     char symbol[] = {"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
-    for (uint64_t i = arg, no = 23; (i > 0) && (no >= 0); i /= base, no--)
-    {
+    for (uint64_t i = arg, no = 23; (i > 0) && (no >= 0); i /= base, no--) {
         str[no] = symbol[(i % base)];
     }
 
-    for (int i = 0; i < 24; ++i)
-    {
-        if (str[i] != 0)
-        {
+    for (int i = 0; i < 24; ++i) {
+        if (str[i] != 0) {
             putchar(str[i]);
         }
     }
@@ -175,8 +166,7 @@ int printf(const char *format, ...)
     char buffer[1024];
     va_start(arg, format);
     ret = vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), format, arg);
-    for (int i = 0; i < ret; i++)
-    {
+    for (int i = 0; i < ret; i++) {
         putchar(buffer[i]);
     }
     va_end(arg);
@@ -196,8 +186,7 @@ int vprintf(const char *format, va_list arg)
     int ret = 0;
     char buffer[1024];
     ret = vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), format, arg);
-    for (int i = 0; i < ret; i++)
-    {
+    for (int i = 0; i < ret; i++) {
         putchar(buffer[i]);
     }
 #if __STDC_HOSTED__ == 0
@@ -210,11 +199,9 @@ char *gets_s(char *str, size_t sz)
 {
     size_t it = 0;
     char ch = 0;
-    do
-    {
+    do {
         ch = getchar();
-        switch (ch)
-        {
+        switch (ch) {
             case '\b':
                 it--;
                 str[it] = 0;
@@ -229,6 +216,7 @@ char *gets_s(char *str, size_t sz)
         str[it - 1] = 0;
     return str;
 }
+
 int kisnum(const char ch)
 {
     return (ch >= '0' && ch <= '9');

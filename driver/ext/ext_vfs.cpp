@@ -201,7 +201,7 @@ int ext_vfs::write_block(size_t block_id, shared_ptr<char> &buffer)
     return dev->bwrite((block_id * blk_sz) / sector_sz, blk_sz / sector_sz, buffer.get(), nullptr);
 }
 
-int ext_vfs::allocate_inode(size_t &inode_id)
+int ext_vfs::allocate_inode(size_t &inode_id, bool is_dir)
 {
     int ret = 0;
     for (size_t bidx = 0; bidx < block_group_descriptor_tbl.size(); bidx++) {
@@ -210,6 +210,7 @@ int ext_vfs::allocate_inode(size_t &inode_id)
             inode_id++;
             superblk.free_inode_count--;
             block_group_descriptor_tbl[bidx].free_inode_in_group--;
+            block_group_descriptor_tbl[bidx].dirs_in_group++;
             return 0;
         }
     }
@@ -255,6 +256,18 @@ int ext_vfs::flush_block_bitmap()
             remaining_size = ((superblk.blk_per_blkgrp + 7) / 8) - i;
             memcpy(buffer.get(), block_map[blk_idx].get_ptr() + i, min(remaining_size, blk_sz));
             ret = write_block(block_group_descriptor_tbl[blk_idx].block_bitmap_addr + (i / blk_sz), buffer);
+        }
+    }
+
+    //  it's located right after the superblock
+    size_t blk_grp_desc_tbl_idx = superblk.superblock_blk_idx + 1;
+    for (size_t i = 0; i < sizeof(block_group_descriptor) * block_group_descriptor_tbl.size(); i += sector_sz) {
+        remaining_size = (sizeof(block_group_descriptor) * block_group_descriptor_tbl.size()) - i;
+        memcpy(buffer.get(), (char *)block_group_descriptor_tbl.data() + i, min(sector_sz, remaining_size));
+        ret = dev->bwrite(((blk_grp_desc_tbl_idx * blk_sz) + i) / sector_sz, 1, buffer.get(), nullptr);
+        if (ret < 0) {
+            log_error("failed to write!\n");
+            return ret;
         }
     }
     return ret;

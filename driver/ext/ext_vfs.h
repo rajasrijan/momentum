@@ -35,11 +35,14 @@ class ext_vfs : public vfs
     int flush_inode_bitmap();
     int flush_block_bitmap();
     int write_superblock();
+
     int read_block(size_t block_id, shared_ptr<char> &buffer);
     int write_block(size_t block_id, shared_ptr<char> &buffer);
+
     int read_inode(size_t inode_id, inode **_inode);
     int write_inode(size_t inode_id, inode *_inode);
-    int allocate_inode(size_t &inode_id);
+
+    int allocate_inode(size_t &inode_id, bool is_dir);
     int free_inode(size_t inode_id);
     int allocate_block(size_t &block_id);
     int free_block(size_t block_id);

@@ -21,14 +21,12 @@
 #include <functional>
 #include <utility>
 
-namespace std
-{
+namespace std {
 
 template <class InputIterator, class OutputIterator>
 OutputIterator copy(InputIterator first, InputIterator last, OutputIterator result)
 {
-    for (InputIterator it = first; it != last; it++)
-    {
+    for (InputIterator it = first; it != last; it++) {
         *result = *it;
         result++;
     }
@@ -38,8 +36,7 @@ OutputIterator copy(InputIterator first, InputIterator last, OutputIterator resu
 template <class InputIterator, class T>
 InputIterator find(InputIterator first, InputIterator last, const T &val)
 {
-    while (first != last)
-    {
+    while (first != last) {
         if (*first == val)
             return first;
         ++first;
@@ -50,8 +47,7 @@ InputIterator find(InputIterator first, InputIterator last, const T &val)
 template <class InputIterator, class UnaryPredicate>
 InputIterator find_if(InputIterator first, InputIterator last, UnaryPredicate pred)
 {
-    while (first != last)
-    {
+    while (first != last) {
         if (pred(*first))
             return first;
         ++first;
@@ -59,18 +55,10 @@ InputIterator find_if(InputIterator first, InputIterator last, UnaryPredicate pr
     return last;
 }
 
-
 template <class T>
-const T &min(const T &a, const T &b)
+constexpr const T &min(const T &a, const T &b)
 {
-    return (b < a) ? b : a;
-}
-
-template <class T, class... Args>
-const T &min(const T &a, const Args &... b)
-{
-    const T &tmp = min(b...);
-    return (tmp < a) ? tmp : a;
+    return (b > a) ? a : b;
 }
 
 template <class T>
@@ -105,17 +93,14 @@ ForwardIt lower_bound(ForwardIt first, ForwardIt last, const T &value, Compare c
     size_t count, step;
     count = std::distance(first, last);
 
-    while (count > 0)
-    {
+    while (count > 0) {
         it = first;
         step = count / 2;
         std::advance(it, step);
-        if (comp(*it, value))
-        {
+        if (comp(*it, value)) {
             first = ++it;
             count -= step + 1;
-        }
-        else
+        } else
             count = step;
     }
     return first;
@@ -144,8 +129,7 @@ bool less_than(const T &a, const T &b)
 template <class it, typename pred>
 void quick_sort(it low, it high, pred predicate)
 {
-    if (distance(low, high) > 0)
-    {
+    if (distance(low, high) > 0) {
         /* pi is partitioning index, arr[pi] is now
        at right place */
         auto pi = partition(low, high - 1, predicate);
@@ -163,11 +147,9 @@ it partition(it low, it high, pred predicate)
 
     auto i = (low - 1); // Index of smaller element
 
-    for (auto j = low; j <= high - 1; j++)
-    {
+    for (auto j = low; j <= high - 1; j++) {
         // If current element is smaller than the pivot
-        if (predicate(*j, *pivot))
-        {
+        if (predicate(*j, *pivot)) {
             i++; // increment index of smaller element
             std::iter_swap(i, j);
         }

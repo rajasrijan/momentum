@@ -57,71 +57,77 @@ void printElfSectionHeader(const Elf64_Shdr *sheader)
     log_debug("size: %x, flags: %x\n", sheader->sh_size, sheader->sh_flags);
 }
 
-void binary_loader::load(shared_ptr<vnode> &node)
+int binary_loader::load(shared_ptr<vnode> &node)
 {
     int ret = 0;
+    Elf64_Phdr *pheader = nullptr;
+    Elf64_Shdr *sheader = nullptr;
+    Elf64_Shdr *string_section_hdr = nullptr;
+    char *string_table = nullptr;
     Elf64_Ehdr elf_hdr = {};
-    node->bread(0, sizeof(Elf64_Ehdr), (char *)&elf_hdr, nullptr);
+    vector<MemPage> user_memory_map;
+    vector<MemPage> kernel_memory_map;
+
+    ret = node->bread(0, sizeof(Elf64_Ehdr), (char *)&elf_hdr, nullptr);
+    if (ret != 0)
+        goto error_exit;
     printElfHeader(elf_hdr);
     // print program header
-    Elf64_Phdr *pheader = new Elf64_Phdr[elf_hdr.e_phnum];
-    node->bread(elf_hdr.e_phoff, elf_hdr.e_phentsize * elf_hdr.e_phnum, (char *)pheader, nullptr);
+    pheader = new Elf64_Phdr[elf_hdr.e_phnum];
+    ret = node->bread(elf_hdr.e_phoff, elf_hdr.e_phentsize * elf_hdr.e_phnum, (char *)pheader, nullptr);
+    if (ret != 0)
+        goto error_exit;
+
     log_debug("ELF Program Header:-\n");
-    for (size_t i = 0; i < elf_hdr.e_phnum; i++)
-    {
+    for (size_t i = 0; i < elf_hdr.e_phnum; i++) {
         printElfProgramHeader(pheader + i);
     }
     // print sections
-    Elf64_Shdr *sheader = new Elf64_Shdr[elf_hdr.e_shnum];
-    node->bread(elf_hdr.e_shoff, elf_hdr.e_shentsize * elf_hdr.e_shnum, (char *)sheader, nullptr);
+    sheader = new Elf64_Shdr[elf_hdr.e_shnum];
+    ret = node->bread(elf_hdr.e_shoff, elf_hdr.e_shentsize * elf_hdr.e_shnum, (char *)sheader, nullptr);
+    if (ret != 0)
+        goto error_exit;
 
     //  read string table
-    Elf64_Shdr *string_section_hdr = &sheader[elf_hdr.e_shstrndx];
-    char *string_table = new char[string_section_hdr->sh_size];
-    node->bread(string_section_hdr->sh_offset, string_section_hdr->sh_size, string_table, nullptr);
+    string_section_hdr = &sheader[elf_hdr.e_shstrndx];
+    string_table = new char[string_section_hdr->sh_size];
+    ret = node->bread(string_section_hdr->sh_offset, string_section_hdr->sh_size, string_table, nullptr);
+    if (ret != 0)
+        goto error_exit;
 
     //  create memory map for process
-    vector<MemPage> user_memory_map;
     // record all the program sections for the executable. Ordered insertion.
     for (size_t i = 0; i < elf_hdr.e_phnum; i++)
-        if (pheader[i].p_type == PT_LOAD)
-        {
+        if (pheader[i].p_type == PT_LOAD) {
             MemPage page = {PageManager::roundToPageBoundry(pheader[i].p_vaddr), 0, PageManager::roundToPageSize(pheader[i].p_memsz)};
             auto next_it = lower_bound(user_memory_map.begin(), user_memory_map.end(), page, [](const MemPage &a, const MemPage &val) { return val.vaddr < a.vaddr; });
             next_it = user_memory_map.insert(next_it, page);
         }
     //  merge page entries
-    for (size_t i = 0; i < user_memory_map.size() - 1; i++)
-    {
+    for (size_t i = 0; i < user_memory_map.size() - 1; i++) {
         //  merge condition
-        if (user_memory_map[i + 1].vaddr <= user_memory_map[i].vend())
-        {
+        if (user_memory_map[i + 1].vaddr <= user_memory_map[i].vend()) {
             user_memory_map[i].size = max(user_memory_map[i].vend(), user_memory_map[i + 1].vend()) - user_memory_map[i].vaddr;
             user_memory_map.erase(user_memory_map.begin() + i + 1);
             i--;
         }
     }
     //  allocate user process memory. Map memory to kernel and user process.
-    vector<MemPage> kernel_memory_map;
-    for (MemPage &page : user_memory_map)
-    {
+    for (MemPage &page : user_memory_map) {
         MemPage kpage = {};
         kpage.size = page.size;
         ret = PageManager::findFreeVirtualMemory(kpage.vaddr, page.size);
-        if (ret < 0)
-        {
+        if (ret < 0) {
             log_error("failed to findFreeVirtualMemory\n");
             asm("cli;hlt");
         }
 
-        if (PageManager::setPageAllocation(kpage.vaddr, kpage.size, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write))
-        {
+        if (PageManager::setPageAllocation(kpage.vaddr, kpage.size, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write)) {
             log_error("Failed to set page address\n");
             asm("cli;hlt");
         }
 
-        if (PageManager::getPhysicalAddress(kpage.vaddr, kpage.paddr))
-        {
+        if (PageManager::getPhysicalAddress(kpage.vaddr, kpage.paddr)) {
             log_error("Failed to get physical address\n");
             asm("cli;hlt");
         }
@@ -131,38 +137,39 @@ void binary_loader::load(shared_ptr<vnode> &node)
 
     // process the section headers
     log_debug("Processing ELF Section Headers:-\n");
-    for (size_t i = 0; i < elf_hdr.e_shnum; i++)
-    {
+    for (size_t i = 0; i < elf_hdr.e_shnum; i++) {
         Elf64_Shdr section_header = sheader[i];
         log_debug("Section: %s\n", &string_table[section_header.sh_name]);
         printElfSectionHeader(&section_header);
-        if ((section_header.sh_type & SHT_PROGBITS) && section_header.sh_addr != 0)
-        {
+        if ((section_header.sh_type & SHT_PROGBITS) && section_header.sh_addr != 0) {
             //  find kernel space mapping.
             auto user_map_it = find_if(user_memory_map.begin(), user_memory_map.end(), [&section_header](const MemPage &page) { return page.vinside(section_header.sh_addr); });
             auto kern_map_it = kernel_memory_map.begin() + distance(user_memory_map.begin(), user_map_it);
             //  load the section from file.
             char *kernel_address = (char *)(kern_map_it->vaddr + (section_header.sh_addr - user_map_it->vaddr));
-            node->bread(section_header.sh_offset, section_header.sh_size, kernel_address, nullptr);
+            ret = node->bread(section_header.sh_offset, section_header.sh_size, kernel_address, nullptr);
+            if (ret != 0)
+                goto error_exit;
         }
     }
 
     //  free the kernel mapping
-    for (MemPage &page : kernel_memory_map)
-    {
+    for (MemPage &page : kernel_memory_map) {
         ret = PageManager::freeVirtualMemory(page.vaddr, page.size);
-        if (ret < 0)
-        {
+        if (ret < 0) {
             log_error("failed to freeVirtualMemory\n");
             asm("cli;hlt");
         }
     }
+error_exit:
     kernel_memory_map.clear();
     //  create process
     process_t process = nullptr;
-    multitask::getInstance()->createProcess(process, node->getName().c_str(), 3, user_memory_map, elf_hdr.e_entry);
+    if (ret == 0)
+        ret = multitask::getInstance()->createProcess(process, node->getName().c_str(), 3, user_memory_map, elf_hdr.e_entry);
     delete[] pheader;
     pheader = nullptr;
     delete[] sheader;
     sheader = nullptr;
+    return ret;
 }

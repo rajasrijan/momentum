@@ -21,6 +21,7 @@
 #include "global.h"
 #include "multiboot2.h"
 #include "paging.h"
+#include <sys/types.h>
 #include <ctype.h>
 #include <errno.h>
 #include <kernel/bitmap_allocator.h>

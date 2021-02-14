@@ -111,6 +111,7 @@ struct directory {
     uint8_t name_sz_lo;
     uint8_t type_name_sz_hi;
     char name[0];
+    bool is_allocated() const;
 };
 
 #pragma pack(pop)
