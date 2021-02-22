@@ -1,4 +1,4 @@
-CFLAGS := --target=x86_64-pc-momentum-elf -m64 -O0 --std=c11 -nostdlib -nostdinc -fno-builtin -I/home/srijan/Documents/momentum/libc/ -I/usr/lib/llvm-11/lib/clang/11.0.0/include -masm=intel -I ../libc/ -I .. -g
+CFLAGS := --target=x86_64-pc-momentum-elf -m64 -O0 --std=c11 -nostdlib -nostdinc -fno-builtin -I/home/srijan/Documents/momentum/libc/include -I/usr/lib/llvm-11/lib/clang/11.0.0/include -masm=intel -I ../libc/ -I .. -g
 CXXFLAGS := --target=x86_64-pc-momentum-elf -m64 -O0 --std=c++11 -nostdlib -nostdinc++ -masm=intel -I ../libc/ -I .. -g
 LDFLAGS := -L /home/srijan/Documents/momentum/hosted_libc/ -lc -static
 ASFLAGS:=-f elf64

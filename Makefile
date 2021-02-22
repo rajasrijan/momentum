@@ -10,10 +10,10 @@ CFLAGS_32 += -g -O0
 CXXFLAGS += -g -O0
 
 CFLAGS += --target=$(TARGET) -m64 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -fstack-protector-all -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow --std=c11 -mno-red-zone\
-	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/ -I . -fno-function-sections -I acpica/include -mssse3
+	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/include -I . -fno-function-sections -I acpica/include -mssse3
 
 CFLAGS_32 += --target=$(TARGET) -m32 -Wshadow -Wwrite-strings  -D_MOMENTUM_ -Wno-unused-function -Wredundant-decls -Wnested-externs -Winline -Wno-long-long -Woverflow --std=c11 -mno-red-zone\
-	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/ -I . -fno-function-sections -I acpica/include
+	    -ffreestanding -std=c11  -mcmodel=large -masm=intel -I libc/include -I . -fno-function-sections -I acpica/include
 
 CXXFLAGS += --target=$(TARGET) -m64 -Wall -Wextra -Wunused-result -Wshadow -Wpointer-arith -fstack-protector-all -mno-red-zone -Wwrite-strings -Werror -Wno-unused-parameter -Wno-null-pointer-arithmetic -Wno-missing-braces -fno-exceptions -fno-rtti -Weffc++ -Wredundant-decls -Winline -Wno-long-long -Woverflow -mcmodel=large -masm=intel -ffreestanding -std=c++20  -D_MOMENTUM_ \
 	    -I libc/ -I libc++/ -I .  -I acpica/include $(CXXINCLUDE) -fno-function-sections -mssse3

@@ -2,7 +2,7 @@ all:sh ls fusepart
 
 CC := clang
 
-CFLAGS := --target=x86_64-pc-momentum-elf -O0 --std=c11 -g -o -nostdlib -nostdlibinc -fno-builtin -masm=intel -I ../libc/
+CFLAGS := --target=x86_64-pc-momentum-elf -O0 --std=c11 -g -o -nostdlib -nostdlibinc -fno-builtin -masm=intel -I ../libc/include
 
 LDFLAGS := -L ../hosted_libc/ -lc
 LDFLAGS += -z stack-size=2097152
