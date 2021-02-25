@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.16)
+project(Tools)
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(FUSE fuse REQUIRED)
+add_executable(fusepart fusepart.c)
+if(FUSE_FOUND)
+    target_include_directories(fusepart PRIVATE ${FUSE_INCLUDE_DIRS})
+    target_link_libraries(fusepart ${FUSE_LINK_LIBRARIES})
+endif()
+target_compile_definitions(fusepart PRIVATE _FILE_OFFSET_BITS=64)
