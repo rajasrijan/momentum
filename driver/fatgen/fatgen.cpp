@@ -27,6 +27,7 @@
 #include <kernel/vnode.h>
 #include <string>
 #include <ctype.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -419,7 +420,7 @@ int fat_vnode::mkdir(std::string name, shared_ptr<vnode> &pDir)
     auto ext = strrchar(name.c_str(), '.');
     if (ext != nullptr) {
         strcpy(&(new_name[8]), ext + 1);
-        memcpy(new_name, name.c_str(), min(8ull, (uint64_t)(ext - name.c_str())));
+        memcpy(new_name, name.c_str(), min(8ul, (uint64_t)(ext - name.c_str())));
     } else {
         memcpy(new_name, name.c_str(), min(8ul, name.size()));
     }
