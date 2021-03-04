@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -29,36 +29,52 @@
 #define SEEK_CUR 1
 #define SEEK_END 2
 
+#define _IONBF 0
+#define _IOLBF 1
+#define _IOFBF 2
+
 #define DBG_OUTPUT printf("%s:%s():%d\n", __FILE__, __FUNCTION__, __LINE__);
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
-    char getchar(void);
-    int printf(const char *format, ...);
-    int vprintf(const char *format, va_list arg);
-    int vsnprintf(char *buffer, size_t n, const char *format, va_list arg);
-    int snprintf(char *str, size_t n, const char *format, ...);
+char getchar(void);
+int printf(const char *format, ...);
+int vprintf(const char *format, va_list arg);
+int vsnprintf(char *buffer, size_t n, const char *format, va_list arg);
+int snprintf(char *str, size_t n, const char *format, ...);
 
-    char *gets_s(char *str, size_t sz);
-    int putchar(int c);
-    void clrscr(void);
+char *gets_s(char *str, size_t sz);
+int putchar(int c);
+int puts(const char *str);
+void clrscr(void);
+
 #if __STDC_HOSTED__ == 1
+struct FILE_IO {
+    char *_IO_write_ptr;
+    char *_IO_write_base;
+};
+
 #ifndef FILE
-#define FILE void
+#define FILE struct FILE_IO
 #endif //FILE
 
-    extern FILE *stdin, *stdout, *stderr;
-    FILE *fopen(const char *filename, const char *mode);
-    int fclose(FILE *file);
-    int ferror(FILE *file);
+extern FILE *stdin, *stdout, *stderr;
+FILE *fopen(const char *filename, const char *mode);
+int fclose(FILE *file);
+int ferror(FILE *file);
+int fprintf(FILE *file, const char *format, ...);
+size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
+void __fpurge(FILE *stream);
+size_t __fpending(FILE *fp);
+size_t __freadahead(FILE *fp);
+const char *__freadptr(FILE *fp, size_t *sizep);
+void __fseterr(FILE *fp);
 #endif
 #ifdef __cplusplus
 }
 #endif
 #define assert(x)                                                                \
-    if (x)                                                                       \
-    {                                                                            \
+    if (x) {                                                                     \
         printf("\nAssert at [%s],File [%s], Line [%d]", #x, __FILE__, __LINE__); \
         __asm__("cli;hlt;");                                                     \
     }

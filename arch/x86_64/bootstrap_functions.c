@@ -34,29 +34,23 @@ __attribute__((section(".text0"))) static uint64_t max(uint64_t a, uint64_t b)
 __attribute__((section(".text0"))) void find_framebuffer(struct multiboot_information *mbi)
 {
     struct multiboot_tag *mbt = mbi->multiboot_tags;
-    while (mbt->type != MULTIBOOT_TAG_TYPE_END)
-    {
-        if (mbt->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER)
-        {
-            struct multiboot_tag_framebuffer *mbt_fb = mbt;
+    while (mbt->type != MULTIBOOT_TAG_TYPE_END) {
+        if (mbt->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
+            struct multiboot_tag_framebuffer *mbt_fb = (struct multiboot_tag_framebuffer *)mbt;
             framebuffer_ptr = mbt_fb->common.framebuffer_addr;
-        }
-        else if (mbt->type == MULTIBOOT_TAG_TYPE_MMAP)
-        {
-            struct multiboot_tag_mmap *mbt_mmap = mbt;
+        } else if (mbt->type == MULTIBOOT_TAG_TYPE_MMAP) {
+            struct multiboot_tag_mmap *mbt_mmap = (struct multiboot_tag_mmap *)mbt;
             struct multiboot_mmap_entry *mmap = mbt_mmap->entries;
-            while ((uint32_t)mmap < (uint32_t)mmap + mbt_mmap->size - sizeof(struct multiboot_tag_mmap))
-            {
-                if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && ((mmap->addr + mmap->len) >= KERNEL_TEMP_PAGE_TABLE_LOCATION))
-                {
+            while (mmap < mmap + mbt_mmap->size - sizeof(struct multiboot_tag_mmap)) {
+                if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && ((mmap->addr + mmap->len) >= KERNEL_TEMP_PAGE_TABLE_LOCATION)) {
                     PAGE_DIRECTORY = max(KERNEL_TEMP_PAGE_TABLE_LOCATION, mmap->addr);
                     break;
                 }
 
-                mmap = (struct multiboot_mmap_entry *)((uint32_t)mmap + mbt_mmap->entry_size);
+                mmap = (struct multiboot_mmap_entry *)(mmap + mbt_mmap->entry_size);
             }
         }
-        mbt = (struct multiboot_tag *)(((uint32_t)mbt + mbt->size + 7) & 0xFFFFFFF8);
+        mbt = (struct multiboot_tag *)((uintptr_t)(mbt + mbt->size + 7) & 0xFFFFFFFFFFFFFFF8);
     }
     return;
 }
@@ -64,8 +58,7 @@ __attribute__((section(".text0"))) void create_page_directory()
 {
     uint64_t *page_dir = (uint64_t *)(PAGE_DIRECTORY);
     //  clear 2MB
-    for (int i = 0; i < 2 * 1024 * 1024 / 8; i++)
-    {
+    for (int i = 0; i < 2 * 1024 * 1024 / 8; i++) {
         page_dir[i] = 0;
     }
 
@@ -82,15 +75,13 @@ __attribute__((section(".text0"))) void create_page_directory()
 
     // map kernel to higher half
     page_dir = (uint64_t *)PAGE_DIRECTORY;
-    if ((page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] & 3) != 3)
-    {
+    if ((page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] & 3) != 3) {
         page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
         DIR_OFFSET += 0x1000;
     }
     page_dir = (uint64_t *)(page_dir[((KERNEL_BASE_PTR >> 39) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
 
-    if ((page_dir[((KERNEL_BASE_PTR >> 30) & 0x1FF)] & 3) != 3)
-    {
+    if ((page_dir[((KERNEL_BASE_PTR >> 30) & 0x1FF)] & 3) != 3) {
         page_dir[((KERNEL_BASE_PTR >> 30) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
         DIR_OFFSET += 0x1000;
     }
@@ -101,22 +92,19 @@ __attribute__((section(".text0"))) void create_page_directory()
 
     // map video memory
     page_dir = (uint64_t *)PAGE_DIRECTORY;
-    if ((page_dir[((framebuffer_ptr >> 39) & 0x1FF)] & 3) != 3)
-    {
+    if ((page_dir[((framebuffer_ptr >> 39) & 0x1FF)] & 3) != 3) {
         page_dir[((framebuffer_ptr >> 39) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
         DIR_OFFSET += 0x1000;
     }
     page_dir = (uint64_t *)(page_dir[((framebuffer_ptr >> 39) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
 
-    if ((page_dir[((framebuffer_ptr >> 30) & 0x1FF)] & 3) != 3)
-    {
+    if ((page_dir[((framebuffer_ptr >> 30) & 0x1FF)] & 3) != 3) {
         page_dir[((framebuffer_ptr >> 30) & 0x1FF)] = (PAGE_DIRECTORY + DIR_OFFSET) | 3;
         DIR_OFFSET += 0x1000;
     }
     page_dir = (uint64_t *)(page_dir[((framebuffer_ptr >> 30) & 0x1FF)] & 0xFFFFFFFFFFFFF000);
 
-    if ((page_dir[((framebuffer_ptr >> 21) & 0x1FF)] & 3) != 3)
-    {
+    if ((page_dir[((framebuffer_ptr >> 21) & 0x1FF)] & 3) != 3) {
         page_dir[((framebuffer_ptr >> 21) & 0x1FF)] = (framebuffer_ptr & 0xfffffffffffff000) | 0x83;
     }
 }
@@ -3841,16 +3829,13 @@ static const uint8_t *vga_font[] __attribute__((section(".data0"))) = {
 
 __attribute__((section(".text0"))) void early_print(char *str)
 {
-    char *videomemory = framebuffer_ptr;
+    char *videomemory = (char *)framebuffer_ptr;
     static unsigned int __attribute__((section(".data0"))) x = 0, y = 0;
-    for (size_t idx = 0; str[idx] != 0; idx++)
-    {
+    for (size_t idx = 0; str[idx] != 0; idx++) {
         int ch = str[idx];
-        uint32_t *p = &videomemory[(y * 1024 * 16 * 4) + (x * 8 * 4)];
-        for (size_t i = 0; i < 16; i++)
-        {
-            for (size_t j = 0; j < 8; j++)
-            {
+        uint32_t *p = (uint32_t*)&videomemory[(y * 1024 * 16 * 4) + (x * 8 * 4)];
+        for (size_t i = 0; i < 16; i++) {
+            for (size_t j = 0; j < 8; j++) {
                 uint32_t tmp = (vga_font[ch][i] & (0x80 >> j)) ? 0xFFFFFFFF : 0x00000000;
                 p[(i * 1024) + j] = tmp;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -28,27 +28,34 @@ isr_t interrupt_handlers[256] = {0};
 
 void isr_handler(retStack_t *stack, general_registers_t *regs)
 {
-    if (stack->interruptNumber < 256 && interrupt_handlers[stack->interruptNumber] != 0)
-    {
+    if (stack->interruptNumber < 256 && interrupt_handlers[stack->interruptNumber] != 0) {
         isr_t handler = interrupt_handlers[stack->interruptNumber];
         handler(stack, regs);
         if (stack->interruptNumber >= 32)
             eoi();
-    }
-    else
-    {
+    } else {
+
+        uint64_t rsp[10], rbp[10], rip[10];
+        size_t history_index = 0;
+        rsp[history_index] = regs->rsp;
+        rbp[history_index] = regs->rbp;
+        rip[history_index] = stack->rip;
+        for (size_t i = 0; i < 5; i++) {
+            history_index++;
+            rsp[history_index] = rbp[history_index - 1];
+            rbp[history_index] = ((uint64_t *)rsp[history_index])[0];
+            rip[history_index] = ((uint64_t *)rsp[history_index])[1];
+            if (rip[history_index] == 0xDEADBEEFDEADBEEF || rbp[history_index] == 0xDEADBEEFDEADBEEF) {
+                break;
+            }
+        }
         printf("RSP [%#llx]\n", stack);
         printf("Intr.No [%#llx], RSP [%#llx], RIP [%#llx]\n", stack->interruptNumber, regs->rsp, stack->rip);
-        if (stack->interruptNumber == 6)
-        {
+        if (stack->interruptNumber == 6) {
             printf("Invalid Opcode\n");
-        }
-        else if (stack->interruptNumber == 14)
-        {
+        } else if (stack->interruptNumber == 14) {
             printf("PF addr [0x%02x:%#llx], Error code [0x%llx]\n", stack->cs, get_cr2(), stack->err);
-        }
-        else if (stack->interruptNumber == 13)
-        {
+        } else if (stack->interruptNumber == 13) {
             printf("GP Error code [0x%llx]\n", stack->err);
         }
         //  print context
@@ -58,19 +65,7 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
         printf("R12%016llX,R13%016llX,R14%016llX,R15%016llX", regs->R12, regs->R13, regs->R14, regs->R15);
         printf("RIP%016llX,RFLAGS%016llX,CS%08X,SS%08X", stack->rip, stack->rflags, stack->cs, stack->ss);
         //  print call stack.
-        printf("Call stack:\n");
-        uint64_t rsp = regs->rsp, rbp = regs->rbp, rip = stack->rip;
-        for (size_t i = 0; i < 5; i++)
-        {
-            printf("RIP [0x%lx], RSP [0x%lx], RBP [0x%lx]\n", rip, rsp, rbp);
-            rsp = rbp;
-            rbp = ((uint64_t *)rsp)[0];
-            rip = ((uint64_t *)rsp)[1];
-            if (rip == 0xDEADBEEFDEADBEEF || rbp == 0xDEADBEEFDEADBEEF)
-            {
-                break;
-            }
-        }
+        //  printf("Call stack:\n");
         __asm__("cli;hlt");
     }
 }

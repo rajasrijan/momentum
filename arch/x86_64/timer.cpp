@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -18,7 +18,7 @@
  */
 
 #include "timer.h"
-#include "../../libc/threads.h"
+#include <threads.h>
 #include "apic.h"
 #include "global.h"
 #include "interrupts.h"

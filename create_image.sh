@@ -29,7 +29,7 @@ mkdir ./tmpdir/dev
 mkdir ./tmpdir/mnt
 PART_UUID=$(lsblk -f -n -o uuid "$LOPART")
 echo "ext2 uuid:$PART_UUID"
-echo -e "set timeout=2\nset default=0\nmenuentry \"momentum OS\" {\n\tmultiboot2 /kernel.elf uuid=$PART_UUID \n\tboot\n}" > tmpdir/boot/grub/grub.cfg
+echo -e "set timeout=2\nset default=0\nmenuentry \"momentum OS\" {\n\tmultiboot2 /momentum.elf uuid=$PART_UUID \n\tboot\n}" > tmpdir/boot/grub/grub.cfg
 echo 'unmounting ./tmpdir'
 sudo umount $LOPART
 rm -rf tmpdir

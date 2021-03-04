@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -208,7 +208,7 @@ enum Open_Flags {
 int lookup(const char *path, shared_ptr<class vnode> &node);
 int create(const string &path, shared_ptr<class vnode> &node);
 int open(const string &name, int oflag);
-int openat(int dirfd, const string &pathname, int flags, mode_t mode);
+int openat(int dirfd, const char *pathname, int flags, mode_t mode);
 
 int read(int fd, char *dst, size_t size);
 int fseek(int fd, long int offset, int origin);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -23,7 +23,7 @@
 void *operator new(std::size_t size);
 void *operator new[](std::size_t size);
 void *operator new(std::size_t size, void *t);
-void operator delete(void *p);
-void operator delete[](void *p);
+void operator delete(void *p) noexcept;
+void operator delete[](void *p) noexcept;
 
 #endif // __NEW_H__

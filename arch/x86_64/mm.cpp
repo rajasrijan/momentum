@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -192,7 +192,6 @@ void *_malloc(uint32_t length)
 void _free(void *ptr)
 {
     check_heap_integrity();
-#pragma message("compact heap.")
     if (!ptr)
         return;
     heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));

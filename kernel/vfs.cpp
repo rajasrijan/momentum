@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -764,12 +764,12 @@ vector<string> split_path(const string &path)
     return ret;
 }
 
-int openat(int dirfd, const string &pathname, int flags, mode_t mode)
+int openat(int dirfd, const char *pathname, int flags, mode_t mode)
 {
     int descriptor = -1;
     if (dirfd == FDCWD) {
         shared_ptr<vnode> cdir;
-        if (lookup(pathname.c_str(), cdir)) {
+        if (lookup(pathname, cdir)) {
             log_error("no such directory!");
             return -ENOTDIR;
         }

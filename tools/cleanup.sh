@@ -1,0 +1,1 @@
+rm -rf gcc binutils-gdb coreutils root_fs sysroot build_gcc build_coreutils build_binutils

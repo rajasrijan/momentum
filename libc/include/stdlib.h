@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -29,16 +29,23 @@
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
-    int atoi(const char *str);
-    void *aligned_malloc(size_t size, int n);
-    void *malloc(size_t size);
-    void free(void *ptr);
-    void *realloc(void *ptr, size_t size);
-    void *calloc(size_t blocks, size_t size);
-    void exit(int status);
+
+int atoi(const char *str);
+void *aligned_malloc(size_t size, int n);
+void *malloc(size_t size);
+void free(void *ptr);
+void *realloc(void *ptr, size_t size);
+void *calloc(size_t blocks, size_t size);
+void exit(int status);
+__attribute__((noreturn)) void abort(void);
+
+#ifndef __cplusplus
+#define min(a, b) ((a < b) ? a : b)
+#define max(a, b) ((a > b) ? a : b)
+#endif
+
 #ifdef __cplusplus
 }
 #endif

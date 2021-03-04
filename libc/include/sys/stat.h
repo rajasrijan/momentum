@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -20,7 +20,8 @@
 #ifndef STAT_H
 #define STAT_H
 
-#include <time.h>
+#include <sys/types.h>
+#include <sys/time.h>
 #include <stddef.h>
 
 #define S_IRWXU (1 << 0)
@@ -39,19 +40,26 @@
 #define S_ISGID (1 << 13)
 #define S_ISVTX (1 << 14)
 #define S_IFREG (1 << 15)
-typedef uint64_t ino_t;
-struct stat
-{
+#define S_IFSOCK (1 << 16)
+#define S_IFLNK (1 << 17)
+#define S_IFBLK (1 << 18)
+#define S_IFDIR (1 << 19)
+#define S_IFCHR (1 << 20)
+#define S_IFIFO (1 << 21)
+
+struct stat {
     uint64_t st_nlink;
     uint64_t st_uid;
     uint64_t st_gid;
     size_t st_dev;
     size_t st_ino;
     size_t st_size;
+    dev_t st_rdev; /* Device ID (if special file) */
     uint64_t st_mode;
     time_t st_atime; // last access time
     time_t st_mtime; // last modification time
     time_t st_ctime; // last sttus change type
+    blkcnt_t st_blocks
 };
 
 int fstat(int fd, struct stat *buf);

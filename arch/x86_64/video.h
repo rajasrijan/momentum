@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -18,6 +18,8 @@
  */
 
 #pragma once
+#include <stdint.h>
+#include "multiboot2.h"
 
 enum DisplayMode
 {

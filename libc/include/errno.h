@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -16,15 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+
 #ifndef _ERRNO_H
 #define _ERRNO_H
 
 #if __STDC_HOSTED__ == 1
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
-    extern int errno;
+extern int errno;
+extern char *program_invocation_short_name;
+extern char *program_invocation_name;
 #ifdef __cplusplus
 }
 #endif
@@ -74,5 +77,8 @@ extern "C"
 #define ENOSYS 40       /* Function not implemented (88 in Cyg?) */
 #define ENOTEMPTY 41    /* Directory not empty (90 in Cyg?) */
 #define EILSEQ 42       /* Illegal byte sequence */
-
+#define ELOOP 43
+#define ETIMEDOUT 44
+#define EOPNOTSUPP 95   /* Operation not supported on transport endpoint */
+#define EAFNOSUPPORT 97 /* Address family not supported by protocol */
 #endif

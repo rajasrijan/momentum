@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -17,8 +17,11 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bitmap_allocator.h"
 #include <errno.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "bitmap_allocator.h"
 
-void test() {}
+void test()
+{
+}

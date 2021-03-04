@@ -1,12 +1,10 @@
-#include "kernel/config.h"
-
 ENTRY(loader)
 TARGET(elf64-x86-64)
 
 SECTIONS
 {
 	. = 0x100000;
-	kernel_start = . + KERNEL_BASE_PTR;
+	kernel_start = . + ${MOMENTUM_KERNEL_BASE};
 	.text0 ALIGN (0x1000) : AT(ADDR(.text0))
 	{
 		*(.multiboot)
@@ -21,28 +19,28 @@ SECTIONS
 		. = ALIGN(4096);
 	}
 
-	. += KERNEL_BASE_PTR;
-	.text ALIGN (0x1000) : AT(ADDR(.text) - KERNEL_BASE_PTR)
+	. += ${MOMENTUM_KERNEL_BASE};
+	.text ALIGN (0x1000) : AT(ADDR(.text) - ${MOMENTUM_KERNEL_BASE})
 	{
 		*(.text*)
 		*(.rodata*)
 		. = ALIGN(4096);
 	}
 	
-	.data ALIGN (0x1000) : AT(ADDR(.data) - KERNEL_BASE_PTR)
+	.data ALIGN (0x1000) : AT(ADDR(.data) - ${MOMENTUM_KERNEL_BASE})
 	{
 		*(.data)
         . = ALIGN(4096);
 	}
 	
 	__MOD_LIST__ = .;
-    .mod_init ALIGN (0x1000) : AT(ADDR(.mod_init) - KERNEL_BASE_PTR)
+    .mod_init ALIGN (0x1000) : AT(ADDR(.mod_init) - ${MOMENTUM_KERNEL_BASE})
 	{
 		*(.mod_init)
 	}
 	__MOD_END__ = .;
     
-	.ctors ALIGN (0x1000) : AT(ADDR(.ctors) - KERNEL_BASE_PTR)
+	.ctors ALIGN (0x1000) : AT(ADDR(.ctors) - ${MOMENTUM_KERNEL_BASE})
 	{
 		__CTOR_LIST__ = .;
 		*(.ctors)
@@ -50,13 +48,13 @@ SECTIONS
 	}
 	__CTOR_END__ = .;
     
-	.dtors ALIGN (0x1000) : AT(ADDR(.dtors) - KERNEL_BASE_PTR)
+	.dtors ALIGN (0x1000) : AT(ADDR(.dtors) - ${MOMENTUM_KERNEL_BASE})
 	{
 		*(.dtors)
 		*(.fini_array)
 	}
 	
-	.bss ALIGN (0x1000) : AT(ADDR(.bss) - KERNEL_BASE_PTR)
+	.bss ALIGN (0x1000) : AT(ADDR(.bss) - ${MOMENTUM_KERNEL_BASE})
 	{
 		_sbss = .;
 		*(COMMON)
@@ -65,7 +63,7 @@ SECTIONS
 		. = ALIGN(4096);
 	}
 	
-	.eh_frame ALIGN (0x1000) : AT(ADDR(.eh_frame) - KERNEL_BASE_PTR)
+	.eh_frame ALIGN (0x1000) : AT(ADDR(.eh_frame) - ${MOMENTUM_KERNEL_BASE})
 	{
 		*(.eh_frame)
 		. = ALIGN(4096);

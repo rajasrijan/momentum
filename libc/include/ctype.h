@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -21,13 +21,11 @@
 #define _STDC_CTYPE_H_
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define isalnum(c) (isalpha(c) || isdigit(c))
 #define isalpha(c) (islower(c) || isupper(c))
-#define isblank(c) ((c) == ' ' || (c) == '\t')
 #define iscntrl(c) ((c) >= 0x0 && (c) <= 0x8)
 #define isdigit(c) ((c) >= '0' && (c) <= '9')
 #define isgraph(c) (ispunct(c) || isalnum(c))
@@ -39,6 +37,8 @@ extern "C"
 #define isxdigit(c) (isdigit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #define tolower(c) (isupper(c) ? ((c) + 'a' - 'A') : (c))
 #define toupper(c) (islower(c) ? ((c) + 'A' - 'a') : (c))
+
+int isblank(int c);
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,23 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #define FUSE_USE_VERSION 30
 
 #include <fuse.h>
@@ -159,7 +179,7 @@ int main(int argc, char *argv[])
     {
         if (part_table.partition[i].count > 0 && part_table.partition[i].startLBA > 1 && part_table.partition[i].startLBA + part_table.partition[i].count <= disk_size)
         {
-            snprintf(partition_file_list[partition_file_count].name, 256, "disk_part%lu", i);
+            snprintf(partition_file_list[partition_file_count].name, 256, "part%lu", i);
             printf("Found partition %s\n", partition_file_list[partition_file_count].name);
             partition_file_list[partition_file_count].offset = part_table.partition[i].startLBA * 512;
             partition_file_list[partition_file_count].size = part_table.partition[i].count * 512;

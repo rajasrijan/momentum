@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -57,7 +57,7 @@
 #if __STDC_HOSTED__ == 1
 int open(const char *path, int oflag, ...);
 #endif
-int openat(int dirfd, const char *pathname, int flags);
+int openat(int dirfd, const char *pathname, int flags, mode_t mode);
 int getdents64(int fd, struct dirent *dirp, size_t count);
 
 #endif

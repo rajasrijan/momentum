@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -21,5 +21,16 @@
 #define THREADS_H
 
 #include <native_sync.h>
+
+enum
+{
+  mtx_plain     = 0,
+  mtx_recursive = 1,
+  mtx_timed     = 2
+};
+
+typedef int once_flag;
+void call_once(once_flag *flag, void (*func)(void));
+#define ONCE_FLAG_INIT 1
 
 #endif /* THREADS_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -176,7 +176,7 @@ int ls(char *args)
 {
     string path = (!args) ? "." : args;
     vector<string> dirs;
-    int fd = openat(FDCWD, path, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC, 0);
+    int fd = openat(FDCWD, path.c_str(), O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC, 0);
     getdents(fd, dirs);
     close(fd);
     for (const string &entry : dirs) {
