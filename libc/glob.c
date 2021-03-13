@@ -17,9 +17,15 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include <termio.h>
+#include <stddef.h>
+#include <glob.h>
 #include <errno.h>
-#if __STDC_HOSTED__ == 1
 
-#endif //  __STDC_HOSTED__==1
+int glob(const char *, int, int (*)(const char *, int), glob_t *)
+{
+    return -ENOSYS;
+}
+void globfree(glob_t *)
+{
+    asm("cli;hlt");
+}

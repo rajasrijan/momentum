@@ -17,8 +17,34 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef POLL_H
 #define POLL_H
 typedef unsigned long int nfds_t;
+struct pollfd {
+    int fd;        //       The following descriptor being polled.
+    short events;  //   The input event flags (see below).
+    short revents; //  The output event flags (see below).
+};
+
+//	Data other than high-priority data may be read without blocking.
+#define POLLIN (1 << 0)
+//	Normal data may be read without blocking.
+#define POLLRDNORM (1 << 1)
+//	Priority data may be read without blocking.
+#define POLLRDBAND (1 << 2)
+//	High priority data may be read without blocking.
+#define POLLPRI (1 << 3)
+//	Normal data may be written without blocking.
+#define POLLOUT (1 << 4)
+//	Equivalent to POLLOUT.
+#define POLLWRNORM (1 << 5)
+//	Priority data may be written.
+#define POLLWRBAND (1 << 6)
+//	An error has occurred (revents only).
+#define POLLERR (1 << 7)
+//	Device has been disconnected (revents only).
+#define POLLHUP (1 << 8)
+//	Invalid fd member (revents only).
+#define POLLNVAL (1 << 9)
+
 #endif //   POLL_H

@@ -17,9 +17,15 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef TIMES_H
+#define TIMES_H
 
-#include <termio.h>
-#include <errno.h>
-#if __STDC_HOSTED__ == 1
+#include <sys/types.h>
 
-#endif //  __STDC_HOSTED__==1
+struct tms {
+    clock_t tms_utime;
+    clock_t tms_stime;
+    clock_t tms_cutime;
+    clock_t tms_cstime;
+};
+#endif

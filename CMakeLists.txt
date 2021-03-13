@@ -142,7 +142,7 @@ ExternalProject_Add(fusepart
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
 )
 
-ExternalProject_Get_Property(fusepart BINARY_DIR)
+ExternalProject_Get_Property(fusepart INSTALL_DIR)
 set(FUSEPART_EXE "${INSTALL_DIR}/bin/fusepart")
 
 set(TMP_ROOTFS "${PROJECT_BINARY_DIR}/rootfs")
@@ -190,10 +190,15 @@ add_custom_command(TARGET momentum POST_BUILD
     COMMENT "Generating object dump"
 )
 
-ExternalProject_Add(libc 
+set(SYSROOT_DIR ${CMAKE_BINARY_DIR}/sysroot)
+
+ExternalProject_Add(libc
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/libc
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${SYSROOT_DIR}/usr
 )
+
+#   various tools
+add_subdirectory(${CMAKE_SOURCE_DIR}/tools)
 
 if(DEBUG_DUMP_ALL_CMAKE_VARIABLES)
     get_cmake_property(_variableNames VARIABLES)

@@ -192,14 +192,14 @@ process_t multitask::getKernelProcess()
 
 process_t multitask::getActiveProcess()
 {
-    sync lock(multitaskMutex);
+    class sync lock(multitaskMutex);
     return active_process;
 }
 
 void multitask::setActiveProcess(process_t prs)
 {
     //	freeze multitasking
-    sync lock(multitaskMutex);
+    class sync lock(multitaskMutex);
     active_process = prs;
 }
 
@@ -209,7 +209,7 @@ int multitask::createProcess(process_t &prs, const char *processName, int ring, 
     char threadName[256] = {};
     {
         //	freeze multitasking
-        sync lock(multitaskMutex);
+        class sync lock(multitaskMutex);
         processList.push_back(new process_info(processName));
         prs = processList.back();
         prs->path_history.push_back(rnode);
@@ -231,7 +231,7 @@ void multitask::destroyProcess(int status)
     process_t prs = nullptr;
     {
         //	freeze multitasking
-        sync lock(multitaskMutex);
+        class sync lock(multitaskMutex);
         thread_t thd = threadList[uiCurrentThreadIndex];
         prs = thd->parentProcess;
         for (auto it = processList.begin(); it != processList.end(); it++) {
@@ -255,7 +255,7 @@ int multitask::createKernelThread(thread_t &thd, const char *threadName, void *(
 int multitask::createThread(process_t prs, thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg)
 {
     //	freeze multitasking
-    sync lock(multitaskMutex);
+    class sync lock(multitaskMutex);
     int ret = 0;
     threadList.push_back(new thread_info(threadName, prs));
     thd = threadList.back();

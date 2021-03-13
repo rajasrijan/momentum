@@ -17,8 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _FCNTL_H_
-#define _FCNTL_H_
+#ifndef FCNTL_H
+#define FCNTL_H
 
 #include <stddef.h>
 #include <limits.h>
@@ -48,11 +48,17 @@
 #define O_CREAT (1 << 7)
 #define O_APPEND (1 << 8)
 #define O_EXCL (1 << 9)
+#define O_NOCTTY (1 << 10)
 
+#ifndef UNISTD_H
 #define R_OK 0
 #define W_OK 1
 #define X_OK 2
 #define F_OK 3
+#endif //  UNISTD_H
+
+//	Close the file descriptor upon execution of an exec family function.
+#define FD_CLOEXEC (1)
 
 #if __STDC_HOSTED__ == 1
 int open(const char *path, int oflag, ...);

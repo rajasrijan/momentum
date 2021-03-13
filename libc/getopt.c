@@ -17,9 +17,47 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include <termio.h>
+#include <unistd.h>
+#include <getopt.h>
 #include <errno.h>
-#if __STDC_HOSTED__ == 1
 
-#endif //  __STDC_HOSTED__==1
+gid_t getegid(void)
+{
+    return -ENOSYS;
+}
+uid_t geteuid(void)
+{
+    return -ENOSYS;
+}
+gid_t getgid(void)
+{
+    return -ENOSYS;
+}
+gid_t getgroups(int n, gid_t *groups)
+{
+    return -ENOSYS;
+}
+long gethostid(void)
+{
+    return -ENOSYS;
+}
+char *getlogin(void)
+{
+    return NULL;
+}
+int getlogin_r(char *, size_t)
+{
+    return -ENOSYS;
+}
+int getopt(int, char *const[], const char *)
+{
+    return -ENOSYS;
+}
+int getpagesize(void)
+{
+    return -ENOSYS;
+}
+char *getpass(const char *)
+{
+    return NULL;
+}

@@ -17,11 +17,11 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
 #include <sys/types.h>
+#include <time.h>
 
 #define SIG_ERR 2
 #define SIG_DFL 1
@@ -67,13 +67,13 @@
 #define SIGUSR1 18
 //	(T) User-defined signal 2.
 #define SIGUSR2 19
-//	(T) Pollable event. [Option End]
+//	(T) Pollable event.
 #define SIGPOLL 20
-//	(T) Profiling timer expired. [Option End]
+//	(T) Profiling timer expired.
 #define SIGPROF 21
-//	(A) Bad system call. [Option End]
+//	(A) Bad system call.
 #define SIGSYS 22
-//	(A) Trace/breakpoint trap. [Option End]
+//	(A) Trace/breakpoint trap.
 #define SIGTRAP 23
 //	(I) High bandwidth data is available at a socket.
 #define SIGURG 24
@@ -84,17 +84,7 @@
 //	(A) File size limit exceeded.
 #define SIGXFSZ 27
 
-#define SA_NOCLDSTOP 1
-#define SA_ONSTACK 2
-#define SA_RESETHAND 3
-#define SA_RESTART 4
-#define SA_SIGINFO 5
-#define SA_NOCLDWAIT 6
-#define SA_NODEFER 7
-#define SS_ONSTACK 8
-#define SS_DISABLE 9
-#define MINSIGSTKSZ 10
-#define SIGSTKSZ 11
+#define NSIG 64
 
 typedef uint64_t sigset_t;
 typedef uint64_t sig_atomic_t;
@@ -150,5 +140,87 @@ struct sigaction {
     void (*sa_restorer)(void);
 };
 
+//	Do not generate SIGCHLD when children stop.
+#define SA_NOCLDSTOP (1 << 0)
+
+//	The resulting set is the union of the current set and the signal set pointed to by the argument set.
+#define SIG_BLOCK (1 << 0)
+
+//	The resulting set is the intersection of the current set and the complement of the signal set pointed to by the argument set.
+#define SIG_UNBLOCK (1 << 0)
+
+//	The resulting set is the signal set pointed to by the argument set.
+#define SIG_SETMASK (1 << 0)
+
+//	Causes signal delivery to occur on an alternate stack.
+#define SA_ONSTACK (1 << 0)
+
+//	Causes signal dispositions to be set to SIG_DFL on entry to signal handlers.
+#define SA_RESETHAND (1 << 0)
+
+//	Causes certain functions to become restartable.
+#define SA_RESTART (1 << 0)
+
+//	Causes extra information to be passed to signal handlers at the time of receipt of a signal.
+#define SA_SIGINFO (1 << 0)
+
+//	Causes implementations not to create zombie processes on child death.
+#define SA_NOCLDWAIT (1 << 0)
+
+//	Causes signal not to be automatically blocked on entry to signal handler.
+#define SA_NODEFER (1 << 0)
+
+//	Process is executing on an alternate signal stack.
+#define SS_ONSTACK (1 << 0)
+
+//	Alternate signal stack is disabled.
+#define SS_DISABLE (1 << 0)
+
+//	Minimum stack size for a signal handler.
+#define MINSIGSTKSZ (1 << 0)
+
+//	Default size in bytes for the alternate signal stack.
+#define SIGSTKSZ (1 << 0)
+
+typedef struct stack {
+
+    void *ss_sp;    //       stack base or pointer
+    size_t ss_size; //     stack size
+    int ss_flags;   //    flags
+} stack_t;
+struct sigstack {
+
+    int ss_onstack; //  non-zero when signal stack is in use
+    void *ss_sp;    //       signal stack pointer
+};
+
+void (*bsd_signal(int, void (*)(int)))(int);
+int kill(pid_t, int);
+int killpg(pid_t, int);
+int pthread_kill(pthread_t, int);
+int pthread_sigmask(int, const sigset_t *, sigset_t *);
+int raise(int);
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+int sigaddset(sigset_t *, int);
+int sigaltstack(const stack_t *, stack_t *);
+int sigdelset(sigset_t *, int);
+int sigemptyset(sigset_t *);
+int sigfillset(sigset_t *);
+int sighold(int);
+int sigignore(int);
+int siginterrupt(int, int);
+int sigismember(const sigset_t *, int);
+void (*signal(int, void (*)(int)))(int);
+int sigpause(int);
+int sigpending(sigset_t *);
+int sigprocmask(int, const sigset_t *, sigset_t *);
+int sigqueue(pid_t, int, const union sigval);
+int sigrelse(int);
+void (*sigset(int, void (*)(int)))(int);
+int sigstack(struct sigstack *ss,
+             struct sigstack *oss);
+int sigsuspend(const sigset_t *);
+int sigtimedwait(const sigset_t *, siginfo_t *, const struct timespec *);
+int sigwait(const sigset_t *set, int *sig);
+int sigwaitinfo(const sigset_t *, siginfo_t *);
 #endif //   SIGNAL_H

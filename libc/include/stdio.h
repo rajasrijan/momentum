@@ -25,9 +25,14 @@
 #include <sys/types.h>
 
 #define EOF (-1)
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+//	Set file offset to offset.
+#define SEEK_SET (0)
+
+//	Set file offset to current plus offset.
+#define SEEK_CUR (1)
+
+//	Set file offset to EOF plus offset.
+#define SEEK_END (2)
 
 #define _IONBF 0
 #define _IOLBF 1
@@ -63,6 +68,7 @@ FILE *fopen(const char *filename, const char *mode);
 int fclose(FILE *file);
 int ferror(FILE *file);
 int fprintf(FILE *file, const char *format, ...);
+int vfprintf ( FILE * stream, const char * format, va_list arg );
 size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream);
 void __fpurge(FILE *stream);
 size_t __fpending(FILE *fp);

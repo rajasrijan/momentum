@@ -87,16 +87,16 @@ int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
     ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
     size_t read_count = 0;
     shared_ptr<char> buffer = new char[v_ext_vfs->blk_sz];
-
-    for (size_t blkIdx = (position / v_ext_vfs->blk_sz); blkIdx < sizeof(_inode->direct_block_pointer) / sizeof(_inode->direct_block_pointer[0]); blkIdx++) {
-        if (read_count >= size) {
-            break;
-        }
-        v_ext_vfs->read_block(_inode->direct_block_pointer[blkIdx], buffer);
+    size_t blkIdx = 0;
+    while (get_block_id_from_position(position + read_count, blkIdx) == 0) {
+        v_ext_vfs->read_block(blkIdx, buffer);
         auto blk_offset = position % v_ext_vfs->blk_sz;
         auto cpy_sz = min((uint64_t)size - read_count, v_ext_vfs->blk_sz - blk_offset);
         memcpy(&data[read_count], &(buffer.get()[blk_offset]), cpy_sz);
         read_count += cpy_sz;
+        if (read_count >= size) {
+            break;
+        }
     }
     if (bytesRead)
         *bytesRead = read_count;
@@ -345,6 +345,28 @@ directory &ext_vnode::ext_dir_iterator::operator*()
     ext_vfs *v_ext_vfs = (ext_vfs *)parent_vnode->v_vfsp;
     auto i = offset % v_ext_vfs->blk_sz;
     return *((directory *)&(buffer.get()[i]));
+}
+
+int ext_vnode::get_block_id_from_position(size_t pos, size_t &blk_id)
+{
+    int ret = 0;
+    ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
+    const auto direct_block_count = sizeof(_inode->direct_block_pointer) / sizeof(_inode->direct_block_pointer[0]);
+    const auto single_block_count = v_ext_vfs->blk_sz / sizeof(_inode->direct_block_pointer[0]);
+    auto blk_idx = pos / v_ext_vfs->blk_sz;
+    if (blk_idx < direct_block_count) {
+        blk_id = _inode->direct_block_pointer[blk_idx];
+        return 0;
+    } else if ((blk_idx - direct_block_count) < single_block_count) {
+        std::shared_ptr<char> buffer = new char[v_ext_vfs->blk_sz];
+        ret = v_ext_vfs->read_block(_inode->single_block_pointer, buffer);
+        if (ret != 0) {
+            return ret;
+        }
+        blk_id = ((uint32_t *)buffer.get())[(blk_idx - direct_block_count)];
+        return 0;
+    }
+    return -EOF;
 }
 
 bool directory::is_allocated() const

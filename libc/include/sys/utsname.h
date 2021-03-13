@@ -17,9 +17,17 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef UTSNAME_H
+#define UTSNAME_H
 
-#include <termio.h>
-#include <errno.h>
-#if __STDC_HOSTED__ == 1
+struct utsname {
+    char sysname[256];  //  Name of this implementation of the operating system.
+    char nodename[256]; // Name of this node within the communications network to which this node is attached, if any.
+    char release[256];  //  Current release level of this implementation.
+    char version[256];  //  Current version level of this release.
+    char machine[256];  //  Name of the hardware type on which the system is running.
+};
 
-#endif //  __STDC_HOSTED__==1
+int uname(struct utsname *);
+
+#endif //  UTSNAME_H

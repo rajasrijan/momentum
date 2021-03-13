@@ -17,9 +17,26 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include <termio.h>
+#include <sys/resource.h>
 #include <errno.h>
-#if __STDC_HOSTED__ == 1
 
-#endif //  __STDC_HOSTED__==1
+int getpriority(int, id_t)
+{
+    return -ENOSYS;
+}
+int getrlimit(int, struct rlimit *)
+{
+    return -ENOSYS;
+}
+int getrusage(int, struct rusage *)
+{
+    return -ENOSYS;
+}
+int setpriority(int, id_t, int)
+{
+    return -ENOSYS;
+}
+int setrlimit(int, const struct rlimit *)
+{
+    return -ENOSYS;
+}

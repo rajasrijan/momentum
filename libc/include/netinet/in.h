@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef IN_H
 #define IN_H
 
@@ -36,4 +35,10 @@ struct sockaddr_in {
     in_port_t sin_port;      // Port number.
     struct in_addr sin_addr; // IP address.
 };
+
+//  IPv4 local host address.
+#define INADDR_ANY (1 << 0)
+//IPv4 broadcast address.
+#define INADDR_BROADCAST (1 << 1)
+
 #endif

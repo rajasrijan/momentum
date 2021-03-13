@@ -1,4 +1,22 @@
-#if __STDC_HOSTED__ == 1
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef TERMIOS_H
 #define TERMIOS_H
 #include <stdint.h>
@@ -72,25 +90,7 @@
 #define TOSTOP 13
 #define PENDIN 14
 #define IEXTEN 15
-#define VDISCARD 16
-#define VDSUSP 17
-#define VEOF 18
-#define VEOL 19
-#define VEOL2 20
-#define VERASE 21
-#define VINTR 22
-#define VKILL 23
-#define VLNEXT 24
-#define VMIN 25
-#define VQUIT 26
-#define VREPRINT 27
-#define VSTART 28
-#define VSTATUS 29
-#define VSTOP 30
-#define VSUSP 31
-#define VSWTCH 32
-#define VTIME 33
-#define VWERASE 34
+
 
 struct termio
 {
@@ -103,4 +103,3 @@ struct termio
 
 int tcgetattr(int fd, struct termio *termios_p);
 #endif //TERMIOS_H
-#endif

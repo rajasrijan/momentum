@@ -17,9 +17,19 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef FNMATCH_H
+#define FNMATCH_H
 
-#include <termio.h>
-#include <errno.h>
-#if __STDC_HOSTED__ == 1
+//	The string does not match the specified pattern
+#define FNM_NOMATCH (1<<0)
+//	Slash in string only matches slash in pattern
+#define FNM_PATHNAME (1<<1)
+//	Leading period in string must be exactly matched by period in pattern
+#define FNM_PERIOD (1<<2)
+//	Disable backslash escaping
+#define FNM_NOESCAPE (1<<3)
+//	The implementation does not support this function
+#define FNM_NOSYS (1<<4)
 
-#endif //  __STDC_HOSTED__==1
+int fnmatch(const char *, const char *, int);
+#endif //FNMATCH_H

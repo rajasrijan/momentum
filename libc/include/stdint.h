@@ -17,9 +17,12 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include <termio.h>
-#include <errno.h>
-#if __STDC_HOSTED__ == 1
-
-#endif //  __STDC_HOSTED__==1
+#ifndef STDINT_H
+#define STDINT_H
+//  workaround to support gcc and clang
+#if __STDC_HOSTED__ && !defined(__clang__)
+#include "stdint-gcc.h"
+#else
+#include_next <stdint.h>
+#endif
+#endif

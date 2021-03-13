@@ -42,18 +42,74 @@ set(LIBC_SRC
     unistd.c
     utime.c
     vsprintf.c
+    getopt.c
+    resource.c
+    glob.c
+    stubs.c
+    syscall.s
 )
 
 add_library(c STATIC ${LIBC_SRC})
 target_compile_options(c PRIVATE
-    $<$<COMPILE_LANGUAGE:C>:-m64 --sysroot=include>
+    $<$<COMPILE_LANGUAGE:C>:-m64 -masm=intel --sysroot=.>
 )
 target_include_directories(c 
     PUBLIC include
     PRIVATE ..
 )
+
+add_library(g STATIC libg_dummy.c)
+target_compile_options(g PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-m64 -masm=intel --sysroot=.>
+)
+target_include_directories(g 
+    PUBLIC include
+    PRIVATE ..
+)
+
+add_library(crt0 OBJECT crt0.c)
+target_compile_options(crt0 PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-m64 -masm=intel --sysroot=.>
+)
+target_include_directories(crt0 
+    PUBLIC include
+    PRIVATE ..
+)
+
+add_library(crtbegin OBJECT crtbegin.c)
+target_compile_options(crtbegin PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-m64 -masm=intel --sysroot=.>
+)
+target_include_directories(crtbegin 
+    PUBLIC include
+    PRIVATE ..
+)
+
+
+add_library(crtend OBJECT crtend.c)
+target_compile_options(crtend PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-m64 -masm=intel --sysroot=.>
+)
+target_include_directories(crtend 
+    PUBLIC include
+    PRIVATE ..
+)
+
 include(GNUInstallDirs)
 install(TARGETS c)
+install(TARGETS g)
 install(DIRECTORY include/ 
-DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     FILES_MATCHING PATTERN "*.h")
+
+install(FILES $<TARGET_OBJECTS:crt0> DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RENAME crt0.o
+)
+
+install(FILES $<TARGET_OBJECTS:crtbegin> DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RENAME crtbegin.o
+)
+
+install(FILES $<TARGET_OBJECTS:crtend> DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RENAME crtend.o
+)

@@ -24,28 +24,41 @@
 #include <sys/time.h>
 #include <stddef.h>
 
-#define S_IRWXU (1 << 0)
-#define S_IRUSR (1 << 1)
-#define S_IWUSR (1 << 2)
-#define S_IXUSR (1 << 3)
-#define S_IRWXG (1 << 4)
+//  file permissions
+#define S_IXOTH (1 << 0)
+#define S_IWOTH (1 << 1)
+#define S_IROTH (1 << 2)
+#define S_IRWXO (S_IXOTH | S_IWOTH | S_IROTH)
+
+#define S_IXGRP (1 << 3)
+#define S_IWGRP (1 << 4)
 #define S_IRGRP (1 << 5)
-#define S_IWGRP (1 << 6)
-#define S_IXGRP (1 << 7)
-#define S_IRWXO (1 << 8)
-#define S_IROTH (1 << 9)
-#define S_IWOTH (1 << 10)
-#define S_IXOTH (1 << 11)
-#define S_ISUID (1 << 12)
-#define S_ISGID (1 << 13)
-#define S_ISVTX (1 << 14)
-#define S_IFREG (1 << 15)
-#define S_IFSOCK (1 << 16)
-#define S_IFLNK (1 << 17)
-#define S_IFBLK (1 << 18)
-#define S_IFDIR (1 << 19)
-#define S_IFCHR (1 << 20)
-#define S_IFIFO (1 << 21)
+#define S_IRWXG (S_IXGRP | S_IWGRP | S_IRGRP)
+
+#define S_IXUSR (1 << 6)
+#define S_IWUSR (1 << 7)
+#define S_IRUSR (1 << 8)
+#define S_IRWXU (S_IXUSR | S_IWUSR | S_IRUSR)
+
+#define S_ISVTX (1 << 9)
+#define S_ISGID (1 << 10)
+#define S_ISUID (1 << 11)
+
+//	regular
+#define S_IFREG (0100000)
+#define S_IFSOCK (0140000)
+//	symbolic link
+#define S_IFLNK (0120000)
+//	block special
+#define S_IFBLK (0060000)
+//	directory
+#define S_IFDIR (0040000)
+//	character special
+#define S_IFCHR (0020000)
+//	FIFO special
+#define S_IFIFO (0010000)
+//	type of file
+#define S_IFMT (1 << 22)
 
 struct stat {
     uint64_t st_nlink;
@@ -59,8 +72,10 @@ struct stat {
     time_t st_atime; // last access time
     time_t st_mtime; // last modification time
     time_t st_ctime; // last sttus change type
-    blkcnt_t st_blocks
+    blkcnt_t st_blocks;
 };
 
 int fstat(int fd, struct stat *buf);
+int lstat(const char *restrict, struct stat *restrict);
+int stat(const char *restrict, struct stat *restrict);
 #endif

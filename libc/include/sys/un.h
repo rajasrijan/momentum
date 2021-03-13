@@ -17,9 +17,11 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef UN_H
+#define UN_H
+struct sockaddr_un {
 
-#include <termio.h>
-#include <errno.h>
-#if __STDC_HOSTED__ == 1
-
-#endif //  __STDC_HOSTED__==1
+    sa_family_t sun_family; //  Address family.
+    char sun_path[256];        //  Socket pathname.
+};
+#endif //  UN_H

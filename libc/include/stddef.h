@@ -27,7 +27,12 @@
 #define NULL 0
 #endif //__cplusplus
 
+#ifndef NAME_MAX
+#define NAME_MAX 256
+#endif
+
 #define size_t unsigned long
+#define ptrdiff_t int64_t
 
 #define offsetof(S, d) ((size_t)(&(((S *)0)->d)))
 

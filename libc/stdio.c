@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -117,6 +117,15 @@ int ferror(FILE *file)
     return -ENOSYS;
 }
 int fclose(FILE *file)
+{
+    return -ENOSYS;
+}
+
+int fprintf(FILE *file, const char *format, ...)
+{
+    return -ENOSYS;
+}
+int vfprintf(FILE *stream, const char *format, va_list arg)
 {
     return -ENOSYS;
 }

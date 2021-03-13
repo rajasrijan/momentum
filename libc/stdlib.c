@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -43,7 +43,7 @@ void *_aligned_malloc(uint32_t len, int n)
     __asm__("int3");
     return NULL;
 }
-__attribute__((noreturn)) void exit(int status)
+__attribute__((noreturn)) void _exit(int status)
 {
     __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)
                      : "rcx", "r11");
@@ -51,6 +51,10 @@ __attribute__((noreturn)) void exit(int status)
     {
         __asm__("pause");
     }
+}
+__attribute__((noreturn)) void exit(int status)
+{
+    _exit(status);
 }
 #endif
 size_t mem_used = 0;

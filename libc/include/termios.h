@@ -28,7 +28,28 @@ typedef uint64_t cc_t;     //        Used for terminal special characters.
 typedef uint64_t speed_t;  //        Used for terminal baud rates.
 typedef uint64_t tcflag_t; //        Used for terminal modes.
                            //        Size of the array c_cc for control characters.
-#define NCCS 2
+
+//  control charecters
+#define VDISCARD 0
+#define VDSUSP 1
+#define VEOF 2
+#define VEOL 3
+#define VEOL2 4
+#define VERASE 5
+#define VINTR 6
+#define VKILL 7
+#define VLNEXT 8
+#define VMIN 9
+#define VQUIT 10
+#define VREPRINT 11
+#define VSTART 12
+#define VSTATUS 13
+#define VSTOP 14
+#define VSUSP 15
+#define VSWTCH 16
+#define VTIME 17
+#define VWERASE 18
+#define NCCS 19
 struct termios {
 
     tcflag_t c_iflag; //     Input modes.
@@ -37,7 +58,6 @@ struct termios {
     tcflag_t c_lflag; //     Local modes.
     cc_t c_cc[NCCS];  //  Control characters.
 };
-
 //    The <termios.h> header shall define the following symbolic constants for use as flags in the c_iflag field. The c_iflag field describes the basic terminal input control.
 
 //	Signal interrupt on break.

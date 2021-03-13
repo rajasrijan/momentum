@@ -23,8 +23,6 @@
 #include "stddef.h"
 #include <sys/types.h>
 
-#define MB_LEN_MAX (2)
-#define MB_CUR_MAX (2)
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0

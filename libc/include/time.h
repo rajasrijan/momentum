@@ -16,6 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-
+#ifndef TIME_T
+#define TIME_T
 #include <sys/time.h>
+
+struct timespec {
+    time_t tv_sec; //    Seconds.
+    long tv_nsec;  //   Nanoseconds.
+};
+#endif  //  TIME_T

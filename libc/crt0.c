@@ -18,11 +18,11 @@
  */
 #include <limits.h>
 
-extern void exit(int status);
+extern void _exit(int status);
 extern int main();
 char program_invocation_short_name[NAME_MAX];
 char program_invocation_name[1024];
 void _start()
 {
-    exit(main());
+    _exit(main());
 }

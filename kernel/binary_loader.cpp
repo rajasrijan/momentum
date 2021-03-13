@@ -103,6 +103,8 @@ int binary_loader::load(shared_ptr<vnode> &node)
             auto next_it = lower_bound(user_memory_map.begin(), user_memory_map.end(), page, [](const MemPage &a, const MemPage &val) { return val.vaddr < a.vaddr; });
             next_it = user_memory_map.insert(next_it, page);
         }
+    //  sort list of entries
+    std::quick_sort(user_memory_map.begin(), user_memory_map.end(), [](MemPage &a, MemPage &b) { return a.vaddr < b.vaddr; });
     //  merge page entries
     for (size_t i = 0; i < user_memory_map.size() - 1; i++) {
         //  merge condition

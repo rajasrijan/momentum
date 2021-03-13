@@ -28,6 +28,7 @@ class ext_vnode : public vnode
   private:
     uint32_t inode_id;
     inode *_inode;
+    int get_block_id_from_position(size_t pos, size_t &blk_id);
 
   public:
     ext_vnode(ext_vfs *vfsp, size_t _inode_id);

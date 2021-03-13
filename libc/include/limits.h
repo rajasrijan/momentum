@@ -1,9 +1,30 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef LIMITS_H
 #define LIMITS_H
 
-#define INT_MAX (2147483647)
-#define INT_MIN (-2147483648)
-#define UCHAR_MAX ((1 << 8) - 1)
+#if __STDC_HOSTED__ == 0
+#include_next <limits.h>
+#endif
 
-#define NAME_MAX (255)
+#ifndef NAME_MAX
+#define NAME_MAX 256
+#endif
 #endif //LIMITS_H

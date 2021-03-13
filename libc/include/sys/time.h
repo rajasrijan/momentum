@@ -17,12 +17,10 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#ifndef TIME_T
-#define TIME_T
+#ifndef SYS_TIME_T
+#define SYS_TIME_T
 #include <stdint.h>
-
-typedef uint64_t time_t;
+#include <sys/types.h>
 
 struct timeval {
     time_t tv_sec;
