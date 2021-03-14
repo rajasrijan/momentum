@@ -18,6 +18,29 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+find_package(Git)
+if(NOT Git_FOUND)
+  message(ERROR "Git not found")
+endif()
+
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} log --oneline -1
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/acpica
+    OUTPUT_VARIABLE GIT_LOG
+)
+
+if(NOT (GIT_LOG MATCHES "Add momentum OS"))
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} am ${CMAKE_CURRENT_SOURCE_DIR}/0001-Add-momentum-OS.patch
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/acpica
+    OUTPUT_VARIABLE GIT_LOG
+    RESULT_VARIABLE PATCH_APPLY_RESULT
+  )
+  if(NOT (${PATCH_APPLY_RESULT} equals 0))
+    message(ERROR "Failed to apply git patch: ${GIT_LOG}")
+  endif()
+endif()
+
 set(ACPICA_SRC 
 # acpica/source/tools/efihello/efihello.c
 # acpica/source/tools/acpihelp/ahaml.c

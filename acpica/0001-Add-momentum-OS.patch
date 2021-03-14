@@ -1,0 +1,77 @@
+From cdbac492b6599d3544a26cff9432bc8055119fa4 Mon Sep 17 00:00:00 2001
+From: Srijan Kumar Sharma <raja.srijan@gmail.com>
+Date: Sat, 13 Mar 2021 17:49:34 -0500
+Subject: [PATCH] Add momentum OS
+
+---
+ source/include/platform/acenv.h      |  3 ++
+ source/include/platform/acmomentum.h | 43 ++++++++++++++++++++++++++++
+ 2 files changed, 46 insertions(+)
+ create mode 100755 source/include/platform/acmomentum.h
+
+diff --git a/source/include/platform/acenv.h b/source/include/platform/acenv.h
+index 740d44955..5c4e6a1a4 100644
+--- a/source/include/platform/acenv.h
++++ b/source/include/platform/acenv.h
+@@ -308,6 +308,9 @@
+ #if defined(_LINUX) || defined(__linux__)
+ #include "aclinux.h"
+ 
++#elif defined(_MOMENTUM_)
++#include "acmomentum.h"
++
+ #elif defined(_APPLE) || defined(__APPLE__)
+ #include "acmacosx.h"
+ 
+diff --git a/source/include/platform/acmomentum.h b/source/include/platform/acmomentum.h
+new file mode 100755
+index 000000000..7a73187bb
+--- /dev/null
++++ b/source/include/platform/acmomentum.h
+@@ -0,0 +1,43 @@
++/*
++ * Copyright 2009-2021 Srijan Kumar Sharma
++ *
++ * This file is part of Momentum.
++ *
++ * Momentum is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * Momentum is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++
++#ifndef __ACMOMENTUM_H__
++#define __ACMOMENTUM_H__
++
++#include <stdint.h>
++#include <string.h>
++#include <ctype.h>
++#include <native_sync.h>
++
++#define ACPI_MACHINE_WIDTH 64
++
++#define ACPI_DEBUG_OUTPUT
++
++#define ACPI_MUTEX_TYPE ACPI_OSL_MUTEX
++
++#define ACPI_USE_SYSTEM_CLIBRARY
++
++#define ACPI_MUTEX mtx_t *
++#define ACPI_SPINLOCK mtx_t *
++#define ACPI_SEMAPHORE sem_t * 
++
++#define ACPI_USE_LOCAL_CACHE
++
++#endif /* __ACMOMENTUM_H__ */
+-- 
+2.27.0
+
