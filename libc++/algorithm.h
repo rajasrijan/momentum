@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -68,7 +68,7 @@ const T &max(const T &a, const T &b)
 }
 
 template <class T, class... Args>
-const T &max(const T &a, const Args &... b)
+const T &max(const T &a, const Args &...b)
 {
     const auto &tmp = max(b...);
     return (tmp > a) ? tmp : a;

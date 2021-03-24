@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -86,13 +86,10 @@ void setColor_text(uint8_t c)
 
 void putcharacter_vga(const uint8_t ch, uint32_t x, uint32_t y)
 {
-    for (size_t i = 0; i < font_height; i++)
-    {
-        for (size_t j = 0; j < font_width; j++)
-        {
+    for (size_t i = 0; i < font_height; i++) {
+        for (size_t j = 0; j < font_width; j++) {
             uint8_t tmp = (vga_font[ch][i] & (0x80 >> j)) ? 0xFF : 0x00;
-            for (size_t c = 0; c < depth; c++)
-            {
+            for (size_t c = 0; c < depth; c++) {
                 videomemory[(((y * font_height + i) * pitch) + ((x * font_width + j) * depth)) + c] = tmp;
             }
         }
@@ -136,49 +133,40 @@ int init_video(multiboot_tag_framebuffer *mbi)
     color = 0x0F00;
     //  Paging is not initialized yet, so use 1GB temp paging structure.
     uint64_t *pml4t = (uint64_t *)PAGE_DIRECTORY;
-    if ((pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 3) != 3)
-    {
+    if ((pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 3) != 3) {
         //  page structure doesn't exist. Can't continue.
         asm("cli;hlt");
     }
     uint64_t *pdpt = (uint64_t *)(pml4t[(mbi->common.framebuffer_addr >> 39) & 0x1FF] & 0xFFFFFFFFFFFFF000);
-    if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) != 3)
-    {
+    if ((pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 3) != 3) {
         pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] = (PAGE_DIRECTORY + DIR_OFFSET) | 0x3;
         DIR_OFFSET += 0x1000;
     }
     uint64_t *pte = (uint64_t *)(pdpt[(mbi->common.framebuffer_addr >> 30) & 0x1FF] & 0xFFFFFFFFFFFFF000);
-    for (uint64_t addr = mbi->common.framebuffer_addr; addr < (mbi->common.framebuffer_addr + mbi->common.size); addr += 0x200000)
-    {
-        if ((pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] & 3) == 3)
-        {
+    for (uint64_t addr = mbi->common.framebuffer_addr; addr < (mbi->common.framebuffer_addr + mbi->common.size); addr += 0x200000) {
+        if ((pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] & 3) == 3) {
             //  already mapped. Check if mapping is same as what we need, else can't continue.
             if ((mbi->common.framebuffer_addr & 0xFFFFFFFFFFF00000) != (pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] & 0xFFFFFFFFFFF00000))
                 asm("cli;hlt");
-        }
-        else
+        } else
             pte[(mbi->common.framebuffer_addr >> 21) & 0x1FF] = (mbi->common.framebuffer_addr & 0xFFFFFFFFFFF00000) | 0x83;
     }
     //  flush page cache
     asm volatile("invlpg (%0)" ::"r"(mbi->common.framebuffer_addr));
     //  keep record to read pages later.
     ret = PageManager::add_early_kernel_mapping(mbi->common.framebuffer_addr, mbi->common.framebuffer_addr, pitch * screen_height);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         printf("failed to add_early_kernel_mapping\n");
         asm("cli;hlt");
     }
-    if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
-    {
+    if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT) {
         currentDisplayMode = TEXT_ONLY;
         putcharacter = putcharacter_text;
         scroll = scroll_text;
         setColor = setColor_text;
         text_width = screen_width;
         text_height = screen_height;
-    }
-    else if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-    {
+    } else if (mbi->common.framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
         currentDisplayMode = GRAPHICS;
         init_font();
         putcharacter = putcharacter_vga;

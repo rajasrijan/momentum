@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -116,8 +116,7 @@ int init_idt(void)
     idt_set_gate(sys_info.idt.ie, 62, (uint64_t)isr62, 0x08, 0x8E | 0x60);
     idt_set_gate(sys_info.idt.ie, 63, (uint64_t)isr63, 0x08, 0x8E | 0x60);
     idt_set_gate(sys_info.idt.ie, 64, (uint64_t)isr64, 0x08, 0x8E | 0x60);
-    for (uint64_t i = 65; i < 256; i++)
-    {
+    for (uint64_t i = 65; i < 256; i++) {
         idt_set_gate(sys_info.idt.ie, (uint8_t)i, (uint64_t)isr65, 0x08, 0x8E);
     }
     load_interrupt_descriptor_table(&(sys_info.idt.ip));

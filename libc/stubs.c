@@ -21,198 +21,268 @@
 #include <signal.h>
 #include <setjmp.h>
 
-void longjmp(jmp_buf env, int val)
-{
-    asm("cli;hlt");
-}
-
 int raise(int i1)
 {
+    asm("int3");
     return -ENOSYS;
 }
 int sigfillset(sigset_t *)
 {
+    asm("int3");
     return -ENOSYS;
 }
 void (*signal(int, void (*)(int)))(int)
 {
-    asm("cli;hlt");
+    asm("int3");
 }
 putc_unlocked()
 {
+    asm("int3");
     return -ENOSYS;
 }
-fflush()
-{
-    return -ENOSYS;
-}
+
 fcntl()
 {
+    asm("int3");
     return -ENOSYS;
 }
 fputs_unlocked()
 {
+    asm("int3");
     return -ENOSYS;
 }
 bsearch()
 {
+    asm("int3");
     return -ENOSYS;
 }
 umask()
 {
+    asm("int3");
     return -ENOSYS;
 }
 int puts(const char *str)
 {
+    asm("int3");
     return -ENOSYS;
 }
 char *strerror(int errnum)
 {
+    asm("int3");
     return -ENOSYS;
 }
 times()
 {
+    asm("int3");
     return -ENOSYS;
 }
 qsort()
 {
+    asm("int3");
     return -ENOSYS;
 }
 int execve(const char *, char *const[], char *const[])
 {
+    asm("int3");
     return -ENOSYS;
 }
 int fnmatch(const char *, const char *, int)
 {
+    asm("int3");
     return -ENOSYS;
 }
 int dup2(int, int)
 {
+    asm("int3");
     return -ENOSYS;
 }
 pid_t waitpid(pid_t, int *, int)
 {
+    asm("int3");
     return -ENOSYS;
 }
 int sigsuspend(const sigset_t *)
 {
+    asm("int3");
     return -ENOSYS;
 }
 int sigprocmask(int, const sigset_t *, sigset_t *)
 {
+    asm("int3");
     return -ENOSYS;
 }
 strsignal()
 {
+    asm("int3");
     return -ENOSYS;
 }
 WCOREDUMP()
 {
+    asm("int3");
     return -ENOSYS;
 }
 sprintf()
 {
+    asm("int3");
     return -ENOSYS;
 }
 pid_t fork(void)
 {
+    asm("int3");
     return -ENOSYS;
 }
 environ()
 {
+    asm("int3");
     return -ENOSYS;
 }
 pid_t getppid(void)
 {
+    asm("int3");
     return -ENOSYS;
 }
 int stat(const char *restrict, struct stat *restrict)
 {
+    asm("int3");
     return -ENOSYS;
 }
 S_ISDIR()
 {
+    asm("int3");
     return -ENOSYS;
 }
 getpwnam()
 {
+    asm("int3");
     return -ENOSYS;
 }
 int pipe(int[2])
 {
+    asm("int3");
     return -ENOSYS;
 }
 S_ISREG()
 {
+    asm("int3");
     return -ENOSYS;
 }
 int fstat(int fd, struct stat *buf)
 {
-    return -ENOSYS;
-}
-int setjmp(jmp_buf env)
-{
+    asm("int3");
     return -ENOSYS;
 }
 ferror_unlocked()
 {
+    asm("int3");
     return -ENOSYS;
 }
 clearerr()
 {
+    asm("int3");
     return -ENOSYS;
 }
 dprintf()
 {
+    asm("int3");
     return -ENOSYS;
 }
-pid_t getpid(void)
-{
-    return -ENOSYS;
-}
+
 uid_t getuid(void)
 {
+    asm("int3");
     return -ENOSYS;
 }
 int isatty(int)
 {
+    asm("int3");
     return -ENOSYS;
 }
 poll()
 {
-    return -ENOSYS;
-}
-ssize_t read(int, void *, size_t)
-{
+    asm("int3");
     return -ENOSYS;
 }
 char *optarg = NULL;
 int optind = 0, opterr = 0, optopt = 0;
 strtoull()
 {
+    asm("int3");
     return -ENOSYS;
 }
 strtoul()
 {
+    asm("int3");
     return -ENOSYS;
 }
-ssize_t write(int, const void *, size_t)
-{
-    return -ENOSYS;
-}
+
 long int sysconf(int)
 {
+    asm("int3");
     return -ENOSYS;
 }
 strncasecmp()
 {
+    asm("int3");
     return -ENOSYS;
 }
 strcasecmp()
 {
+    asm("int3");
     return -ENOSYS;
 }
 vasprintf()
 {
+    asm("int3");
+    return -ENOSYS;
+}
+lstat()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+major()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+minor()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+putchar_unlocked()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+S_ISLNK()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+S_ISBLK()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+S_ISCHR()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+readlink()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+
+ioctl()
+{
+    asm("int3");
+    return -ENOSYS;
+}
+getenv()
+{
+    asm("int3");
     return -ENOSYS;
 }

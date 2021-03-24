@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -29,12 +29,12 @@ int initilize_graphics();
 
 class texture
 {
-public:
+  public:
     __uint128_t *data;
     [[maybe_unused]] size_t screen_width, screen_height;
     [[maybe_unused]] size_t pitch, depth;
 
-public:
+  public:
     texture(size_t sw, size_t sh, size_t p, size_t d);
     ~texture();
 };
@@ -44,13 +44,14 @@ class window
     friend class window_manager;
     size_t x, y;
 
-private:
+  private:
     texture fb;
-    window(size_t _x, size_t _y, size_t width, size_t height) : x(_x), y(_y), fb(width, height, width * 4, 4)
+    window(size_t _x, size_t _y, size_t width, size_t height)
+        : x(_x), y(_y), fb(width, height, width * 4, 4)
     {
     }
 
-public:
+  public:
     ~window()
     {
     }
@@ -60,17 +61,24 @@ public:
         cleartexture(fb.data + ((30 * fb.pitch) / sizeof(__uint128_t)), 0x00FFFFFF, fb.pitch, fb.screen_height - 30);
         return 0;
     }
-    int show() { return 0; }
+    int show()
+    {
+        return 0;
+    }
 };
 
 class window_manager
 {
-private:
+  private:
     std::vector<std::shared_ptr<window>> window_list;
 
-public:
-    window_manager() {}
-    ~window_manager() {}
+  public:
+    window_manager()
+    {
+    }
+    ~window_manager()
+    {
+    }
 
     template <typename... Args>
     std::shared_ptr<window> create_window(Args... arg)
@@ -87,8 +95,7 @@ public:
 
     void draw_all(__uint128_t *framebuffer, size_t screen_height, size_t pitch)
     {
-        for (auto current_window : window_list)
-        {
+        for (auto current_window : window_list) {
             auto &fb_ex = current_window->fb;
             auto blit_start_point = (__uint128_t *)(((uint64_t)framebuffer) + (current_window->y * pitch) + current_window->x);
             current_window->draw();

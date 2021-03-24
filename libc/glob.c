@@ -23,6 +23,7 @@
 
 int glob(const char *, int, int (*)(const char *, int), glob_t *)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 void globfree(glob_t *)

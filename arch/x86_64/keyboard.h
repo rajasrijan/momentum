@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -21,31 +21,29 @@
 #define KEYBOARD_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-    enum keymap
-    {
-        SC_ESC = 0x01,
-        SC_1,
-        SC_2,
-        SC_3,
-        SC_4,
-        SC_5,
-        SC_6,
-        SC_7,
-        SC_8,
-        SC_9,
-        SC_A,
-        SC_B,
-        SC_C,
-        SC_D,
-        SC_E,
-        SC_LSHIFT = 0x2A,
-        SC_RSHIFT = 0x36
-    };
-    void init_keyboard(void);
+enum keymap {
+    SC_ESC = 0x01,
+    SC_1,
+    SC_2,
+    SC_3,
+    SC_4,
+    SC_5,
+    SC_6,
+    SC_7,
+    SC_8,
+    SC_9,
+    SC_A,
+    SC_B,
+    SC_C,
+    SC_D,
+    SC_E,
+    SC_LSHIFT = 0x2A,
+    SC_RSHIFT = 0x36
+};
+void init_keyboard(void);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -32,8 +32,7 @@
 #define PG_GET_ADDRESS(pg) ((pg)->paddr << 12)
 
 #pragma pack(push, 1)
-union page_struct
-{
+union page_struct {
     struct
     {
         uint8_t present : 1;
@@ -52,8 +51,7 @@ union page_struct
 };
 #pragma pack(pop)
 
-struct MemPage
-{
+struct MemPage {
     uint64_t vaddr, paddr, size;
     uint64_t vend() const
     {
@@ -65,20 +63,17 @@ struct MemPage
     }
 };
 
-namespace PageManager
-{
+namespace PageManager {
 const uint64_t SMALLPAGESIZE = 0x1000;
 const uint64_t PAGESIZE = 0x200000;
 const uint64_t BIGPAGESIZE = 0x40000000;
 const uint64_t BIGBIGPAGESIZE = 0x8000000000;
 
-enum Privilege
-{
+enum Privilege {
     Supervisor = 0,
     User = 1
 };
-enum PageType
-{
+enum PageType {
     Read_Only = 0,
     Read_Write = 1
 };

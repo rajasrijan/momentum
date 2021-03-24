@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -31,7 +31,8 @@ class blockInterface
     size_t blockSize;
 
   public:
-    blockInterface(const string &_name, size_t blkSz) : name(_name), blockSize(blkSz)
+    blockInterface(const string &_name, size_t blkSz)
+        : name(_name), blockSize(blkSz)
     {
     }
     virtual ~blockInterface()

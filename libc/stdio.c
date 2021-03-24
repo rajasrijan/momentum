@@ -107,6 +107,7 @@ FILE *fopen(const char *filename, const char *mode)
 
     int fd = open(filename, oflag);
     if (fd < 0) {
+        asm("cli;hlt");
         errno = ENOSYS;
         return NULL;
     }
@@ -114,19 +115,28 @@ FILE *fopen(const char *filename, const char *mode)
 }
 int ferror(FILE *file)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 int fclose(FILE *file)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 
 int fprintf(FILE *file, const char *format, ...)
 {
+    asm("cli;hlt");
     return -ENOSYS;
+}
+int fflush(FILE *stream)
+{
+    //   caching not implemented yet. nothing to flush.
+    return 0;
 }
 int vfprintf(FILE *stream, const char *format, va_list arg)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 #endif

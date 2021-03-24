@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include <sys/socket.h>
 #include <netdb.h>
 #include <errno.h>
@@ -26,16 +25,19 @@ int getaddrinfo(const char *node, const char *service,
                 const struct addrinfo *hints,
                 struct addrinfo **res)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 
 void freeaddrinfo(struct addrinfo *res)
 {
+    asm("cli;hlt");
     errno = ENOSYS;
 }
 
 const char *gai_strerror(int errcode)
 {
+    asm("cli;hlt");
     errno = ENOSYS;
     return 0;
 }

@@ -1,3 +1,22 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "binary_loader.h"
 #include <algorithm>
 #include <arch/x86_64/paging.h>
@@ -5,6 +24,7 @@
 #include <utility>
 #include <kernel/logging.h>
 #include <kernel/vnode.h>
+#include <string.h>
 
 binary_loader::binary_loader()
 {
@@ -57,7 +77,7 @@ void printElfSectionHeader(const Elf64_Shdr *sheader)
     log_debug("size: %x, flags: %x\n", sheader->sh_size, sheader->sh_flags);
 }
 
-int binary_loader::load(shared_ptr<vnode> &node)
+int binary_loader::load(shared_ptr<vnode> &node, vector<MemPage> &memory_map, uint64_t &entry_point)
 {
     int ret = 0;
     Elf64_Phdr *pheader = nullptr;
@@ -65,7 +85,7 @@ int binary_loader::load(shared_ptr<vnode> &node)
     Elf64_Shdr *string_section_hdr = nullptr;
     char *string_table = nullptr;
     Elf64_Ehdr elf_hdr = {};
-    vector<MemPage> user_memory_map;
+
     vector<MemPage> kernel_memory_map;
 
     ret = node->bread(0, sizeof(Elf64_Ehdr), (char *)&elf_hdr, nullptr);
@@ -100,22 +120,22 @@ int binary_loader::load(shared_ptr<vnode> &node)
     for (size_t i = 0; i < elf_hdr.e_phnum; i++)
         if (pheader[i].p_type == PT_LOAD) {
             MemPage page = {PageManager::roundToPageBoundry(pheader[i].p_vaddr), 0, PageManager::roundToPageSize(pheader[i].p_memsz)};
-            auto next_it = lower_bound(user_memory_map.begin(), user_memory_map.end(), page, [](const MemPage &a, const MemPage &val) { return val.vaddr < a.vaddr; });
-            next_it = user_memory_map.insert(next_it, page);
+            auto next_it = lower_bound(memory_map.begin(), memory_map.end(), page, [](const MemPage &a, const MemPage &val) { return val.vaddr < a.vaddr; });
+            next_it = memory_map.insert(next_it, page);
         }
     //  sort list of entries
-    std::quick_sort(user_memory_map.begin(), user_memory_map.end(), [](MemPage &a, MemPage &b) { return a.vaddr < b.vaddr; });
+    std::quick_sort(memory_map.begin(), memory_map.end(), [](MemPage &a, MemPage &b) { return a.vaddr < b.vaddr; });
     //  merge page entries
-    for (size_t i = 0; i < user_memory_map.size() - 1; i++) {
+    for (size_t i = 0; i < memory_map.size() - 1; i++) {
         //  merge condition
-        if (user_memory_map[i + 1].vaddr <= user_memory_map[i].vend()) {
-            user_memory_map[i].size = max(user_memory_map[i].vend(), user_memory_map[i + 1].vend()) - user_memory_map[i].vaddr;
-            user_memory_map.erase(user_memory_map.begin() + i + 1);
+        if (memory_map[i + 1].vaddr <= memory_map[i].vend()) {
+            memory_map[i].size = max(memory_map[i].vend(), memory_map[i + 1].vend()) - memory_map[i].vaddr;
+            memory_map.erase(memory_map.begin() + i + 1);
             i--;
         }
     }
     //  allocate user process memory. Map memory to kernel and user process.
-    for (MemPage &page : user_memory_map) {
+    for (MemPage &page : memory_map) {
         MemPage kpage = {};
         kpage.size = page.size;
         ret = PageManager::findFreeVirtualMemory(kpage.vaddr, page.size);
@@ -135,6 +155,8 @@ int binary_loader::load(shared_ptr<vnode> &node)
         }
         page.paddr = kpage.paddr;
         kernel_memory_map.push_back(kpage);
+        //  memset memory for debug purpose
+        memset((void *)kpage.vaddr, 0x90, kpage.size);
     }
 
     // process the section headers
@@ -145,13 +167,21 @@ int binary_loader::load(shared_ptr<vnode> &node)
         printElfSectionHeader(&section_header);
         if ((section_header.sh_type & SHT_PROGBITS) && section_header.sh_addr != 0) {
             //  find kernel space mapping.
-            auto user_map_it = find_if(user_memory_map.begin(), user_memory_map.end(), [&section_header](const MemPage &page) { return page.vinside(section_header.sh_addr); });
-            auto kern_map_it = kernel_memory_map.begin() + distance(user_memory_map.begin(), user_map_it);
+            auto user_map_it = find_if(memory_map.begin(), memory_map.end(), [&section_header](const MemPage &page) { return page.vinside(section_header.sh_addr); });
+            auto kern_map_it = kernel_memory_map.begin() + distance(memory_map.begin(), user_map_it);
             //  load the section from file.
             char *kernel_address = (char *)(kern_map_it->vaddr + (section_header.sh_addr - user_map_it->vaddr));
             ret = node->bread(section_header.sh_offset, section_header.sh_size, kernel_address, nullptr);
             if (ret != 0)
                 goto error_exit;
+        } else if ((section_header.sh_type & SHT_NOBITS) && section_header.sh_addr != 0) {
+            //  find kernel space mapping.
+            auto user_map_it = find_if(memory_map.begin(), memory_map.end(), [&section_header](const MemPage &page) { return page.vinside(section_header.sh_addr); });
+            auto kern_map_it = kernel_memory_map.begin() + distance(memory_map.begin(), user_map_it);
+            //  load the section from file.
+            char *kernel_address = (char *)(kern_map_it->vaddr + (section_header.sh_addr - user_map_it->vaddr));
+            //  initialize memory
+            memset(kernel_address, 0x00, section_header.sh_size);
         }
     }
 
@@ -163,12 +193,9 @@ int binary_loader::load(shared_ptr<vnode> &node)
             asm("cli;hlt");
         }
     }
+    entry_point = elf_hdr.e_entry;
 error_exit:
     kernel_memory_map.clear();
-    //  create process
-    process_t process = nullptr;
-    if (ret == 0)
-        ret = multitask::getInstance()->createProcess(process, node->getName().c_str(), 3, user_memory_map, elf_hdr.e_entry);
     delete[] pheader;
     pheader = nullptr;
     delete[] sheader;

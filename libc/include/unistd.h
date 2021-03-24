@@ -325,14 +325,21 @@ REPLACE:    //\t$2\n#define\t$1\t(\t)\n
 // _PC_SYNC_IO
 // _PC_VDISABLE
 #define _SC_CLK_TCK 5
+
 //	File number of stdin. It is 0.
+#ifndef STDIN_FILENO
 #define STDIN_FILENO (0)
+#endif
 
 //	File number of stdout. It is 1.
+#ifndef STDOUT_FILENO
 #define STDOUT_FILENO (1)
+#endif
 
 //	File number of stderr. It is 2.
+#ifndef STDERR_FILENO
 #define STDERR_FILENO (2)
+#endif
 
 int access(const char *, int);
 unsigned int alarm(unsigned int);

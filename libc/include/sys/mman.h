@@ -17,41 +17,41 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//	Page can be read.
-#define PROT_READ (1 << 0)
-
-//	Page can be written.
-#define PROT_WRITE (1 << 0)
-
-//	Page can be executed.
-#define PROT_EXEC (1 << 0)
-
 //	Page can not be accessed.
 #define PROT_NONE (1 << 0)
+
+//	Page can be read.
+#define PROT_READ (1 << 1)
+
+//	Page can be written.
+#define PROT_WRITE (1 << 2)
+
+//	Page can be executed.
+#define PROT_EXEC (1 << 3)
 
 //	Share changes.
 #define MAP_SHARED (1 << 0)
 
 //	Changes are private.
-#define MAP_PRIVATE (1 << 0)
+#define MAP_PRIVATE (1 << 1)
 
 //	Interpret addr exactly.
-#define MAP_FIXED (1 << 0)
+#define MAP_FIXED (1 << 2)
 
 //	Perform asynchronous writes.
 #define MS_ASYNC (1 << 0)
 
 //	Perform synchronous writes.
-#define MS_SYNC (1 << 0)
+#define MS_SYNC (1 << 1)
 
 //	Invalidate mappings.
-#define MS_INVALIDATE (1 << 0)
+#define MS_INVALIDATE (1 << 2)
 
 //	Lock currently mapped pages.
 #define MCL_CURRENT (1 << 0)
 
 //	Lock pages that become mapped.
-#define MCL_FUTURE (1 << 0)
+#define MCL_FUTURE (1 << 1)
 
 #define MAP_ANON (1 << 0)
 #define MAP_ANONYMOUS MAP_ANON
@@ -59,7 +59,7 @@
 
 int mlock(const void *, size_t);
 int mlockall(int);
-void *mmap(void *, size_t, int, int, int, off_t);
+void *mmap(void *addr, size_t len, int prot, int flags, int fildes, off_t off);
 int mprotect(void *, size_t, int);
 int msync(void *, size_t, int);
 int munlock(const void *, size_t);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -60,10 +60,8 @@ static void pci_print_info(PCI_COMMON_CONFIG *config)
     id = (uint32_t)((config->BaseClass << 16) | (config->SubClass << 8) | (config->ProgIf));
     printf("%x\\", id);
     unsigned int index = 0;
-    for (uint32_t i = 0; i < (sizeof(info_id) / sizeof(uint32_t)); i++)
-    {
-        if (id == info_id[i])
-        {
+    for (uint32_t i = 0; i < (sizeof(info_id) / sizeof(uint32_t)); i++) {
+        if (id == info_id[i]) {
             index = i;
             break;
         }
@@ -74,18 +72,14 @@ static void pci_print_info(PCI_COMMON_CONFIG *config)
 void pci_interrupt_handler(retStack_t *ret, general_registers_t *regs)
 {
     auto device_bkt_it = irq_pci_lookup.find(ret->interruptNumber);
-    if (device_bkt_it == irq_pci_lookup.end())
-    {
+    if (device_bkt_it == irq_pci_lookup.end()) {
         printf("Critical failure, IRQ should be in list\n");
         asm("cli;hlt");
     }
-    for (auto &pci_dev : device_bkt_it->second)
-    {
+    for (auto &pci_dev : device_bkt_it->second) {
         auto status = pci_read_status(pci_dev);
-        if (status & PCI_STATUS_INTERRUPT)
-        {
-            if (pci_dev->pDriver)
-            {
+        if (status & PCI_STATUS_INTERRUPT) {
+            if (pci_dev->pDriver) {
                 pci_dev->pDriver->interrupt();
             }
         }
@@ -98,35 +92,28 @@ void pci_init_devices()
     const auto &pci_irq_routing = get_pci_routing_table();
 
     printf("Searching for PCI devices....\n");
-    for (device.address = 0; device.address < 0x00FFFF00; device.address += 0x100)
-    {
+    for (device.address = 0; device.address < 0x00FFFF00; device.address += 0x100) {
         uint32_t vendor = pci_readRegister(&device, 0) & 0xffff;
-        if (vendor != 0xffff)
-        {
+        if (vendor != 0xffff) {
             PCI_COMMON_CONFIG config = {};
-            for (uint32_t index = 0; index < sizeof(PCI_COMMON_CONFIG); index += 4)
-            {
+            for (uint32_t index = 0; index < sizeof(PCI_COMMON_CONFIG); index += 4) {
                 ((uint32_t *)&config)[(index / 4)] = pci_readRegister(&device, index);
             }
             printf("PCI:%x\\", device.address);
             pci_print_info(&config);
             printf("\n");
             device.has_irq = false;
-            if (config.type0.InterruptPin != 0)
-            {
+            if (config.type0.InterruptPin != 0) {
                 //	find IRQ from routing table
-                for (const auto &pci_routing : pci_irq_routing)
-                {
+                for (const auto &pci_routing : pci_irq_routing) {
                     //	match filter. ACPI INTA starts at 0 but PCI config space INTA starts at 1.
-                    if ((((pci_routing.address >> 16) & 0xFF) == device.slot) && (config.type0.InterruptPin == (pci_routing.pin + 1)))
-                    {
+                    if ((((pci_routing.address >> 16) & 0xFF) == device.slot) && (config.type0.InterruptPin == (pci_routing.pin + 1))) {
                         device.ioapic_pin = pci_routing.irq;
                         device.irq_no = IRQ(pci_routing.irq);
                         device.has_irq = true;
                     }
                 }
-                if (!device.has_irq)
-                {
+                if (!device.has_irq) {
                     printf("Route not found\n");
                     //asm("cli;hlt");
                 }
@@ -135,10 +122,8 @@ void pci_init_devices()
             pci_devices.push_back(device);
         }
     }
-    for (auto &pci_device : pci_devices)
-    {
-        if (pci_device.has_irq)
-        {
+    for (auto &pci_device : pci_devices) {
+        if (pci_device.has_irq) {
             if (irq_pci_lookup.find(pci_device.irq_no) == irq_pci_lookup.end())
                 register_interrupt_handler(pci_device.irq_no, pci_interrupt_handler);
             irq_pci_lookup[pci_device.irq_no].push_back(&pci_device);
@@ -150,8 +135,7 @@ void pci_init_devices()
 
 uint32_t pci_readRegister(const pci_device_t *device, uint32_t offset)
 {
-    if (offset & 0x03)
-    {
+    if (offset & 0x03) {
         printf("Offset has to be 4 byte aligned\n");
         asm("cli;hlt");
     }
@@ -201,18 +185,15 @@ uint32_t pci_resource_start(pci_device_t *dev, uint32_t bar)
 {
     int ret = 0;
     uint32_t addr = pci_readRegister(dev, 0x10 + (bar * 4));
-    if (addr != 0 && (addr % 2) == 0)
-    {
+    if (addr != 0 && (addr % 2) == 0) {
         pci_writeRegister(dev, 0x10 + (bar * 4), 0xFFFFFFFF);
         uint32_t size = (pci_readRegister(dev, 0x10 + (bar * 4)) & 0xFFFFFFF0);
         pci_writeRegister(dev, 0x10 + (bar * 4), addr);
         size = ((~size) + 1);
         printf("Mapping %x size %x\n", addr, size);
-        for (size_t paddr = (addr / PageManager::PAGESIZE) * PageManager::PAGESIZE; paddr < addr + size; paddr += PageManager::PAGESIZE)
-        {
+        for (size_t paddr = (addr / PageManager::PAGESIZE) * PageManager::PAGESIZE; paddr < addr + size; paddr += PageManager::PAGESIZE) {
             ret = PageManager::IdentityMap2MBPages(paddr);
-            if (ret < 0)
-            {
+            if (ret < 0) {
                 printf("Failed to identity map pages");
                 asm("cli;hlt");
             }

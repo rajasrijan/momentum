@@ -1,3 +1,22 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef EXT_VNODE_H
 #define EXT_VNODE_H
 
@@ -35,7 +54,7 @@ class ext_vnode : public vnode
     ~ext_vnode();
     int mkdir(std::string name, std::shared_ptr<vnode> &pDir);
     int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int bwrite(ssize_t position, size_t size, char *data, int *bytesWritten);
+    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
     int readdir(vector<shared_ptr<vnode>> &vnodes);
     int open(uint64_t flags);
     int lookup(char const *, shared_ptr<vnode> &);

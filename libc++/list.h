@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -18,21 +18,20 @@
  */
 #ifndef _LIST_H_
 #define _LIST_H_
-namespace std
-{
+namespace std {
 template <class T>
 class list
 {
   private:
-    struct listNode
-    {
+    struct listNode {
         listNode *next, *prev;
         T data;
     };
     listNode *first, *last;
 
   public:
-    list() : first(nullptr), last(nullptr)
+    list()
+        : first(nullptr), last(nullptr)
     {
     }
     // void operator=() {}
@@ -40,7 +39,8 @@ class list
     class iterator
     {
       public:
-        iterator() : node(nullptr), parent(nullptr)
+        iterator()
+            : node(nullptr), parent(nullptr)
         {
         }
         ~iterator()
@@ -61,7 +61,8 @@ class list
 
       protected:
         friend list;
-        iterator(listNode *currentNode, list *_parent) : node(currentNode), parent(_parent)
+        iterator(listNode *currentNode, list *_parent)
+            : node(currentNode), parent(_parent)
         {
         }
     };
@@ -146,12 +147,9 @@ class list
         tmp->data = t;
         tmp->prev = nullptr;
         tmp->next = first;
-        if (!first)
-        {
+        if (!first) {
             last = tmp;
-        }
-        else
-        {
+        } else {
             first->prev = tmp;
         }
         first = tmp;

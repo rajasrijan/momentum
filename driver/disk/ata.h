@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -30,11 +30,10 @@
 #include <kernel/vfs.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-    void ata_init(void);
+void ata_init(void);
 
 #ifdef __cplusplus
 }
@@ -51,7 +50,7 @@ class ata_blk_vnode : public vnode
     ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name);
     ~ata_blk_vnode();
     int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int bwrite(ssize_t position, size_t size, char *data, int *bytesWritten);
+    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
     int write(size_t offset, size_t count, void *data);
     int readdir(vector<shared_ptr<vnode>> &vnodes);
     int ioctl(uint32_t command, void *data, int fflag);

@@ -35,20 +35,20 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
             eoi();
     } else {
 
-        uint64_t rsp[10], rbp[10], rip[10];
-        size_t history_index = 0;
-        rsp[history_index] = regs->rsp;
-        rbp[history_index] = regs->rbp;
-        rip[history_index] = stack->rip;
-        for (size_t i = 0; i < 5; i++) {
-            history_index++;
-            rsp[history_index] = rbp[history_index - 1];
-            rbp[history_index] = ((uint64_t *)rsp[history_index])[0];
-            rip[history_index] = ((uint64_t *)rsp[history_index])[1];
-            if (rip[history_index] == 0xDEADBEEFDEADBEEF || rbp[history_index] == 0xDEADBEEFDEADBEEF) {
-                break;
-            }
-        }
+        // uint64_t rsp[10], rbp[10], rip[10];
+        // size_t history_index = 0;
+        // rsp[history_index] = regs->rsp;
+        // rbp[history_index] = regs->rbp;
+        // rip[history_index] = stack->rip;
+        // for (size_t i = 0; i < 5; i++) {
+        //     history_index++;
+        //     rsp[history_index] = rbp[history_index - 1];
+        //     rbp[history_index] = ((uint64_t *)rsp[history_index])[0];
+        //     rip[history_index] = ((uint64_t *)rsp[history_index])[1];
+        //     if (!rip[history_index] || rip[history_index] == 0xDEADBEEFDEADBEEF || rbp[history_index] == 0xDEADBEEFDEADBEEF) {
+        //         break;
+        //     }
+        // }
         printf("RSP [%#llx]\n", stack);
         printf("Intr.No [%#llx], RSP [%#llx], RIP [%#llx]\n", stack->interruptNumber, regs->rsp, stack->rip);
         if (stack->interruptNumber == 6) {

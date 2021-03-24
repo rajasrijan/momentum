@@ -144,6 +144,7 @@ class vfile
     vfile(shared_ptr<class vnode> parent);
     ~vfile();
     int read(char *data, size_t sz);
+    int write(const char *data, size_t sz);
     int seekg(long int offset, int origin);
 };
 
@@ -207,11 +208,17 @@ enum Open_Flags {
 
 int lookup(const char *path, shared_ptr<class vnode> &node);
 int create(const string &path, shared_ptr<class vnode> &node);
+
 int open(const string &name, int oflag);
+int open(const string &name, int oflag, vfile **file);
+
 int openat(int dirfd, const char *pathname, int flags, mode_t mode);
 
 int read(int fd, char *dst, size_t size);
+int write(int fd, const char *src, size_t size);
+
 int fseek(int fd, long int offset, int origin);
+
 int mount(string mountPoint, string mountSource);
 int getdents(int fd, vector<string> &dir);
 string getCurrentPath();

@@ -52,17 +52,18 @@ char *strtok(char *str, const char *delimiters);
 char *strerror(int errnum);
 char *strchrnul(const char *s, int c);
 
-void    *memccpy(void *, const void *, int, size_t);
-void    *memchr(const void *, int, size_t);
-void    *memmove(void *, const void *, size_t);
-char    *strchr(const char *, int);
-int      strcoll(const char *, const char *);
-size_t   strcspn(const char *, const char *);
-char    *strpbrk(const char *, const char *);
-char    *strrchr(const char *, int);
-size_t   strspn(const char *, const char *);
-char    *strtok_r(char *, const char *, char **);
-size_t   strxfrm(char *, const char *, size_t);
+void *memccpy(void *, const void *, int, size_t);
+void *memchr(const void *, int, size_t);
+void *memmove(void *, const void *, size_t);
+void *mempcpy(void *dest, const void *src, size_t n);
+char *strchr(const char *, int);
+int strcoll(const char *, const char *);
+size_t strcspn(const char *, const char *);
+char *strpbrk(const char *, const char *);
+char *strrchr(const char *, int);
+size_t strspn(const char *, const char *);
+char *strtok_r(char *, const char *, char **);
+size_t strxfrm(char *, const char *, size_t);
 #ifdef __cplusplus
 }
 #endif //  __cplusplus

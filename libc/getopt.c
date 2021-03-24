@@ -23,22 +23,27 @@
 
 gid_t getegid(void)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 uid_t geteuid(void)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 gid_t getgid(void)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 gid_t getgroups(int n, gid_t *groups)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 long gethostid(void)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 char *getlogin(void)
@@ -47,14 +52,17 @@ char *getlogin(void)
 }
 int getlogin_r(char *, size_t)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int getopt(int, char *const[], const char *)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int getpagesize(void)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 char *getpass(const char *)

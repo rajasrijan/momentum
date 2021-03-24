@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -35,7 +35,8 @@ class vector
     const size_t element_size = sizeof(T);
 
   public:
-    vector() : __data(nullptr), _size(0), _count(0), lock(0)
+    vector()
+        : __data(nullptr), _size(0), _count(0), lock(0)
     {
         _size = 8;
         _count = 0;
@@ -43,7 +44,8 @@ class vector
         __data = (T *)calloc(_size, sizeof(T));
     }
 
-    vector(int n) : __data(nullptr), _size(0), _count(0), lock(0)
+    vector(int n)
+        : __data(nullptr), _size(0), _count(0), lock(0)
     {
         _size = n + 8;
         _count = n;
@@ -51,7 +53,8 @@ class vector
         __data = (T *)calloc(_size, sizeof(T));
     }
 
-    vector(const vector &v) : __data(nullptr), _size(0), _count(0), lock(0)
+    vector(const vector &v)
+        : __data(nullptr), _size(0), _count(0), lock(0)
     {
         _size = v._size;
         _count = 0;
@@ -112,7 +115,7 @@ class vector
     }
 
     template <class... Args>
-    void emplace_back(Args &&... args)
+    void emplace_back(Args &&...args)
     {
         sync local_lock(lock);
         if (_count >= _size) {
@@ -193,7 +196,8 @@ class vector
     class iterator
     {
       public:
-        iterator() : m_pdataStart(nullptr), m_count(0), m_index(0)
+        iterator()
+            : m_pdataStart(nullptr), m_count(0), m_index(0)
         {
         }
 
@@ -258,7 +262,8 @@ class vector
 
       protected:
         friend vector;
-        iterator(vector<T> *dataPtr, ssize_t sz, ssize_t index) : m_pdataStart(dataPtr), m_count(sz), m_index(index)
+        iterator(vector<T> *dataPtr, ssize_t sz, ssize_t index)
+            : m_pdataStart(dataPtr), m_count(sz), m_index(index)
         {
         }
 
@@ -271,7 +276,8 @@ class vector
     {
       public:
         const_iterator(const const_iterator &) = default;
-        const_iterator() : m_pdataStart(nullptr), m_count(0), m_index(0)
+        const_iterator()
+            : m_pdataStart(nullptr), m_count(0), m_index(0)
         {
         }
 
@@ -299,7 +305,8 @@ class vector
 
       protected:
         friend vector;
-        const_iterator(const vector<T> *dataPtr, uint32_t sz, uint32_t index) : m_pdataStart(dataPtr), m_count(sz), m_index(index)
+        const_iterator(const vector<T> *dataPtr, uint32_t sz, uint32_t index)
+            : m_pdataStart(dataPtr), m_count(sz), m_index(index)
         {
         }
 
@@ -349,19 +356,20 @@ class vector
         sync local_lock(lock);
         size_t element_count = last - first;
         size_t new_count = _count + element_count;
-        T *temp = __data;
+
         if (new_count >= _size) {
-            _size = std::max(new_count, (size_t)_size * 2);
-            temp = (T *)calloc(_size, sizeof(T));
+            new_count = std::max(new_count, (size_t)_size * 2);
+            auto temp = (T *)calloc(new_count, sizeof(T));
             copy(begin(), position, temp);
+            copy(position, end(), temp + (position - begin()) + element_count);
+            __data = temp;
+            _size = new_count;
+        } else {
+            copy(position, end(), position + element_count);
+            _size = new_count;
         }
-        temp += position - begin();
-        copy(position, end(), temp + element_count);
-        _count = new_count;
-        for (auto it = first; it != last; ++it) {
-            new ((void *)&(*position)) T(*it);
-            ++position;
-        }
+        _count += element_count;
+        copy(first, last, position);
     }
 
     iterator erase(iterator position)

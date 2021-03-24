@@ -24,62 +24,75 @@
 #if __STDC_HOSTED__ == 1
 DIR *opendir(const char *dir_name)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return NULL;
 }
 
 DIR *fdopendir(int fd)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return NULL;
 }
 
 int closedir(DIR *dirp)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 
 struct dirent *readdir(DIR *dirp)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return NULL;
 }
 
 void rewinddir(DIR *__dirp)
 {
+asm("cli;hlt");
     errno = ENOSYS;
 }
 void seekdir(DIR *__dirp, long int __pos)
 {
+asm("cli;hlt");
     errno = ENOSYS;
 }
 long int telldir(DIR *__dirp)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int dirfd(DIR *__dirp)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int scandir(const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *), int (*__cmp)(const struct dirent **, const struct dirent **))
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int scandirat(int __dfd, const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *), int (*__cmp)(const struct dirent **, const struct dirent **))
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int alphasort(const struct dirent **__e1, const struct dirent **__e2)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 ssize_t getdirentries(int __fd, char *__buf, size_t __nbytes, off_t *__basep)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return 0;
 }
 int versionsort(const struct dirent **__e1, const struct dirent **__e2)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 #endif //  __STDC_HOSTED__==1

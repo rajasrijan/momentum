@@ -1,3 +1,22 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef NODE_H
 #define NODE_H
 #include <stdint.h>
@@ -46,8 +65,8 @@ class vnode
     virtual ~vnode();
     virtual int access(void);
     virtual int bmap(void);
-    virtual int bread(ssize_t position, size_t size, char *data, int *bytesRead) = 0;
-    virtual int bwrite(ssize_t position, size_t size, char *data, int *bytesWritten) = 0;
+    virtual int bread(ssize_t position, size_t size, char *data, int *bytesRead);
+    virtual int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
     virtual int brelse(void);
     virtual int close(void);
     int docreate(const std::string &path, std::shared_ptr<vnode> &created_node);
@@ -93,6 +112,10 @@ class vnode
     {
         return (v_type == VDIR);
     }
+    bool isCharacterDevice()
+    {
+        return (v_type == VCHR);
+    }
     bool isFile()
     {
         return (v_type == VREG);
@@ -101,11 +124,15 @@ class vnode
     {
         return (v_type == VBLK);
     }
+    bool isMountPoint()
+    {
+        return v_vfsmountedhere != nullptr;
+    }
 
   protected:
     virtual int lookup(const char *const path, std::shared_ptr<vnode> &foundNode);
-    virtual int readdir(std::vector<std::shared_ptr<vnode>> &vnodes) = 0;
-    virtual int open(uint64_t flags) = 0;
+    virtual int readdir(std::vector<std::shared_ptr<vnode>> &vnodes);
+    virtual int open(uint64_t flags);
     virtual int create(const std::string &path, std::shared_ptr<vnode> &created_node);
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -19,8 +19,7 @@
 #pragma once
 
 template <uint64_t bitmap_size, uint64_t block_size>
-struct bitmap_allocator
-{
+struct bitmap_allocator {
     uint64_t paddr, vaddr;
     uint64_t bitmap[bitmap_size / 64];
 };
@@ -28,8 +27,7 @@ struct bitmap_allocator
 template <uint64_t bitmap_size, uint64_t block_size>
 static inline int bitmap_alloc(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t &paddr, uint64_t &vaddr)
 {
-    for (size_t i = 0; i < (sizeof(allocator.bitmap) / sizeof(allocator.bitmap[0])); i++)
-    {
+    for (size_t i = 0; i < (sizeof(allocator.bitmap) / sizeof(allocator.bitmap[0])); i++) {
         if (allocator.bitmap[i] == 0xFFFFFFFFFFFFFFFF)
             continue;
         auto ctz = __builtin_ctz(~(allocator.bitmap[i]));

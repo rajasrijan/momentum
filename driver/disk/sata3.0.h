@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -20,14 +20,13 @@
 #pragma once
 #include <stdint.h>
 
-#define Save_64BitPtr(Reg, Val)                                                                                                                                                                                                                \
-    Reg = (uint32_t)(uint64_t)Val;                                                                                                                                                                                                             \
+#define Save_64BitPtr(Reg, Val)    \
+    Reg = (uint32_t)(uint64_t)Val; \
     Reg##u = (uint32_t)((uint64_t)Val >> 32)
 
 #define Load_64BitPtr(Reg, Type) (Type *)(((uint64_t)Reg##u << 32) | ((uint64_t)Reg))
 
-enum FIS_TYPE
-{
+enum FIS_TYPE {
     FIS_TYPE_REG_H2D = 0x27,   // Register FIS - host to device
     FIS_TYPE_REG_D2H = 0x34,   // Register FIS - device to host
     FIS_TYPE_DMA_ACT = 0x39,   // DMA activate FIS - device to host
@@ -38,8 +37,7 @@ enum FIS_TYPE
     FIS_TYPE_DEV_BITS = 0xA1,  // Set device bits FIS - device to host
 };
 
-enum HBA_PxIS
-{
+enum HBA_PxIS {
     CPDS = 1 << 31, // Cold Port Detect Status (CPDS):
     TFES = 1 << 30, // Task File Error Status (TFES):
     HBFS = 1 << 29, // Host Bus Fatal Error Status (HBFS):
@@ -60,8 +58,7 @@ enum HBA_PxIS
 };
 
 #pragma pack(push, 1)
-typedef struct tagFIS_REG_H2D
-{
+typedef struct tagFIS_REG_H2D {
     // DWORD 0
     uint8_t fis_type; // FIS_TYPE_REG_H2D
 
@@ -94,8 +91,7 @@ typedef struct tagFIS_REG_H2D
     uint8_t rsv1[4]; // Reserved
 } FIS_REG_H2D;
 
-typedef struct tagFIS_REG_D2H
-{
+typedef struct tagFIS_REG_D2H {
     // DWORD 0
     uint8_t fis_type; // FIS_TYPE_REG_D2H
 
@@ -128,8 +124,7 @@ typedef struct tagFIS_REG_D2H
     uint8_t rsv4[4]; // Reserved
 } FIS_REG_D2H;
 
-typedef struct tagFIS_DATA
-{
+typedef struct tagFIS_DATA {
     // DWORD 0
     uint8_t fis_type; // FIS_TYPE_DATA
 
@@ -142,8 +137,7 @@ typedef struct tagFIS_DATA
     uint32_t data[1]; // Payload
 } FIS_DATA;
 
-typedef struct tagFIS_PIO_SETUP
-{
+typedef struct tagFIS_PIO_SETUP {
     // DWORD 0
     uint8_t fis_type; // FIS_TYPE_PIO_SETUP
 
@@ -179,8 +173,7 @@ typedef struct tagFIS_PIO_SETUP
     uint8_t rsv4[2]; // Reserved
 } FIS_PIO_SETUP;
 
-struct FIS_DEV_BITS
-{
+struct FIS_DEV_BITS {
     // DWORD 0
     uint8_t fis_type; // FIS_DEV_BITS
 
@@ -197,8 +190,7 @@ struct FIS_DEV_BITS
     uint8_t rsv2[4]; // Reserved
 };
 
-struct HBA_PORT
-{
+struct HBA_PORT {
     uint32_t clb;  // 0x00, command list base address, 1K-byte aligned
     uint32_t clbu; // 0x04, command list base address upper 32 bits
     uint32_t fb;   // 0x08, FIS base address, 256-byte aligned
@@ -260,14 +252,12 @@ struct HBA_PORT
     uint32_t vendor[4]; // 0x70 ~ 0x7F, vendor specific
 };
 
-enum HBA_GHC
-{
+enum HBA_GHC {
     HR = 1,
     IE = 2
 };
 
-struct HBA_MEM
-{
+struct HBA_MEM {
     // 0x00 - 0x2B, Generic Host Control
     uint32_t cap;     // 0x00, Host capability
     uint32_t ghc;     // 0x04, Global host control
@@ -291,8 +281,7 @@ struct HBA_MEM
     HBA_PORT ports[32]; // 1 ~ 32
 };
 
-struct HBA_CMD_HEADER
-{
+struct HBA_CMD_HEADER {
     // DW0
     uint8_t cfl : 5; // Command FIS length in DWORDS, 2 ~ 16
     uint8_t a : 1;   // ATAPI
@@ -318,8 +307,7 @@ struct HBA_CMD_HEADER
     uint32_t rsv1[4]; // Reserved
 };
 
-struct FIS_DMA_SETUP
-{
+struct FIS_DMA_SETUP {
     // DWORD 0
     uint8_t fis_type; // FIS_TYPE_DMA_SETUP
 
@@ -349,8 +337,7 @@ struct FIS_DMA_SETUP
     uint32_t resvd; // Reserved
 };
 
-struct HBA_FIS
-{
+struct HBA_FIS {
     // 0x00
     FIS_DMA_SETUP dsfis; // DMA Setup FIS
     uint8_t pad0[4];
@@ -373,8 +360,7 @@ struct HBA_FIS
     uint8_t rsv[0x100 - 0xA0];
 };
 
-struct HBA_PRDT_ENTRY
-{
+struct HBA_PRDT_ENTRY {
     uint32_t dba;  // Data base address
     uint32_t dbau; // Data base address upper 32 bits
     uint32_t rsv0; // Reserved
@@ -385,8 +371,7 @@ struct HBA_PRDT_ENTRY
     uint32_t i : 1;    // Interrupt on completion
 };
 
-struct HBA_CMD_TBL
-{
+struct HBA_CMD_TBL {
     // 0x00
     uint8_t cfis[64]; // Command FIS
 

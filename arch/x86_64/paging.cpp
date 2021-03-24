@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -26,6 +26,7 @@
 #include <kernel/bitmap_allocator.h>
 #include <kernel/config.h>
 #include <stdint.h>
+#include <kernel/logging.h>
 
 uint64_t cpu_local_pml4t = 0;
 bitmap_allocator<512, 4096> default_pagemem_allocator;
@@ -39,11 +40,9 @@ int page_allocation_helper(page_struct *pd, uint64_t vaddr, uint64_t paddr, uint
 {
     int ret = 0;
     uint64_t dump = 0;
-    for (size_t l1 = PG_LVL_IDX(vaddr + sz_alloc, level); l1 < 512 && sz_alloc < length; l1++)
-    {
+    for (size_t l1 = PG_LVL_IDX(vaddr + sz_alloc, level); l1 < 512 && sz_alloc < length; l1++) {
         page_struct *new_pg = nullptr;
-        if ((level != 4) && ((level == 1) || (((length >= (PG_LVL_SZ(level) + sz_alloc)) && (PG_LVL_OFFSET(vaddr + sz_alloc, level) == 0)))))
-        {
+        if ((level != 4) && ((level == 1) || (((length >= (PG_LVL_SZ(level) + sz_alloc)) && (PG_LVL_OFFSET(vaddr + sz_alloc, level) == 0))))) {
             pd[l1].paddr = (paddr + sz_alloc) >> 12;
             pd[l1].present = 1;
             if (pageType == PageManager::PageType::Read_Write)
@@ -55,15 +54,11 @@ int page_allocation_helper(page_struct *pd, uint64_t vaddr, uint64_t paddr, uint
             //  page got mapped, reduce length.
             sz_alloc += PG_LVL_SZ(level);
             asm volatile("invlpg (%0)" ::"r"(vaddr));
-        }
-        else
-        {
-            if (pd[l1].addr == 0)
-            {
+        } else {
+            if (pd[l1].addr == 0) {
                 ret = bitmap_alloc(default_pagemem_allocator, pd[l1].addr, dump);
-                if (ret)
-                {
-                    printf("pagemem allocator cannot fail\n");
+                if (ret) {
+                    log_error("pagemem allocator cannot fail\n");
                     asm("cli;hlt");
                 }
                 new_pg = (page_struct *)(PG_GET_ADDRESS(&pd[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
@@ -86,15 +81,13 @@ int PageManager::initialize()
     //  get a 2 MB RAM frame
     default_pagemem_allocator.paddr = get_2mb_block();
     add_early_kernel_mapping(default_pagemem_allocator.paddr + KERNEL_BASE_PTR, default_pagemem_allocator.paddr, PAGESIZE);
-    if (default_pagemem_allocator.paddr >= 0x40000000)
-    {
-        printf("paddr cant be greater than 1GB, not mapped yet.\n");
+    if (default_pagemem_allocator.paddr >= 0x40000000) {
+        log_error("paddr cant be greater than 1GB, not mapped yet.\n");
         asm("cli;hlt");
     }
     default_pagemem_allocator.vaddr = default_pagemem_allocator.paddr;
-    if (bitmap_alloc(default_pagemem_allocator, cpu_local_pml4t, cpu_local_pml4t) < 0)
-    {
-        printf("Failed to setup memory for page directory!\n");
+    if (bitmap_alloc(default_pagemem_allocator, cpu_local_pml4t, cpu_local_pml4t) < 0) {
+        log_error("Failed to setup memory for page directory!\n");
         asm("cli;hlt");
     }
     memset((void *)cpu_local_pml4t, 0, 4096);
@@ -104,8 +97,7 @@ int PageManager::initialize()
     uint64_t length = (uint64_t)&kernel_end - vaddr;
     setVirtualToPhysicalMemory(vaddr, paddr, length, Privilege::Supervisor, PageType::Read_Write);
     setVirtualToPhysicalMemory(paddr, paddr, length, Privilege::Supervisor, PageType::Read_Write);
-    for (size_t i = 0; i < early_kernel_mappings_count; i++)
-    {
+    for (size_t i = 0; i < early_kernel_mappings_count; i++) {
         setVirtualToPhysicalMemory(early_kernel_mappings[i].vaddr, early_kernel_mappings[i].paddr, early_kernel_mappings[i].size, Privilege::Supervisor, PageType::Read_Write);
     }
 
@@ -137,16 +129,14 @@ uint64_t PageManager::roundToPageBoundry(uint64_t addr)
 int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType)
 {
     int ret = 0;
-    for (size_t i = 0; i < size; i += PAGESIZE)
-    {
+    for (size_t i = 0; i < size; i += PAGESIZE) {
         uint64_t memory_slab = get_2mb_block();
-        printf("SLAB addr [%x]\n", memory_slab);
+
         ret = setVirtualToPhysicalMemory(vaddr + i, memory_slab, PAGESIZE, privilege, pageType);
         if (ret < 0)
             break;
     }
-    if (ret < 0)
-    {
+    if (ret < 0) {
         freeVirtualMemory(vaddr, size);
     }
     return ret;
@@ -164,21 +154,15 @@ template <int level = 4>
 static int getphysicaladdress_helper(page_struct *pg, uint64_t vaddr, uint64_t &paddr)
 {
     uint64_t l1 = PG_LVL_IDX(vaddr, level);
-    if (pg[l1].present == 1)
-    {
-        if (level > 1 && pg[l1].ps == 0)
-        {
+    if (pg[l1].present == 1) {
+        if (level > 1 && pg[l1].ps == 0) {
             auto new_pg = (page_struct *)(PG_GET_ADDRESS(&pg[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
             return getphysicaladdress_helper < (level > 1) ? level - 1 : 1 > (new_pg, vaddr, paddr);
-        }
-        else
-        {
+        } else {
             paddr = PG_GET_ADDRESS(&pg[l1]) + PG_LVL_OFFSET(vaddr, level);
             return 0;
         }
-    }
-    else
-    {
+    } else {
         return -ENOMEM;
     }
     return 0;
@@ -192,17 +176,12 @@ int PageManager::getPhysicalAddress(uint64_t vaddr, uint64_t &paddr)
 template <int level = 4>
 static int freememory_helper(page_struct *pg, uint64_t vaddr, uint64_t sz, uint64_t &sz_alloc)
 {
-    for (uint64_t l1 = PG_LVL_IDX(vaddr + sz_alloc, level); (l1 < 512) && (sz_alloc < sz); l1++)
-    {
-        if (pg[l1].present == 1)
-        {
-            if (level > 1 && pg[l1].ps == 0)
-            {
+    for (uint64_t l1 = PG_LVL_IDX(vaddr + sz_alloc, level); (l1 < 512) && (sz_alloc < sz); l1++) {
+        if (pg[l1].present == 1) {
+            if (level > 1 && pg[l1].ps == 0) {
                 auto new_pg = (page_struct *)(PG_GET_ADDRESS(&pg[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
                 freememory_helper<(level > 1) ? level - 1 : 1>(new_pg, vaddr, sz, sz_alloc);
-            }
-            else
-            {
+            } else {
                 // if (level > 1)
                 // {
                 //     bitmap_free(default_pagemem_allocator, PG_GET_ADDRESS(&pg[l1]));
@@ -226,7 +205,7 @@ int PageManager::freeVirtualMemory(uint64_t vaddr, uint64_t size)
 
 int PageManager::set2MBPage([[maybe_unused]] uint64_t vaddr, [[maybe_unused]] uint64_t paddr, [[maybe_unused]] Privilege privilege, [[maybe_unused]] PageType pageType)
 {
-    printf("NOT IMPLEMENTED!\n");
+    log_error("NOT IMPLEMENTED!\n");
     asm("cli;hlt");
     return -ENOSYS;
 }
@@ -249,7 +228,7 @@ int PageManager::IdentityMapPages(uint64_t paddr, uint64_t size)
 
 int PageManager::findVirtualMemory([[maybe_unused]] uint64_t paddr, [[maybe_unused]] uint64_t &vaddr)
 {
-    printf("NOT IMPLEMENTED!\n");
+    log_error("NOT IMPLEMENTED!\n");
     asm("cli;hlt");
     return -ENOSYS;
 }
@@ -258,27 +237,19 @@ template <int level = 4>
 static int findfreememory_helper(page_struct *pg, uint64_t &vaddr, uint64_t sz, uint64_t offset, uint64_t &sz_alloc, uint64_t parent_vaddr = 0, bool restart_counting = true)
 {
     auto base = std::max(parent_vaddr, offset);
-    for (uint64_t l1 = PG_LVL_IDX(base, level); l1 < 512; l1++)
-    {
-        if (pg[l1].present == 1)
-        {
-            if (level > 1 && pg[l1].ps == 0)
-            {
+    for (uint64_t l1 = PG_LVL_IDX(base, level); l1 < 512; l1++) {
+        if (pg[l1].present == 1) {
+            if (level > 1 && pg[l1].ps == 0) {
                 auto new_pg = (page_struct *)(PG_GET_ADDRESS(&pg[l1]) - default_pagemem_allocator.paddr + default_pagemem_allocator.vaddr);
                 restart_counting = findfreememory_helper < (level > 1) ? level - 1 : 1 > (new_pg, vaddr, sz, offset, sz_alloc, parent_vaddr + (l1 * PG_LVL_SZ(level)), restart_counting);
                 if (sz_alloc >= sz)
                     return true;
-            }
-            else if (!restart_counting)
-            {
-                printf("vaddr:%#llx, size:%#llx\n", vaddr, sz_alloc);
+            } else if (!restart_counting) {
+                log_debug("vaddr:%#llx, size:%#llx\n", vaddr, sz_alloc);
                 restart_counting = true;
             }
-        }
-        else if (pg[l1].present == 0)
-        {
-            if (restart_counting)
-            {
+        } else if (pg[l1].present == 0) {
+            if (restart_counting) {
                 vaddr = parent_vaddr + (l1 * PG_LVL_SZ(level));
                 sz_alloc = 0;
             }
@@ -286,16 +257,13 @@ static int findfreememory_helper(page_struct *pg, uint64_t &vaddr, uint64_t sz, 
             restart_counting = false;
             if (sz_alloc >= sz)
                 return true;
-        }
-        else
-        {
-            printf("NOT IMPLIMENTED!\n");
+        } else {
+            log_error("NOT IMPLIMENTED!\n");
             asm("cli;hlt");
         }
     }
-    if (level == 4 && !restart_counting)
-    {
-        printf("vaddr:%#llx, size:%#llx\n", vaddr, sz_alloc);
+    if (level == 4 && !restart_counting) {
+        log_debug("vaddr:%#llx, size:%#llx\n", vaddr, sz_alloc);
         restart_counting = true;
     }
     return restart_counting;
@@ -313,16 +281,15 @@ int PageManager::findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t of
 
 int PageManager::getMemoryMap([[maybe_unused]] std::vector<MemPage> &memMap)
 {
-    printf("NOT IMPLEMENTED!\n");
+    log_error("NOT IMPLEMENTED!\n");
     asm("cli;hlt");
     return -ENOSYS;
 }
 
 int PageManager::add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size)
 {
-    if (early_kernel_mappings_count >= (sizeof(early_kernel_mappings) / sizeof(early_kernel_mappings[0])))
-    {
-        printf("too many mappings\n");
+    if (early_kernel_mappings_count >= (sizeof(early_kernel_mappings) / sizeof(early_kernel_mappings[0]))) {
+        log_error("too many mappings\n");
         asm("cli;hlt");
     }
     early_kernel_mappings[early_kernel_mappings_count].vaddr = vaddr;
@@ -334,8 +301,7 @@ int PageManager::add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64
 
 int PageManager::applyMemoryMap(const std::vector<MemPage> &memMap, Privilege privilege, PageType pageType)
 {
-    for (auto map : memMap)
-    {
+    for (auto map : memMap) {
         setVirtualToPhysicalMemory(map.vaddr, map.paddr, map.size, privilege, pageType);
     }
     return 0;
@@ -343,8 +309,7 @@ int PageManager::applyMemoryMap(const std::vector<MemPage> &memMap, Privilege pr
 int PageManager::removeMemoryMap(const std::vector<MemPage> &memMap)
 {
     int ret = 0;
-    for (auto map : memMap)
-    {
+    for (auto map : memMap) {
         ret = freeVirtualMemory(map.vaddr, map.size);
     }
     return ret;

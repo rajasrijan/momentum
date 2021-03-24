@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -84,8 +84,7 @@ pair<uint32_t, const char *> elf_type[] = {
     {ET_HIPROC, "Processor - specific"}};
 pair<uint32_t, const char *> program_type[] = {
     DEFINE_STRING(PT_NULL), DEFINE_STRING(PT_LOAD), DEFINE_STRING(PT_DYNAMIC), DEFINE_STRING(PT_INTERP), DEFINE_STRING(PT_NOTE), DEFINE_STRING(PT_SHLIB), DEFINE_STRING(PT_PHDR), DEFINE_STRING(PT_TLS), DEFINE_STRING(PT_LOOS), DEFINE_STRING(PT_HIOS), DEFINE_STRING(PT_LOPROC), DEFINE_STRING(PT_HIPROC)};
-struct Elf32_Phdr
-{
+struct Elf32_Phdr {
     uint32_t p_type;
     uint32_t p_offset;
     uint32_t p_vaddr;
@@ -106,8 +105,7 @@ struct Elf32_Phdr
     }
 } __attribute__((packed));
 
-struct Elf32_Ehdr
-{
+struct Elf32_Ehdr {
     unsigned char e_ident[EI_NIDENT];
     uint16_t e_type;
     uint16_t e_machine;
@@ -130,8 +128,7 @@ struct Elf32_Ehdr
                    4))
             return false;
         printf("\nElf signature present");
-        switch (e_ident[EI_CLASS])
-        {
+        switch (e_ident[EI_CLASS]) {
             case ELFCLASSNONE:
                 return false;
             case ELFCLASS32:
@@ -143,8 +140,7 @@ struct Elf32_Ehdr
             default:
                 return false;
         }
-        switch (e_ident[EI_DATA])
-        {
+        switch (e_ident[EI_DATA]) {
             case ELFDATANONE:
                 return false;
             case ELFDATA2LSB:
@@ -184,30 +180,32 @@ typedef struct
     uint16_t e_shtrndx;
 } Elf64_Ehdr;
 
-ELFLoader::ELFLoader() {}
+ELFLoader::ELFLoader()
+{
+}
 
-ELFLoader::~ELFLoader() {}
+ELFLoader::~ELFLoader()
+{
+}
 
 int ELFLoader::loadFile(std::string filePath, ELFFile &elfFile)
 {
-    int elfFd = open(filePath, O_RDONLY);
-    if (elfFd < 0)
-        return -ENOFILE;
-    Elf32_Ehdr elfHeader;
-    read(elfFd, (char *)&elfHeader, sizeof(elfHeader));
-    if (!elfHeader.verifyHeader())
-        return ENOEXEC;
-    if (elfHeader.e_phoff != 0)
-    {
-        if (elfHeader.e_phentsize != sizeof(Elf32_Phdr))
-            return ENOEXEC;
-        vector<Elf32_Phdr> programHdr(elfHeader.e_phnum);
-        fseek(elfFd, elfHeader.e_phoff, SEEK_SET);
-        read(elfFd, (char *)programHdr.data(), elfHeader.e_phentsize * elfHeader.e_phnum);
-        for (size_t i = 0; i < programHdr.size(); i++)
-            programHdr[i].printHeader();
-    }
-    else
-        printf("\nNo program header.");
+    // int elfFd = open<true>(filePath, O_RDONLY);
+    // if (elfFd < 0)
+    //     return -ENOFILE;
+    // Elf32_Ehdr elfHeader;
+    // read<true>(elfFd, (char *)&elfHeader, sizeof(elfHeader));
+    // if (!elfHeader.verifyHeader())
+    //     return ENOEXEC;
+    // if (elfHeader.e_phoff != 0) {
+    //     if (elfHeader.e_phentsize != sizeof(Elf32_Phdr))
+    //         return ENOEXEC;
+    //     vector<Elf32_Phdr> programHdr(elfHeader.e_phnum);
+    //     fseek<true>(elfFd, elfHeader.e_phoff, SEEK_SET);
+    //     read<true>(elfFd, (char *)programHdr.data(), elfHeader.e_phentsize * elfHeader.e_phnum);
+    //     for (size_t i = 0; i < programHdr.size(); i++)
+    //         programHdr[i].printHeader();
+    // } else
+    //     printf("\nNo program header.");
     return 0;
 }

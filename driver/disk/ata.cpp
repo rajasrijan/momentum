@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -74,7 +74,7 @@ int ata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRe
     return ataReadSectors_pio(data_port, IsMaster, position, size, data);
 }
 
-int ata_blk_vnode::bwrite(ssize_t position, size_t size, char *data, int *bytesRead)
+int ata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesRead)
 {
     return -ENOSYS;
 }

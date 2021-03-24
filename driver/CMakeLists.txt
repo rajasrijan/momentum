@@ -20,6 +20,7 @@ set(MOMENTUM_MODULE_LIST
     disk
     fatgen
     ext
+    standard_output
 )
 
 foreach(MODULE_NAME ${MOMENTUM_MODULE_LIST})

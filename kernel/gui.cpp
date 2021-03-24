@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -43,10 +43,8 @@ int bitblit(__uint128_t *dst, size_t dst_pitch, size_t dst_height, __uint128_t *
 
     auto p = min(dst_pitch, src_pitch);
 
-    for (size_t i = 0; i < height; i++)
-    {
-        for (size_t j = 0; j < p; j++)
-        {
+    for (size_t i = 0; i < height; i++) {
+        for (size_t j = 0; j < p; j++) {
             dst[(i * dst_pitch) + j] = src[(i * src_pitch) + j];
         }
     }
@@ -57,10 +55,8 @@ int cleartexture(__uint128_t *dst, uint32_t clear_color, size_t p, size_t height
 {
     __uint128_t color = (__int128_t)_mm_set1_epi32((int32_t)clear_color);
     const auto pp = (p / sizeof(__uint128_t));
-    for (size_t i = 0; i < height; i++)
-    {
-        for (size_t j = 0; j < pp; j++)
-        {
+    for (size_t i = 0; i < height; i++) {
+        for (size_t j = 0; j < pp; j++) {
             dst[(i * pp) + j] = color;
         }
     }
@@ -69,8 +65,7 @@ int cleartexture(__uint128_t *dst, uint32_t clear_color, size_t p, size_t height
 
 void *graphics_thread(void *arg)
 {
-    while (true)
-    {
+    while (true) {
         sleep(100);
         cleartexture(framebuffer, 0x00000000, pitch, screen_height);
         win_manager->draw_all(framebuffer, screen_height, pitch);
@@ -94,7 +89,8 @@ int initilize_graphics()
     return 0;
 }
 
-texture::texture(size_t sw, size_t sh, size_t p, size_t d) : screen_width(sw), screen_height(sh), pitch(p), depth(d)
+texture::texture(size_t sw, size_t sh, size_t p, size_t d)
+    : screen_width(sw), screen_height(sh), pitch(p), depth(d)
 {
     data = (__uint128_t *)aligned_malloc(screen_height * pitch, 7);
     cleartexture(data, 0x00000000, pitch, screen_height);

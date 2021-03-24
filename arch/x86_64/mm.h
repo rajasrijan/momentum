@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -25,8 +25,7 @@
 #define HEAP_EMPTY (1 << 0)
 #define HEAP_FULL (1 << 1)
 
-typedef struct _heap_
-{
+typedef struct _heap_ {
     uint64_t size;
     struct _heap_ *next;
     uint64_t flags : 56;
@@ -39,17 +38,16 @@ uint64_t get_2mb_block(void);
 void rel_2mb_block(uint64_t p);
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
-    void *_malloc(uint32_t length);
-    /*
+void *_malloc(uint32_t length);
+/*
      * Free allovated memory
      * Syntax:
      * void free(void* ptr);
      * ptr == pointer to memory to be freed.
      */
-    void _free(void *ptr);
+void _free(void *ptr);
 #ifdef __cplusplus
 }
 #endif

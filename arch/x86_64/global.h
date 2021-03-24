@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -75,29 +75,28 @@ extern "C" uint64_t kernel_start;
 extern "C" uint64_t kernel_end;
 
 /*Functions defined in asm*/
-extern "C"
-{
-    uint64_t get_spin_lock(void *lock_ptr);
-    uint32_t get_async_spin_lock(void *lock_ptr);
-    uint32_t release_spin_lock(void *lock_ptr);
+extern "C" {
+uint64_t get_spin_lock(void *lock_ptr);
+uint32_t get_async_spin_lock(void *lock_ptr);
+uint32_t release_spin_lock(void *lock_ptr);
 
-    void stage2(struct multiboot_information *mbi);
-    void switch_context(uint64_t rsp, uint64_t ss);
-    /*
+void stage2(struct multiboot_information *mbi);
+void switch_context(uint64_t rsp, uint64_t ss);
+/*
      * gets the current previlage leval.
      */
-    uint32_t get_cpl(void);
-    uint64_t *get_cr3(void);
-    uint64_t *get_cr2(void);
-    uint64_t get_rflags(void);
-    void get_gdt(void *ptr);
-    void load_interrupt_descriptor_table(void *ptr);
-    void outb(unsigned short port, unsigned char val);
-    void outw(unsigned short port, uint16_t val);
-    void outl(unsigned short port, uint32_t val);
-    uint8_t inb(uint16_t port);
-    uint32_t inl(uint16_t port);
-    uint16_t inw(uint16_t port);
+uint32_t get_cpl(void);
+uint64_t *get_cr3(void);
+uint64_t *get_cr2(void);
+uint64_t get_rflags(void);
+void get_gdt(void *ptr);
+void load_interrupt_descriptor_table(void *ptr);
+void outb(unsigned short port, unsigned char val);
+void outw(unsigned short port, uint16_t val);
+void outl(unsigned short port, uint32_t val);
+uint8_t inb(uint16_t port);
+uint32_t inl(uint16_t port);
+uint16_t inw(uint16_t port);
 }
 void state_c0(void);
 #define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]", x);

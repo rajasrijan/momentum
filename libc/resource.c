@@ -22,21 +22,26 @@
 
 int getpriority(int, id_t)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 int getrlimit(int, struct rlimit *)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 int getrusage(int, struct rusage *)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 int setpriority(int, id_t, int)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }
 int setrlimit(int, const struct rlimit *)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }

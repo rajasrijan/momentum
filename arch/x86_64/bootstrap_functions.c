@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -25,28 +25,35 @@
 #include <kernel/config.h>
 
 uint64_t __attribute__((section(".data0"))) framebuffer_ptr = 0xb800;
+uint64_t __attribute__((section(".data0"))) framebuffer_size = 0x0;
 uint64_t __attribute__((section(".data0"))) PAGE_DIRECTORY = 0x0000000000000000;
 uint64_t __attribute__((section(".data0"))) DIR_OFFSET = 0x0000000000000000;
+
+void early_print(char *str);
+
 __attribute__((section(".text0"))) static uint64_t max(uint64_t a, uint64_t b)
 {
     return (a >= b) ? a : b;
 }
 __attribute__((section(".text0"))) void find_framebuffer(struct multiboot_information *mbi)
 {
+    PAGE_DIRECTORY = KERNEL_TEMP_PAGE_TABLE_LOCATION;
+    PAGE_DIRECTORY = max(PAGE_DIRECTORY, (uint64_t)mbi);
     struct multiboot_tag *mbt = mbi->multiboot_tags;
     while (mbt->type != MULTIBOOT_TAG_TYPE_END) {
         if (mbt->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
             struct multiboot_tag_framebuffer *mbt_fb = (struct multiboot_tag_framebuffer *)mbt;
             framebuffer_ptr = mbt_fb->common.framebuffer_addr;
+            framebuffer_size = mbt_fb->common.framebuffer_pitch * mbt_fb->common.framebuffer_height;
+            PAGE_DIRECTORY = max(PAGE_DIRECTORY, (framebuffer_ptr + framebuffer_size));
         } else if (mbt->type == MULTIBOOT_TAG_TYPE_MMAP) {
             struct multiboot_tag_mmap *mbt_mmap = (struct multiboot_tag_mmap *)mbt;
             struct multiboot_mmap_entry *mmap = mbt_mmap->entries;
             while (mmap < mmap + mbt_mmap->size - sizeof(struct multiboot_tag_mmap)) {
-                if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && ((mmap->addr + mmap->len) >= KERNEL_TEMP_PAGE_TABLE_LOCATION)) {
-                    PAGE_DIRECTORY = max(KERNEL_TEMP_PAGE_TABLE_LOCATION, mmap->addr);
+                if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && ((mmap->addr + mmap->len) >= PAGE_DIRECTORY)) {
+                    PAGE_DIRECTORY = max(PAGE_DIRECTORY, mmap->addr);
                     break;
                 }
-
                 mmap = (struct multiboot_mmap_entry *)(mmap + mbt_mmap->entry_size);
             }
         }
@@ -54,8 +61,11 @@ __attribute__((section(".text0"))) void find_framebuffer(struct multiboot_inform
     }
     return;
 }
+
+const char __attribute__((section(".rodata0"))) message[] = "Creating temporary page directory.  ";
 __attribute__((section(".text0"))) void create_page_directory()
 {
+    early_print(message);
     uint64_t *page_dir = (uint64_t *)(PAGE_DIRECTORY);
     //  clear 2MB
     for (int i = 0; i < 2 * 1024 * 1024 / 8; i++) {
@@ -3833,7 +3843,7 @@ __attribute__((section(".text0"))) void early_print(char *str)
     static unsigned int __attribute__((section(".data0"))) x = 0, y = 0;
     for (size_t idx = 0; str[idx] != 0; idx++) {
         int ch = str[idx];
-        uint32_t *p = (uint32_t*)&videomemory[(y * 1024 * 16 * 4) + (x * 8 * 4)];
+        uint32_t *p = (uint32_t *)&videomemory[(y * 1024 * 16 * 4) + (x * 8 * 4)];
         for (size_t i = 0; i < 16; i++) {
             for (size_t j = 0; j < 8; j++) {
                 uint32_t tmp = (vga_font[ch][i] & (0x80 >> j)) ? 0xFFFFFFFF : 0x00000000;

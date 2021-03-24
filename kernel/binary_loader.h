@@ -1,6 +1,26 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <kernel/vfs.h>
 #include <memory>
 #include <stdint.h>
+#include <arch/x86_64/paging.h>
 
 #define EI_NIDENT 16
 #define Elf64_Addr alignas(8) uint64_t
@@ -130,5 +150,5 @@ class binary_loader
   public:
     binary_loader(/* args */);
     ~binary_loader();
-    static int load(shared_ptr<vnode> &node);
+    static int load(shared_ptr<vnode> &node, vector<MemPage> &memory_map, uint64_t &entry_point);
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -29,6 +29,7 @@
 #include <threads.h>
 #include <utility>
 #include <vector>
+#include <string>
 
 /*
  *	Thread flags.
@@ -53,6 +54,8 @@ typedef class process_info *process_t;
 
 class process_info
 {
+    friend class multitask;
+
   public:
     uint64_t flags;
     std::vector<MemPage> memory_map;
@@ -62,12 +65,15 @@ class process_info
   private:
     uint64_t m_uiProcessId;
     char p_szProcessName[256];
+    std::string command_line;
     uint64_t uiEntry;
     std::vector<thread_t> threads;
     int ring;
+    std::vector<class vfile *> open_file_descriptor;
+    mtx_t open_file_descriptor_mtx;
 
   public:
-    process_info(const char *processName);
+    process_info(const char *processName, const std::string &cmd_line);
     ~process_info();
     uint64_t getProcessId()
     {
@@ -100,6 +106,25 @@ class process_info
     bool isStopped()
     {
         return (flags == PROCESS_STOP) && threads.empty();
+    }
+    const std::string &getCommandLine()
+    {
+        return command_line;
+    }
+    int insert_opened_file(vfile *file_obj)
+    {
+        class sync lock(open_file_descriptor_mtx);
+        open_file_descriptor.push_back(file_obj);
+        return open_file_descriptor.size() - 1;
+    }
+    int get_opened_file(int fd, vfile **file_obj)
+    {
+        class sync lock(open_file_descriptor_mtx);
+
+        if (fd < 0 || (size_t)fd >= open_file_descriptor.size())
+            return EBADF;
+        *file_obj = open_file_descriptor[fd];
+        return 0;
     }
 };
 
@@ -135,15 +160,14 @@ class thread_info
     void *arg;
 };
 
-typedef struct core_info
-{
+typedef struct core_info {
     thread_info *threads;
 } __attribute__((packed)) core_info_t;
 
 void init_multitask(void);
 void DestroyStack(uint32_t esp);
 void init_kernel_stack(void);
-void change_thread(const thread_t thread, bool enable_interrupts = true);
+[[noreturn]] void change_thread(const thread_t thread, bool enable_interrupts = true);
 void thread_end(void);
 int CreateNullProcess(void);
 thread_info *getNextThreadInQueue(void);
@@ -159,7 +183,7 @@ class multitask
     int allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManager::Privilege privilege);
     thread_t getKernelThread();
     // const thread_t getKernelProcess();
-    int createProcess(process_t &prs, const char *processName, int ring, std::vector<MemPage> &mem_map, uint64_t entry);
+    int createProcess(process_t &prs, const char *processName, const std::string &cmd_line, int ring, std::vector<MemPage> &mem_map, uint64_t entry);
     int createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     int createThread(process_t prs, thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     thread_t getNextThread(retStack_t *stack, general_registers_t *regs);
@@ -169,13 +193,14 @@ class multitask
     process_t getKernelProcess();
     int fork()
     {
-        return ENOSYS;
+        return -ENOSYS;
     }
     void destroyProcess(int status);
     const std::vector<process_t> &ListProcesses()
     {
         return processList;
     }
+    int allocate_virtual_memory(uint64_t &vaddr, size_t len, PageManager::PageType pageType);
 
   private:
     mtx_t multitaskMutex;

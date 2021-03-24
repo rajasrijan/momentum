@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -31,8 +31,7 @@ int pci_register_driver(pci_driver_interface *dev)
     printf("Registered PCI driver\n");
 
     printf("Supported devices:\n");
-    for (int i = 0; i < dev->pci_device_count; i++)
-    {
+    for (int i = 0; i < dev->pci_device_count; i++) {
         const pci_device_id &device = dev->deviceTable[i];
         printf("PCI_%x_%x_%x_%x_%x_%x\n", device.VendorID, device.DeviceID, device.SubVendorID, device.SubSystemID, device.Class, device.SubClass);
     }
@@ -49,18 +48,14 @@ int pci_find_compitable_driver(pci_device_t &device)
     pci_device_id dev_id = {0, 0, 0, 0, 0, 0, 0};
     device.getDeviceId(&dev_id);
     printf("Trying PCI_%x_%x_%x_%x_%x_%x\n", dev_id.VendorID, dev_id.DeviceID, dev_id.SubVendorID, dev_id.SubSystemID, dev_id.Class, dev_id.SubClass);
-    for (pci_driver_interface *pci_driver : pci_driver_tables)
-    {
+    for (pci_driver_interface *pci_driver : pci_driver_tables) {
         int it = 0;
-        for (it = 0; it < pci_driver->pci_device_count; it++)
-        {
-            if (pci_driver->deviceTable[it].IsMatching(dev_id))
-            {
+        for (it = 0; it < pci_driver->pci_device_count; it++) {
+            if (pci_driver->deviceTable[it].IsMatching(dev_id)) {
                 break;
             }
         }
-        if (it != pci_driver->pci_device_count)
-        {
+        if (it != pci_driver->pci_device_count) {
             printf("Found driver\n");
             device.pDriver = pci_driver->create_driver_instance(&device);
             if (device.pDriver->probe(&device, dev_id))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -19,8 +19,7 @@
 #ifndef FATGEN_H
 #define FATGEN_H
 
-struct bpb
-{
+struct bpb {
     uint8_t BS_jmpBoot[3];
     char BS_OEMName[8];
     uint16_t BPB_BytsPerSec;

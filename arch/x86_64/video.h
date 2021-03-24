@@ -21,8 +21,7 @@
 #include <stdint.h>
 #include "multiboot2.h"
 
-enum DisplayMode
-{
+enum DisplayMode {
     TEXT_ONLY,
     GRAPHICS
 };

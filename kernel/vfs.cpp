@@ -34,8 +34,6 @@ using namespace std;
 vector<pair<fileSystem, string>> fs_list; //	List of all fs in system.
 vector<shared_ptr<vfs>> vfs_list;         //	List of all vfs in system.
 map<string, vnode *> dev_list;            //	List of all dev in system.
-vector<vfile *> openFiles;
-mtx_t openFileMutex = 0;
 mtx_t vfsMtx = 0;
 shared_ptr<vnode> rnode;      //	Pointer to root vnode.
 shared_ptr<vnode> root_devfs; //	Pointer to root devfs vnode.
@@ -84,7 +82,7 @@ class root_vnode : public vnode
         return -ENOSYS;
     }
 
-    int bwrite(ssize_t position, size_t size, char *data, int *bytesWritten)
+    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
     {
         return -ENOSYS;
     }
@@ -129,7 +127,7 @@ class partition_vnode : public vnode
         errorcode = v_parent->bread(v_start_blk + position, size, data, bytesRead);
         return errorcode;
     }
-    int bwrite(ssize_t position, size_t size, char *data, int *bytesRead)
+    int bwrite(ssize_t position, size_t size, const char *data, int *bytesRead)
     {
         int errorcode = 0;
         if (size >= v_size_blk) {
@@ -198,16 +196,29 @@ int clone_path(shared_ptr<vnode> &dst, shared_ptr<vnode> &src)
         string name = child->getName();
         if (child->isDirectory()) {
             shared_ptr<vnode> dst_child;
-            result = dst->dolookup(name.c_str(), dst_child);
-            if (result < 0) {
-                log_error("Failed to clone root file system. File not found. [%s]\n", name.c_str());
-                return result;
+            if (child->isMountPoint()) {
+                result = dst->dolookup(name.c_str(), dst_child);
+                if (result < 0) {
+                    log_info("Mount point not found. Creating mount point.\n");
+                    result = dst->mkdir(name.c_str(), dst_child);
+                    if (result < 0) {
+                        log_error("Failed to clone root file system. File not found. [%s]\n", name.c_str());
+                        return result;
+                    }
+                }
+                dst_child->v_vfsmountedhere = child->v_vfsmountedhere;
+            } else {
+                result = dst->dolookup(name.c_str(), dst_child);
+                if (result < 0) {
+                    log_error("Failed to clone root file system. File not found. [%s]\n", name.c_str());
+                    return result;
+                }
+                result = clone_path(dst_child, child);
+                if (result < 0) {
+                    return result;
+                }
             }
-            result = clone_path(dst_child, child);
-            if (result < 0) {
-                return result;
-            }
-        } else if (child->isBlockDevice()) {
+        } else if (child->isBlockDevice() || child->isCharacterDevice()) {
             dst->mknod(dst, child);
             src->rmnod(src, child);
         }
@@ -373,10 +384,19 @@ int vnode::dolookup(const char *const path, shared_ptr<vnode> &foundNode)
     for (size_t i = 0; path[i] != 0 && path[i] != '/'; i++) {
         sub_path[i] = path[i];
     }
+    //  look in dnode cache
     auto found_itr = find_if(dnode_cache.begin(), dnode_cache.end(), [sub_path](const shared_ptr<vnode> &node) {
         return !strcmp(node->v_name.c_str(), sub_path);
     });
     if (found_itr != dnode_cache.end()) {
+        foundNode = *found_itr;
+        return 0;
+    }
+    //  look in special files
+    found_itr = find_if(special_nodes.begin(), special_nodes.end(), [sub_path](const shared_ptr<vnode> &node) {
+        return !strcmp(node->v_name.c_str(), sub_path);
+    });
+    if (found_itr != special_nodes.end()) {
         foundNode = *found_itr;
         return 0;
     }
@@ -432,7 +452,7 @@ int vnode::doopen(shared_ptr<vnode> &node, uint32_t flags, vfile **file)
 {
     if (node != this || !file)
         return -EINVAL;
-    if (v_type != VREG) {
+    if (v_type != VREG && v_type != VCHR) {
         return ENOFILE;
     }
     *file = new vfile(node);
@@ -518,6 +538,22 @@ int vnode::brelse(void)
 {
     return -ENOSYS;
 }
+int vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
+{
+    return -ENOSYS;
+}
+int vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
+{
+    return -ENOSYS;
+}
+int vnode::readdir(std::vector<std::shared_ptr<vnode>> &vnodes)
+{
+    return -ENOSYS;
+}
+int vnode::open(uint64_t flags)
+{
+    return -ENOSYS;
+}
 
 int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
@@ -580,6 +616,18 @@ int vfile::read(char *data, size_t sz)
     return bytesRead;
 }
 
+int vfile::write(const char *data, size_t sz)
+{
+    ssize_t position = posG;
+    int errCode = 0;
+    int bytesWritten = 0;
+    errCode = _parent->bwrite(position, sz, data, &bytesWritten);
+    if (errCode)
+        return -1;
+    posG += bytesWritten;
+    return bytesWritten;
+}
+
 int vfile::seekg(long int offset, int origin)
 {
     switch (origin) {
@@ -602,12 +650,10 @@ int mount(string mountPoint, string mountSource)
     return 0;
 }
 
-int open(const string &name, int oflag)
+int open(const string &name, int oflag, vfile **file)
 {
-    int fd = 0;
     int errorCode = 0;
     shared_ptr<vnode> node = nullptr;
-    vfile *file = nullptr;
     errorCode = lookup(name.c_str(), node);
 
     //  if file doesn't exit and not creating it, then return error
@@ -624,39 +670,61 @@ int open(const string &name, int oflag)
         }
     } else // try to open it
     {
-        errorCode = node->doopen(node, 0, &file);
+        errorCode = node->doopen(node, 0, file);
         if (errorCode || !file)
             return -1;
     }
-    //  create descriptor
-    {
-        sync fileSyncronisation(openFileMutex);
-        openFiles.push_back(file);
-        fd = (uint32_t)openFiles.size() - 1;
+    return errorCode;
+}
+
+int open(const string &name, int oflag)
+{
+    int ret = 0;
+    vfile *file = nullptr;
+    ret = open(name, oflag, &file);
+    if (ret < 0) {
+        return ret;
     }
-    return fd;
+    auto process = multitask::getInstance()->getCurrentProcess();
+    ret = process->insert_opened_file(file);
+    if (ret < 0) {
+        return ret;
+    }
+    return ret;
 }
 
 int read(int fd, char *dst, size_t size)
 {
+    int ret = 0;
     vfile *file = 0;
-    {
-        sync openFileLock(openFileMutex);
-        if (fd < 0 || (size_t)fd >= openFiles.size())
-            return EBADF;
-        file = openFiles[fd];
+    auto process = multitask::getInstance()->getCurrentProcess();
+    ret = process->get_opened_file(fd, &file);
+    if (ret < 0) {
+        return ret;
     }
     return file->read(dst, size);
 }
 
+int write(int fd, const char *src, size_t size)
+{
+    int ret = 0;
+    vfile *file = 0;
+    auto process = multitask::getInstance()->getCurrentProcess();
+    ret = process->get_opened_file(fd, &file);
+    if (ret < 0) {
+        return ret;
+    }
+    return file->write(src, size);
+}
+
 int fseek(int fd, long int offset, int origin)
 {
+    int ret = 0;
     vfile *file = 0;
-    {
-        sync openFileLock(openFileMutex);
-        if (fd < 0 || (size_t)fd >= openFiles.size())
-            return EBADF;
-        file = openFiles[fd];
+    auto process = multitask::getInstance()->getCurrentProcess();
+    ret = process->get_opened_file(fd, &file);
+    if (ret < 0) {
+        return ret;
     }
     return file->seekg(offset, origin);
 }
@@ -703,6 +771,13 @@ int get_vnode_from_abspath(const char *pathname, shared_ptr<vnode> &pathNode)
     pathNode = current_vnode;
     return 0;
 }
+/**
+ * @brief Create a node at pathname. Insert 'dev' vnode at location. If 'dev' is of type 'VBLK' then add_blk_dev() is called.
+ * 
+ * @param pathname Path to vnode location
+ * @param dev vnode to be inserted
+ * @return int returns 0 on success. negative error code.
+ */
 int mknod(const char *pathname, shared_ptr<vnode> dev)
 {
     int ret = 0;

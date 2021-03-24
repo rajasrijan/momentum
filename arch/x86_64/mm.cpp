@@ -32,8 +32,7 @@ bitmap_allocator<KERNEL_MAXIMUM_PHYSICAL_RAM / PageManager::PAGESIZE, PageManage
 
 heap_t *pHeap;
 
-struct MemMap_t
-{
+struct MemMap_t {
     uint64_t addr, len;
 } g_pMemAvailable[64] = {}, g_pMemReserved[64] = {};
 size_t g_szMemAvailableCount = 0, g_szMemReservedCount = 0;
@@ -47,18 +46,14 @@ int initilize_memorymanager(multiboot_tag_mmap *mbi)
     uint64_t mAvailableMemory = 0;
     uint64_t gKernelEnd = (uint64_t)&kernel_end - KERNEL_BASE_PTR;
     const char *memType[] = {"AVAILABLE", "RESERVED", "ACPI RECLAIMABLE", "NVS", "BADRAM"};
-    for (int i = 0; (i < 64) && (length > 0); i++)
-    {
+    for (int i = 0; (i < 64) && (length > 0); i++) {
         printf("addr [0x%x], len [0x%x], type [%s]\n", mem_map->addr, mem_map->len, memType[mem_map->type - 1]);
-        if (mem_map->type == MULTIBOOT_MEMORY_AVAILABLE)
-        {
+        if (mem_map->type == MULTIBOOT_MEMORY_AVAILABLE) {
             g_pMemAvailable[g_szMemAvailableCount].addr = mem_map->addr;
             g_pMemAvailable[g_szMemAvailableCount].len = mem_map->len;
             mAvailableMemory += g_pMemAvailable[g_szMemAvailableCount].len;
             g_szMemAvailableCount++;
-        }
-        else if ((mem_map->type == MULTIBOOT_MEMORY_RESERVED) || (mem_map->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE))
-        {
+        } else if ((mem_map->type == MULTIBOOT_MEMORY_RESERVED) || (mem_map->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE)) {
             g_pMemReserved[g_szMemReservedCount].addr = mem_map->addr;
             g_pMemReserved[g_szMemReservedCount].len = mem_map->len;
             g_szMemReservedCount++;
@@ -67,15 +62,12 @@ int initilize_memorymanager(multiboot_tag_mmap *mbi)
         mem_map = (multiboot_memory_map_t *)((char *)mem_map + mbi->entry_size);
     }
     printf("%d Bytes usable memory found.\n", mAvailableMemory);
-    for (size_t i = 0; i < g_szMemAvailableCount; i++)
-    {
+    for (size_t i = 0; i < g_szMemAvailableCount; i++) {
         if (g_pMemAvailable[i].addr == 0 && g_pMemAvailable[i].len == 0)
             break;
         uint64_t addr = PageManager::roundToPageSize(g_pMemAvailable[i].addr);
-        for (; addr < g_pMemAvailable[i].addr + g_pMemAvailable[i].len; addr += PageManager::PAGESIZE)
-        {
-            if (addr < gKernelEnd)
-            {
+        for (; addr < g_pMemAvailable[i].addr + g_pMemAvailable[i].len; addr += PageManager::PAGESIZE) {
+            if (addr < gKernelEnd) {
                 continue;
             }
             bitmap_free(mem_available, addr);
@@ -104,8 +96,7 @@ void rel_2mb_block(uint64_t p)
 int create_kernel_heap()
 {
     int ret = 0;
-    if ((ret = PageManager::setPageAllocation(KERNEL_HEAP_PTR, PageManager::PAGESIZE * 8, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write)) < 0)
-    {
+    if ((ret = PageManager::setPageAllocation(KERNEL_HEAP_PTR, PageManager::PAGESIZE * 8, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write)) < 0) {
         printf("failed to allocate pages for kernel heap\n");
         return ret;
     }
@@ -121,72 +112,13 @@ int create_kernel_heap()
 void check_heap_integrity()
 {
     heap_t *heap_ptr = pHeap;
-    do
-    {
-        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0)
-        {
+    do {
+        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
             printf("heap corruption\n");
             __asm__("cli;hlt;");
         }
         heap_ptr = heap_ptr->next;
     } while (heap_ptr);
-}
-
-/*
- * Aligned allocate memory in kernel heap.B
- */
-extern "C" void *_aligned_malloc(uint32_t len, int n)
-{
-    check_heap_integrity();
-    heap_t *heap_ptr = nullptr;
-    volatile void *ptr = 0;
-    uint32_t alignment = 1 << n;
-    while (true)
-    {
-        if (!heap_ptr)
-            heap_ptr = pHeap;
-        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0)
-        {
-            printf("\nheap corruption");
-            __asm__("cli;hlt;");
-            return (void *)ptr;
-        }
-
-        //	allocations are in reverse order
-        uint32_t length = (uint32_t)(((uint64_t)heap_ptr + heap_ptr->size) - (((uint64_t)heap_ptr + heap_ptr->size - len) & (~(alignment - 1))));
-        if ((heap_ptr->flags == HEAP_EMPTY) && (heap_ptr->size >= length + (2 * sizeof(heap_t))))
-        {
-            uint32_t size = length + sizeof(heap_t);
-            heap_ptr->size -= size;
-            auto next_node = heap_ptr->next;
-            heap_ptr->next = (heap_t *)((uint64_t)heap_ptr + heap_ptr->size);
-            heap_ptr->checksum = 0;
-            heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
-            heap_ptr = heap_ptr->next;
-            heap_ptr->size = size;
-            heap_ptr->flags = HEAP_FULL;
-            heap_ptr->next = next_node;
-            heap_ptr->checksum = 0;
-            heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
-            ptr = (void *)((char *)heap_ptr + sizeof(heap_t));
-            check_heap_integrity();
-            return (void *)ptr;
-        }
-        else
-        {
-            heap_ptr = heap_ptr->next;
-        }
-    }
-    check_heap_integrity();
-    return (void *)ptr;
-}
-
-/*
- * Allocate memory in kernel heap.
- */
-void *_malloc(uint32_t length)
-{
-    return _aligned_malloc(length, 4);
 }
 
 void _free(void *ptr)
@@ -195,14 +127,12 @@ void _free(void *ptr)
     if (!ptr)
         return;
     heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));
-    if (heap_ptr->flags == HEAP_EMPTY)
-    {
+    if (heap_ptr->flags == HEAP_EMPTY) {
         printf("Double free\n");
         __asm__("cli;hlt;");
     }
     memset(ptr, 0xcc, heap_ptr->size - sizeof(heap_t));
-    if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0)
-    {
+    if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
         printf("heap corruption\n");
         __asm__("cli;hlt;");
     }

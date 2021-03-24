@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -17,36 +17,43 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#define SYSCALL_EXIT (0)
-#define SYSCALL_PUTCHAR (1)
-#define SYSCALL_GETCHAR (2)
-#define SYSCALL_GETCWD (3)
-#define SYSCALL_CHDIR (4)
-#define SYSCALL_CLOSE (5)
-#define SYSCALL_OPEN (6)
-#define SYSCALL_OPENAT (7)
-#define SYSCALL_GETDENTS (8)
-
 #pragma pack(push, 8)
-struct open_args
-{
+
+struct open_args {
     const char *pathname;
     int oflag;
 };
-struct openat_args
-{
+
+struct openat_args {
     int dirfd;
     const char *pathname;
     int flags;
 };
-struct getdents_args
-{
+
+struct getdents_args {
     int fd;
     struct dirent *dirp;
     size_t count;
 };
-#pragma pack(pop)
 
-#if __STDC_HOSTED__ == 1
-int _syscall(int64_t callid, int64_t arg0, int64_t arg1);
-#endif
+struct mmap_args {
+    void *addr;
+    size_t len;
+    int prot;
+    int flags;
+    int fildes;
+    off_t off;
+};
+
+struct read_args {
+    int fd;
+    void *buf;
+    size_t count;
+};
+struct write_args {
+    int fd;
+    const void *buf;
+    size_t count;
+};
+#pragma pack(pop)
+#include <sys/syscall.h>

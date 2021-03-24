@@ -17,11 +17,11 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include <utime.h>
 #include <errno.h>
 
 int utime(const char *filename, const struct utimbuf *times)
 {
+    asm("cli;hlt");
     return -ENOSYS;
 }

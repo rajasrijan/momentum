@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -37,6 +37,7 @@ __attribute__((section(".multiboot"))) kernel_multiboot_header momentum_multiboo
         MULTIBOOT_TAG_TYPE_MMAP,
         MULTIBOOT_TAG_TYPE_FRAMEBUFFER,
         MULTIBOOT_TAG_TYPE_VBE,
+        MULTIBOOT_TAG_TYPE_ACPI_NEW,
         MULTIBOOT_TAG_TYPE_END,
     },
 #if KERNEL_GRUB_VIDEO == 1

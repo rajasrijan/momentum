@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -16,11 +16,21 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef RAMDRIVE_H
-#define RAMDRIVE_H
 
+#include <setjmp.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-int ramdrive_init(void);
+int setjmp(jmp_buf env)
+{
+    env.opaque = malloc(512);
+    extern int _setjmp(void *env);
+    return _setjmp(env.opaque);
+}
 
-#endif /* RAMDRIVE_H */
+_Noreturn void longjmp(jmp_buf env, int val)
+{
+    extern void _longjmp(void *env, int val);
+    _longjmp(env.opaque, val);
+}

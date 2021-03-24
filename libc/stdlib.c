@@ -17,38 +17,134 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stdlib.h"
-#include "stdint.h"
+#include <stdlib.h>
+#include <stdint.h>
 #include "string.h"
 #include "stdio.h"
 #include <ctype.h>
 #include <kernel/syscall.h>
+#include <sys/mman.h>
+#include <errno.h>
 
-#if __STDC_HOSTED__ == 0
-extern void *_malloc(uint32_t length);
-extern void _free(void *ptr);
-extern void *_aligned_malloc(uint32_t len, int n);
+#define HEAP_EMPTY (1 << 0)
+#define HEAP_FULL (1 << 1)
+#define HEAP_DEFAULT_SIZE (256 * 1024 * 1024)
+
+typedef struct _heap_ {
+    uint64_t size;
+    struct _heap_ *next;
+    uint64_t flags : 56;
+    uint8_t checksum;
+} heap_t;
+#if __STDC_HOSTED__ == 1
+heap_t *pHeap;
 #else
+extern heap_t *pHeap;
+#endif
+
+static uint8_t checksum(uint8_t *ptr, uint32_t len)
+{
+    uint8_t res = 0;
+    for (uint32_t i = 0; i < len; i++)
+        res = (uint8_t)(res + ptr[i]);
+    return res;
+}
+
+static uint8_t getsum(uint8_t *ptr, uint32_t len)
+{
+    uint8_t res = 0;
+    for (uint32_t i = 0; i < len; i++)
+        res = (uint8_t)(res + ptr[i]);
+    return (uint8_t)(-res);
+}
+
+#if __STDC_HOSTED__ == 1
+int create_heap()
+{
+    pHeap = (heap_t *)mmap(NULL, HEAP_DEFAULT_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
+    if (!pHeap)
+        return -ENOMEM;
+    pHeap->flags = HEAP_EMPTY;
+    pHeap->next = NULL;
+    pHeap->size = HEAP_DEFAULT_SIZE;
+    pHeap->checksum = 0;
+    pHeap->checksum = getsum((uint8_t *)pHeap, sizeof(heap_t));
+    return 0;
+}
+#endif
+
+void check_heap_integrity()
+{
+    heap_t *heap_ptr = pHeap;
+    do {
+        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
+            printf("heap corruption\n");
+            __asm__("cli;hlt;");
+        }
+        heap_ptr = heap_ptr->next;
+    } while (heap_ptr);
+}
+
+/*
+ * Aligned allocate memory in kernel heap.B
+ */
+void *_aligned_malloc(uint32_t len, int n)
+{
+    check_heap_integrity();
+    heap_t *heap_ptr = pHeap;
+    volatile void *ptr = 0;
+    uint32_t alignment = 1 << n;
+    while (heap_ptr) {
+        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
+            printf("\nheap corruption");
+            __asm__("cli;hlt;");
+            return (void *)ptr;
+        }
+
+        //	allocations are in reverse order
+        uint32_t length = (uint32_t)(((uint64_t)heap_ptr + heap_ptr->size) - (((uint64_t)heap_ptr + heap_ptr->size - len) & (~(alignment - 1))));
+        if ((heap_ptr->flags == HEAP_EMPTY) && (heap_ptr->size >= length + (2 * sizeof(heap_t)))) {
+            uint32_t size = length + sizeof(heap_t);
+            heap_ptr->size -= size;
+            heap_t *next_node = heap_ptr->next;
+            heap_ptr->next = (heap_t *)((uint64_t)heap_ptr + heap_ptr->size);
+            heap_ptr->checksum = 0;
+            heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
+            heap_ptr = heap_ptr->next;
+            heap_ptr->size = size;
+            heap_ptr->flags = HEAP_FULL;
+            heap_ptr->next = next_node;
+            heap_ptr->checksum = 0;
+            heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
+            ptr = (void *)((char *)heap_ptr + sizeof(heap_t));
+            check_heap_integrity();
+            return (void *)ptr;
+        } else {
+            heap_ptr = heap_ptr->next;
+        }
+    }
+    check_heap_integrity();
+    return (void *)ptr;
+}
+
 void *_malloc(uint32_t length)
 {
-    __asm__("int3");
-    return NULL;
+    return _aligned_malloc(length, 4);
 }
+
+#if __STDC_HOSTED__ == 0
+extern void _free(void *ptr);
+#else
 void _free(void *ptr)
 {
     __asm__("int3");
 }
-void *_aligned_malloc(uint32_t len, int n)
-{
-    __asm__("int3");
-    return NULL;
-}
+
 __attribute__((noreturn)) void _exit(int status)
 {
     __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)
                      : "rcx", "r11");
-    while (1)
-    {
+    while (1) {
         __asm__("pause");
     }
 }
@@ -66,8 +162,7 @@ int atoi(const char *str)
     // skip till first digit
     for (index = 0; str[index] != 0 && !isdigit(str[index]); index++)
         ;
-    for (; str[index] != 0 && isdigit(str[index]); index++)
-    {
+    for (; str[index] != 0 && isdigit(str[index]); index++) {
         number = ((number * 10) + (str[index] - '0'));
     }
 
@@ -77,8 +172,7 @@ int atoi(const char *str)
 void *aligned_malloc(size_t size, int n)
 {
     volatile void *ptr = _aligned_malloc(size, n);
-    if (!ptr)
-    {
+    if (!ptr) {
         printf("\nmm error.");
         __asm__("cli;hlt");
         return NULL;
@@ -91,8 +185,7 @@ void *aligned_malloc(size_t size, int n)
 void *malloc(size_t size)
 {
     volatile void *ptr = _malloc(size);
-    if (!ptr)
-    {
+    if (!ptr) {
         printf("\nmm error.");
         __asm__("cli;hlt");
         return NULL;
@@ -116,8 +209,7 @@ void *realloc(void *ptr, size_t size)
 void *calloc(size_t blocks, size_t size)
 {
     void *ptr = _malloc(size * blocks);
-    if (!ptr)
-    {
+    if (!ptr) {
         printf("\nmm error.");
         __asm__("cli;hlt");
         return NULL;

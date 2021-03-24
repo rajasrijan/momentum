@@ -98,6 +98,11 @@ int memcmp(const void *ptr1, const void *ptr2, size_t num)
     return ret;
 }
 
+void *mempcpy(void *dest, const void *src, size_t n)
+{
+    return memcpy(dest, src, n) + 1;
+}
+
 char *strcpy(char *dst, const char *src)
 {
     int i = 0;
@@ -105,7 +110,7 @@ char *strcpy(char *dst, const char *src)
         dst[i] = src[i];
     }
     dst[i] = 0;
-    return &dst[i];
+    return dst;
 }
 
 char *strcat(char *dst, const char *src)
@@ -254,10 +259,14 @@ char *strpbrk(const char *s1, const char *s2)
     __asm__ __volatile__("cli;hlt");
     return NULL;
 }
-char *strrchr(const char *s1, int i1)
+char *strrchr(const char *src, int c)
 {
-    __asm__ __volatile__("cli;hlt");
-    return NULL;
+    char *latest_found = NULL;
+    for (size_t i = 0; src[i] != 0; i++) {
+        if (src[i] == c)
+            latest_found = &src[i];
+    }
+    return latest_found;
 }
 size_t strspn(const char *s1, const char *s2)
 {

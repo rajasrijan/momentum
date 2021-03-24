@@ -40,8 +40,7 @@ void apic_timer_callback(retStack_t *stack, general_registers_t *regs)
 
 void sleep(uint64_t delay)
 {
-    for (uint64_t start_tick = tick; (tick - start_tick) < delay;)
-    {
+    for (uint64_t start_tick = tick; (tick - start_tick) < delay;) {
         __asm__("hlt");
     }
 }

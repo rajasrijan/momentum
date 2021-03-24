@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -126,7 +126,7 @@ class fat_vnode : public vnode
 
     int bread(ssize_t position, size_t size, char *sector_data, int *bytesRead);
 
-    int bwrite(ssize_t position, size_t size, char *sector_data, int *bytesWritten);
+    int bwrite(ssize_t position, size_t size, const char *sector_data, int *bytesWritten);
 
     int ioctl(uint32_t command, void *sector_data, int fflag);
 
@@ -363,7 +363,7 @@ int fat_vnode::bread(ssize_t position, size_t size, char *sector_data, int *byte
     return 0;
 }
 
-int fat_vnode::bwrite(ssize_t position, size_t size, char *sector_data, int *bytesWritten)
+int fat_vnode::bwrite(ssize_t position, size_t size, const char *sector_data, int *bytesWritten)
 {
     return -ENOSYS;
 }

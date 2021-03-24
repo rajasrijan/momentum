@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -39,7 +39,8 @@ class blkdev
     char name[256];
 
   public:
-    blkdev(uint8_t _major, const char *_name) : major(_major)
+    blkdev(uint8_t _major, const char *_name)
+        : major(_major)
     {
         strcpy(name, _name);
     }

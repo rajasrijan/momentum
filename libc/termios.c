@@ -24,49 +24,60 @@
 #if __STDC_HOSTED__ == 1
 speed_t cfgetispeed(const struct termios *termios_ptr)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return 0;
 }
 speed_t cfgetospeed(const struct termios *termios_ptr)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return 0;
 }
 int cfsetispeed(struct termios *termios_ptr, speed_t speed)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int cfsetospeed(struct termios *termios_ptr, speed_t speed)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int tcdrain(int a)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int tcflow(int a, int b)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int tcflush(int a, int b)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int tcgetattr(int a, struct termios *termios_ptr)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 pid_t tcgetsid(int a)
 {
+asm("cli;hlt");
     errno = ENOSYS;
     return 0;
 }
 int tcsendbreak(int a, int b)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 int tcsetattr(int a, int b, const struct termios *termios_ptr)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 #endif //   __STDC_HOSTED__ == 1

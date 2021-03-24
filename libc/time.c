@@ -23,10 +23,12 @@
 
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }
 
 int settimeofday(const struct timeval *tv, const struct timezone *tz)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }

@@ -29,6 +29,7 @@ set(LIBC_SRC
     dirent.c
     errno.c
     fcntl.c
+    mman.c
     netdb.c
     select.c
     signal.c
@@ -47,6 +48,8 @@ set(LIBC_SRC
     glob.c
     stubs.c
     syscall.s
+    setjmp.s
+    setjmp.c
 )
 
 add_library(c STATIC ${LIBC_SRC})

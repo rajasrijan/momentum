@@ -94,7 +94,7 @@ int lsmem(char *args);
 int ls(char *args);
 int cd(char *args);
 int cat(char *filename);
-int exec(char *filename);
+int exec(char *cmd_line);
 int top(char *filename);
 int poweroff(char *args);
 int gui(char *args);
@@ -141,28 +141,42 @@ int gui(char *args)
 
 int cat(char *filename)
 {
-    int fd = open(filename, O_RDONLY);
-    if (fd == -1)
+    int ret = 0;
+    vfile *file = nullptr;
+    ret = open(filename, O_RDONLY, &file);
+    if (ret < 0)
         return 1;
     char buffer[256] = {0};
     int bytesRead = 0;
-    while ((bytesRead = read(fd, buffer, sizeof(buffer) - 1)) > 0) {
+    while ((bytesRead = file->read(buffer, sizeof(buffer) - 1)) > 0) {
         buffer[bytesRead] = 0;
         printf(buffer);
     }
     return 0;
 }
 
-int exec(char *filename)
+int exec(char *cmd_line)
 {
     int errorCode = 0;
+    char filename[256] = {};
+    process_t process = nullptr;
     shared_ptr<vnode> exec_node;
+    vector<MemPage> memory_map;
+    uint64_t entry_point = 0;
+    for (int i = 0; (i < sizeof(filename)) && (cmd_line[i] != 0) && (cmd_line[i] != ' '); i++)
+        filename[i] = cmd_line[i];
     errorCode = lookup(filename, exec_node);
     if (errorCode)
         goto error;
     if (!exec_node->isFile())
         return -ENOFILE;
-    errorCode = binary_loader::load(exec_node);
+    errorCode = binary_loader::load(exec_node, memory_map, entry_point);
+    if (errorCode)
+        goto error;
+    //  create process
+    errorCode = multitask::getInstance()->createProcess(process, exec_node->getName().c_str(), cmd_line, 3, memory_map, entry_point);
+    if (errorCode)
+        goto error;
 error:
     return errorCode;
 }
@@ -302,11 +316,20 @@ int process_multiboot2_info(multiboot_information *mbi)
             case MULTIBOOT_TAG_TYPE_CMDLINE:
                 commandline_mboot_tag = (multiboot_tag_string *)mboot_tag;
                 break;
-
             case MULTIBOOT_TAG_TYPE_MMAP:
                 mmap_mboot_tag = (multiboot_tag_mmap *)mboot_tag;
                 break;
-
+            case MULTIBOOT_TAG_TYPE_ACPI_NEW: {
+                auto *new_acpi_mboot_tag = (multiboot_tag_new_acpi *)mboot_tag;
+                memcpy((void *)&rsdp_table, new_acpi_mboot_tag->rsdp, new_acpi_mboot_tag->size - sizeof(multiboot_tag));
+                break;
+            }
+            case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
+                auto *old_acpi_mboot_tag = (multiboot_tag_old_acpi *)mboot_tag;
+                if (rsdp_table.Signature[0] == 0)
+                    memcpy((void *)&rsdp_table, old_acpi_mboot_tag->rsdp, old_acpi_mboot_tag->size - sizeof(multiboot_tag));
+                break;
+            }
             default:
                 break;
         }
@@ -413,8 +436,14 @@ void *pnpHotPlug([[maybe_unused]] void *arg)
  */
 void state_c0()
 {
+    int ret = 0;
     printf("Kernal thread started.\n");
-    InitializeFullAcpi();
+    ret = initialize_full_acpi();
+    if (ret != 0) {
+        printf("ACPI initialization failed\n");
+        __asm__("cli;hlt;");
+    }
+
     pci_init_devices();
     init_vfs();
     init_drivers();

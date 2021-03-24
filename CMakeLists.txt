@@ -157,7 +157,7 @@ add_custom_command(OUTPUT momentum.raw
     COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_ROOTFS}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_DISKFS}
     COMMAND ${FUSEPART_EXE} momentum.raw ${TMP_DISKFS}
-    COMMAND fuseext2 -o rw+ "${TMP_DISKFS}/part0" "${TMP_ROOTFS}"
+    COMMAND fuseext2 -o rw+ "${TMP_DISKFS}/part1" "${TMP_ROOTFS}"
     COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${TMP_ROOTFS} -P cmake_install.cmake
     #   cleanup mount directory
     COMMAND umount ${TMP_ROOTFS}
@@ -169,24 +169,27 @@ add_custom_command(OUTPUT momentum.raw
 
 add_custom_target(install_to_disk_image
     #   remove old directory
+    COMMAND sync
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${TMP_ROOTFS}
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${TMP_DISKFS}
     #   make new mount point
     COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_ROOTFS}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_DISKFS}
     COMMAND ${FUSEPART_EXE} momentum.raw ${TMP_DISKFS}
-    COMMAND fuseext2 -o rw+ "${TMP_DISKFS}/part0" "${TMP_ROOTFS}"
+    COMMAND fuseext2 -o rw+ "${TMP_DISKFS}/part1" "${TMP_ROOTFS}"
     COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${TMP_ROOTFS} -P cmake_install.cmake
     #   cleanup mount directory
     COMMAND umount ${TMP_ROOTFS}
-    COMMAND umount ${TMP_DISKFS}
+    COMMAND sync ${TMP_ROOTFS}
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${TMP_ROOTFS}
+    COMMAND umount ${TMP_DISKFS}
+    COMMAND sync ${TMP_DISKFS}
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${TMP_DISKFS}
     DEPENDS momentum
 )
 
 add_custom_command(TARGET momentum POST_BUILD
-    COMMAND ${CMAKE_OBJDUMP} -d -M intel -S momentum.elf -j .text -j .text0> momentum.s
+    COMMAND ${CMAKE_OBJDUMP} -D -x -M intel -S momentum.elf -j .text -j .text0> momentum.s
     COMMENT "Generating object dump"
 )
 
@@ -194,7 +197,7 @@ set(SYSROOT_DIR ${CMAKE_BINARY_DIR}/sysroot)
 
 ExternalProject_Add(libc
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/libc
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${SYSROOT_DIR}/usr
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${SYSROOT_DIR}/usr -DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 )
 
 #   various tools

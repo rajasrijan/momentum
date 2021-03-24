@@ -23,5 +23,6 @@
 
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 {
+asm("cli;hlt");
     return -ENOSYS;
 }

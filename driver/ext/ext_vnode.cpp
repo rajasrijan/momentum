@@ -1,3 +1,22 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stddef.h>
 #include "ext_vnode.h"
 #include <kernel/logging.h>
@@ -88,12 +107,13 @@ int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
     size_t read_count = 0;
     shared_ptr<char> buffer = new char[v_ext_vfs->blk_sz];
     size_t blkIdx = 0;
-    while (get_block_id_from_position(position + read_count, blkIdx) == 0) {
+    while (get_block_id_from_position(position, blkIdx) == 0) {
         v_ext_vfs->read_block(blkIdx, buffer);
         auto blk_offset = position % v_ext_vfs->blk_sz;
         auto cpy_sz = min((uint64_t)size - read_count, v_ext_vfs->blk_sz - blk_offset);
         memcpy(&data[read_count], &(buffer.get()[blk_offset]), cpy_sz);
         read_count += cpy_sz;
+        position += cpy_sz;
         if (read_count >= size) {
             break;
         }
@@ -103,7 +123,7 @@ int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 
     return ret;
 }
-int ext_vnode::bwrite(ssize_t position, size_t size, char *data, int *bytesWritten)
+int ext_vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
 {
     return -ENOSYS;
 }

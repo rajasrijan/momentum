@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 Srijan Kumar Sharma
+ * Copyright 2009-2021 Srijan Kumar Sharma
  *
  * This file is part of Momentum.
  *
@@ -22,8 +22,7 @@
 
 #include <stdint.h>
 
-typedef struct _driver_info
-{
+typedef struct _driver_info {
     int (*drv_start)(void);
     void (*drv_end)(void);
     const char *drv_name;
