@@ -50,10 +50,23 @@ struct read_args {
     void *buf;
     size_t count;
 };
+
 struct write_args {
     int fd;
     const void *buf;
     size_t count;
 };
+
+struct stat_args {
+    const char *path;
+    struct stat *buf;
+};
+
+struct readdir_args {
+    int fd;
+    struct dirent *buf;
+    size_t *buf_size;
+};
+
 #pragma pack(pop)
 #include <sys/syscall.h>

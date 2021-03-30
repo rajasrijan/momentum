@@ -60,6 +60,8 @@
 //	type of file
 #define S_IFMT (1 << 22)
 
+#define S_ISDIR(mode) (((mode)&S_IFDIR) == S_IFDIR)
+
 struct stat {
     uint64_t st_nlink;
     uint64_t st_uid;
@@ -76,6 +78,6 @@ struct stat {
 };
 
 int fstat(int fd, struct stat *buf);
-int lstat(const char *restrict, struct stat *restrict);
-int stat(const char *restrict, struct stat *restrict);
+int lstat(const char *, struct stat *);
+int stat(const char *path, struct stat *buf);
 #endif

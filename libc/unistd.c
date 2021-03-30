@@ -67,4 +67,15 @@ ssize_t write(int fd, const void *buf, size_t count)
     ret = _syscall(SYSCALL_WRITE, (uint64_t)&args, 0);
     return ret;
 }
+int isatty(int fd)
+{
+    int ret = 0;
+    ret = _syscall(SYSCALL_ISATTY, (uint64_t)fd, 0);
+    if (!ret)
+        return 1;
+    else {
+        errno = -ret;
+        return 0;
+    }
+}
 #endif

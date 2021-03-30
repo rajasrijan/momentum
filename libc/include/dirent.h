@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef DIRENT_H
 #define DIRENT_H
 #include <errno.h>
@@ -33,7 +32,10 @@ struct dirent {
 };
 
 typedef struct _dir {
-    char d_name[NAME_MAX];
+    int fd;
+    struct dirent *dirent_list;
+    size_t dirent_count;
+    size_t dirent_index;
 } DIR;
 #if __STDC_HOSTED__ == 1
 DIR *opendir(const char *dir_name);

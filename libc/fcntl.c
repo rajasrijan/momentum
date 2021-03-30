@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include <fcntl.h>
@@ -36,6 +35,10 @@ int open(const char *path, int oflag, ...)
 {
     struct open_args args = {path, oflag};
     int ret = _syscall(SYSCALL_OPEN, (uint64_t)&args, 0);
+    if (ret < 0) {
+        errno = -ret;
+        ret = -1;
+    }
     return ret;
 }
 int openat(int dirfd, const char *pathname, int flags, mode_t mode)

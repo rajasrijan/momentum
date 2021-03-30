@@ -35,6 +35,9 @@
 #define SYSCALL_GETCMDLINE (11)
 #define SYSCALL_READ (12)
 #define SYSCALL_WRITE (13)
+#define SYSCALL_ISATTY (14)
+#define SYSCALL_STAT (15)
+#define SYSCALL_READDIR (16)
 
 #if __STDC_HOSTED__ == 1
 int _syscall(int64_t callid, int64_t arg0, int64_t arg1);

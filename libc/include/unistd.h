@@ -379,7 +379,7 @@ gid_t getgroups(int n, gid_t *groups);
 long gethostid(void);
 char *getlogin(void);
 int getlogin_r(char *, size_t);
-int getopt(int, char *const[], const char *);
+int getopt(int argc, char *const argv[], const char *optstring);
 int getpagesize(void);
 char *getpass(const char *);
 
@@ -390,7 +390,7 @@ pid_t getppid(void);
 pid_t getsid(pid_t);
 uid_t getuid(void);
 char *getwd(char *);
-int isatty(int);
+int isatty(int fd);
 int lchown(const char *, uid_t, gid_t);
 int link(const char *, const char *);
 int lockf(int, int, off_t);

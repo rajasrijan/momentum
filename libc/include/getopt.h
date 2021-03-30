@@ -20,4 +20,6 @@
 
 #ifndef GETOPT_H
 #define GETOPT_H
+extern char *optarg;
+extern int optind, opterr, optopt;
 #endif //GETOPT_H

@@ -20,30 +20,34 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
+#include <string.h>
+
+char *optarg = NULL;
+int optind = 1, opterr, optopt;
 
 gid_t getegid(void)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
 uid_t geteuid(void)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
 gid_t getgid(void)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
 gid_t getgroups(int n, gid_t *groups)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
 long gethostid(void)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
 char *getlogin(void)
@@ -52,17 +56,62 @@ char *getlogin(void)
 }
 int getlogin_r(char *, size_t)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
-int getopt(int, char *const[], const char *)
+
+int getopt(int argc, char *const argv[], const char *optstring)
 {
-asm("cli;hlt");
-    return -ENOSYS;
+    int ret = -1;
+    int optstrind = 0;
+    int has_argument = 0;
+    if (optind == 0)
+        optind = 1;
+    //  all the arguments have been processed.
+    if (optind >= argc) {
+        ret = -1;
+        goto error_exit;
+    }
+    if ((argv[optind] == NULL) || (argv[optind][0] != '-') || (!strcmp(argv[optind], "-"))) {
+        ret = -1;
+        goto error_exit;
+    }
+    if (!strcmp(argv[optind], "--")) {
+        optind++;
+        ret = -1;
+        goto error_exit;
+    }
+    char *arg = (optarg) ? optarg : &argv[optind][1];
+    for (size_t i = 0; arg[i] != 0; i++) {
+        for (optstrind = 0; optstring[optstrind] != 0; optstrind++) {
+            if (optstring[optstrind] == arg[i]) {
+                optarg = NULL;
+                ret = optstring[optstrind];
+                if (arg[i + 1] == 0) {
+                    optind++;
+                    if (optstring[optstrind + 1] == ':') {
+                        optarg = argv[optind];
+                        optind++;
+                    } else
+                        optarg = NULL;
+                } else {
+                    optarg = &arg[i + 1];
+                    if (optstring[optstrind + 1] == ':') {
+                        optind++;
+                    }
+                }
+                goto error_exit;
+            }
+        }
+    }
+    ret = '?';
+error_exit:
+    return ret;
 }
+
 int getpagesize(void)
 {
-asm("cli;hlt");
+    asm("int3");
     return -ENOSYS;
 }
 char *getpass(const char *)

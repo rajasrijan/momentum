@@ -25,7 +25,6 @@
 #include <arch/x86_64/timer.h>
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
-#include <DDI/block_driver.h>
 #include <errno.h>
 #include <kernel/vnode.h>
 #include "ide.h"

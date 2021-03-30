@@ -30,8 +30,6 @@
 
 bitmap_allocator<KERNEL_MAXIMUM_PHYSICAL_RAM / PageManager::PAGESIZE, PageManager::PAGESIZE> mem_available = {};
 
-heap_t *pHeap;
-
 struct MemMap_t {
     uint64_t addr, len;
 } g_pMemAvailable[64] = {}, g_pMemReserved[64] = {};
@@ -96,6 +94,7 @@ void rel_2mb_block(uint64_t p)
 int create_kernel_heap()
 {
     int ret = 0;
+    extern heap_t *pHeap;
     if ((ret = PageManager::setPageAllocation(KERNEL_HEAP_PTR, PageManager::PAGESIZE * 8, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write)) < 0) {
         printf("failed to allocate pages for kernel heap\n");
         return ret;
@@ -107,37 +106,4 @@ int create_kernel_heap()
     pHeap->checksum = 0;
     pHeap->checksum = getsum((uint8_t *)pHeap, sizeof(heap_t));
     return 0;
-}
-
-void check_heap_integrity()
-{
-    heap_t *heap_ptr = pHeap;
-    do {
-        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
-            printf("heap corruption\n");
-            __asm__("cli;hlt;");
-        }
-        heap_ptr = heap_ptr->next;
-    } while (heap_ptr);
-}
-
-void _free(void *ptr)
-{
-    check_heap_integrity();
-    if (!ptr)
-        return;
-    heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));
-    if (heap_ptr->flags == HEAP_EMPTY) {
-        printf("Double free\n");
-        __asm__("cli;hlt;");
-    }
-    memset(ptr, 0xcc, heap_ptr->size - sizeof(heap_t));
-    if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
-        printf("heap corruption\n");
-        __asm__("cli;hlt;");
-    }
-    heap_ptr->flags = HEAP_EMPTY;
-    heap_ptr->checksum = 0;
-    heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
-    check_heap_integrity();
 }

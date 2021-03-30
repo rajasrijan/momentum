@@ -43,6 +43,7 @@ endif()
 #   project configuration
 set(MOMENTUM_KERNEL_BASE "0x000000C000000000" CACHE STRING "Base address where kernel will be loaded.")
 set(MOMENTUM_KERNEL_VGA True CACHE BOOL "Enable VGA kernel mode.")
+set(MOMENTUM_KERNEL_COVERAGE True CACHE BOOL "Enable code coverage.")
 set(DEBUG_DUMP_ALL_CMAKE_VARIABLES False CACHE BOOL "Dump all cmake variables while configuration.")
 
 if(MOMENTUM_KERNEL_VGA)
@@ -57,10 +58,9 @@ configure_file(${CMAKE_SOURCE_DIR}/kernel/config.h.in ${CMAKE_SOURCE_DIR}/kernel
 configure_file(${CMAKE_SOURCE_DIR}/arch/x86_64/loader.s.in ${CMAKE_SOURCE_DIR}/arch/x86_64/loader.s)
 
 #   source files
-set(SOURCE_FILES 
+set(SRC_FILES 
     #   arch/x86_64/multiboot2.cpp
     #   DDI
-    DDI/block_driver.cpp
     DDI/ddi.cpp
     DDI/driver.cpp
     DDI/pci_driver.cpp
@@ -75,6 +75,7 @@ set(SOURCE_FILES
     kernel/multitask.cpp
     kernel/sys_info.cpp
     kernel/vfs.cpp
+    kernel/vnode.cpp
     kernel/vfsops.cpp
     #   libc++
     libc++/cxxglue.cpp
@@ -103,7 +104,7 @@ set(SOURCE_FILES
     libc/vsprintf.c
 )
 
-add_executable(momentum ${SOURCE_FILES})
+add_executable(momentum ${SRC_FILES})
 install(TARGETS momentum
     DESTINATION .
 )

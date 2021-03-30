@@ -28,12 +28,12 @@
 #include <string>
 #include <vector>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <kernel/logging.h>
 
 using namespace std;
 vector<pair<fileSystem, string>> fs_list; //	List of all fs in system.
 vector<shared_ptr<vfs>> vfs_list;         //	List of all vfs in system.
-map<string, vnode *> dev_list;            //	List of all dev in system.
 mtx_t vfsMtx = 0;
 shared_ptr<vnode> rnode;      //	Pointer to root vnode.
 shared_ptr<vnode> root_devfs; //	Pointer to root devfs vnode.
@@ -357,241 +357,6 @@ vfs::~vfs(void)
     printf("de-Initialisint vfs\n");
 }
 
-vnode::vnode(class vfs *vfsp)
-    : v_shlockc(0), v_exlockc(0), v_type(0), v_vfsmountedhere(nullptr), v_vfsp(vfsp), v_flag(0), v_name(), v_count(0), special_nodes(), dnode_cache(), ref_nodes()
-{
-}
-
-vnode::~vnode()
-{
-    printf("vnode deleted\n");
-}
-
-const string &vnode::getName() const
-{
-    return v_name;
-}
-
-int vnode::ioctl(unsigned int, void *, int)
-{
-    return -ENOSYS;
-}
-
-int vnode::dolookup(const char *const path, shared_ptr<vnode> &foundNode)
-{
-    char sub_path[256] = {0};
-    // copy till '/' or eos.
-    for (size_t i = 0; path[i] != 0 && path[i] != '/'; i++) {
-        sub_path[i] = path[i];
-    }
-    //  look in dnode cache
-    auto found_itr = find_if(dnode_cache.begin(), dnode_cache.end(), [sub_path](const shared_ptr<vnode> &node) {
-        return !strcmp(node->v_name.c_str(), sub_path);
-    });
-    if (found_itr != dnode_cache.end()) {
-        foundNode = *found_itr;
-        return 0;
-    }
-    //  look in special files
-    found_itr = find_if(special_nodes.begin(), special_nodes.end(), [sub_path](const shared_ptr<vnode> &node) {
-        return !strcmp(node->v_name.c_str(), sub_path);
-    });
-    if (found_itr != special_nodes.end()) {
-        foundNode = *found_itr;
-        return 0;
-    }
-    int ret = 0;
-    if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr) {
-        ret = v_vfsmountedhere->vfs_vnodecovered->dolookup(path, foundNode);
-    } else {
-        ret = lookup(path, foundNode);
-    }
-    if (!ret) {
-        dnode_cache.push_back(foundNode);
-    }
-    return ret;
-}
-
-int vnode::docreate(const string &path, shared_ptr<vnode> &node)
-{
-    int ret = 0;
-    ret = create(path, node);
-    return ret;
-}
-
-int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
-{
-    int ret = 0;
-    if (runOnce && !dnode_cache.empty()) {
-        vnodes = dnode_cache;
-        goto exit;
-    }
-    if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
-        ret = v_vfsmountedhere->vfs_vnodecovered->doreaddir(vnodes);
-    else
-        ret = readdir(vnodes);
-    if (ret) {
-        return ret;
-    }
-    //	add to cache
-    for (auto &var : vnodes) {
-        if (dnode_cache.end() == find_if(dnode_cache.begin(), dnode_cache.end(), [&var](const shared_ptr<vnode> &node) {
-                return (node->v_name == var->getName());
-            })) {
-            dnode_cache.push_back(var);
-        }
-    }
-    runOnce = true;
-exit:
-    for (auto &var : special_nodes) {
-        vnodes.push_back(var);
-    }
-    return ret;
-}
-int vnode::doopen(shared_ptr<vnode> &node, uint32_t flags, vfile **file)
-{
-    if (node != this || !file)
-        return -EINVAL;
-    if (v_type != VREG && v_type != VCHR) {
-        return ENOFILE;
-    }
-    *file = new vfile(node);
-    return 0;
-}
-int vnode::lookup(char const *, shared_ptr<vnode> &)
-{
-    return -ENOSYS;
-}
-int vnode::mkdir(string name, shared_ptr<vnode> &pDir)
-{
-    return -ENOSYS;
-}
-int vnode::rename(string name)
-{
-    return -ENOSYS;
-}
-int vnode::close(void)
-{
-    return -ENOSYS;
-}
-int vnode::rdwr(void)
-{
-    return -ENOSYS;
-}
-int vnode::select(void)
-{
-    return -ENOSYS;
-}
-int vnode::getattr(void)
-{
-    return -ENOSYS;
-}
-int vnode::setattr(void)
-{
-    return -ENOSYS;
-}
-int vnode::access(void)
-{
-    return -ENOSYS;
-}
-int vnode::create(const string &path, shared_ptr<vnode> &created_node)
-{
-    return -ENOSYS;
-}
-int vnode::remove(void)
-{
-    return -ENOSYS;
-}
-int vnode::link(void)
-{
-    return -ENOSYS;
-}
-int vnode::rmdir(void)
-{
-    return -ENOSYS;
-}
-int vnode::symlink(void)
-{
-    return -ENOSYS;
-}
-int vnode::readlink(void)
-{
-    return -ENOSYS;
-}
-int vnode::fsync(void)
-{
-    return -ENOSYS;
-}
-int vnode::inactive(void)
-{
-    return -ENOSYS;
-}
-int vnode::bmap(void)
-{
-    return -ENOSYS;
-}
-int vnode::strategy(void)
-{
-    return -ENOSYS;
-}
-int vnode::brelse(void)
-{
-    return -ENOSYS;
-}
-int vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
-{
-    return -ENOSYS;
-}
-int vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
-{
-    return -ENOSYS;
-}
-int vnode::readdir(std::vector<std::shared_ptr<vnode>> &vnodes)
-{
-    return -ENOSYS;
-}
-int vnode::open(uint64_t flags)
-{
-    return -ENOSYS;
-}
-
-int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
-{
-    special_nodes.push_back(pNode);
-    pNode->addRef(current_node);
-    return 0;
-}
-
-int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
-{
-    auto result = find(special_nodes.begin(), special_nodes.end(), pNode);
-    if (result == special_nodes.end()) {
-        return ENOENT;
-    }
-    special_nodes.erase(result);
-    pNode->removeRef(current_node);
-    return 0;
-}
-
-void vnode::setName(const char *name)
-{
-    if (strchar(name, '/') != nullptr) {
-        log_error("Illegal character in filename\nHALT...");
-        asm("cli;hlt;");
-    }
-    v_name = name;
-}
-
-vnode *open_bdev(string dev_path)
-{
-    vnode *device = dev_list[dev_path];
-    // printf("device %x,flag %x\n", device, device->v_type);
-    if ((device != 0) && (device->v_type == VBLK)) {
-        return device;
-    }
-    return NULL;
-}
-
 //  vfile implementation
 vfile::vfile(shared_ptr<vnode> parent)
     : _parent(parent), posP(0), posG(0), fileIOLock()
@@ -661,6 +426,10 @@ int open(const string &name, int oflag, vfile **file)
         return -ENOFILE;
     }
 
+    if ((oflag & O_DIRECTORY) && !node->isDirectory()) {
+        return -ENOTDIR;
+    }
+
     // doesn't exist and create flag set, then create
     if (errorCode < 0 && (oflag & O_CREAT)) {
         errorCode = create(name.c_str(), node);
@@ -670,7 +439,7 @@ int open(const string &name, int oflag, vfile **file)
         }
     } else // try to open it
     {
-        errorCode = node->doopen(node, 0, file);
+        errorCode = node->doopen(node, oflag, file);
         if (errorCode || !file)
             return -1;
     }
@@ -871,7 +640,7 @@ int lookup(const char *path, shared_ptr<vnode> &node)
             continue;
         else if (cdir->dolookup(path_component.c_str(), cdir) != 0) {
             log_error("Invalid path\n");
-            return -1;
+            return -ENOFILE;
         }
     }
     node = cdir;
@@ -964,4 +733,92 @@ int getdents(int fd, vector<string> &dir)
         dir.push_back(node->getName());
     }
     return 0;
+}
+
+int stat(const char *path, struct stat *buf)
+{
+    int ret = 0;
+    shared_ptr<vnode> node;
+    ret = lookup(path, node);
+    if (ret)
+        return ret;
+    ret = stat(node, buf);
+    return ret;
+}
+int stat(shared_ptr<vnode> &file_node, struct stat *buf)
+{
+    int ret = 0;
+    //  not implemented
+    buf->st_dev = 0;
+    //  user id not implemented
+    buf->st_uid = 0;
+    //  group id not implemented
+    buf->st_gid = 0;
+    //  not implemented
+    buf->st_rdev = 0;
+    file_node->getSize(buf->st_size);
+    //  vnode type
+    switch (file_node->v_type) {
+
+        case VREG:
+            buf->st_mode = S_IFREG;
+            break;
+        case VDIR:
+            buf->st_mode = S_IFDIR;
+            break;
+        case VBLK:
+            buf->st_mode = S_IFBLK;
+            break;
+        case VCHR:
+            buf->st_mode = S_IFCHR;
+            break;
+        case VLNK:
+            buf->st_mode = S_IFLNK;
+            break;
+        case VSOCK:
+            buf->st_mode = S_IFSOCK;
+            break;
+        default:
+            buf->st_mode = 0;
+            break;
+    };
+
+    // not implemented
+    buf->st_nlink = 0;
+    buf->st_ino = 0;
+    buf->st_atime = 0; // last access time
+    buf->st_mtime = 0; // last modification time
+    buf->st_ctime = 0; // last sttus change type
+    buf->st_blocks = 4096;
+    return ret;
+}
+
+int vfile::readdir(struct dirent *buf, size_t *buf_size)
+{
+    int ret = 0;
+    vector<shared_ptr<vnode>> vnode_list;
+    ret = _parent->doreaddir(vnode_list);
+
+    return ret;
+}
+
+int readdir(int fd, struct dirent *buf, size_t *buf_size)
+{
+    int ret = 0;
+    vfile *file = nullptr;
+    auto process = multitask::getInstance()->getCurrentProcess();
+    ret = process->get_opened_file(fd, &file);
+    ret = readdir(file, buf, buf_size);
+    return ret;
+}
+int readdir(vfile *file, struct dirent *buf, size_t *buf_size)
+{
+    int ret = 0;
+    if (!file->_parent->isDirectory()) {
+        ret = -ENOTDIR;
+        goto error_exit;
+    }
+    ret = file->readdir(buf, buf_size);
+error_exit:
+    return ret;
 }

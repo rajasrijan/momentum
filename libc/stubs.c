@@ -66,11 +66,7 @@ int puts(const char *str)
     asm("int3");
     return -ENOSYS;
 }
-char *strerror(int errnum)
-{
-    asm("int3");
-    return -ENOSYS;
-}
+
 times()
 {
     asm("int3");
@@ -141,16 +137,6 @@ pid_t getppid(void)
     asm("int3");
     return -ENOSYS;
 }
-int stat(const char *restrict, struct stat *restrict)
-{
-    asm("int3");
-    return -ENOSYS;
-}
-S_ISDIR()
-{
-    asm("int3");
-    return -ENOSYS;
-}
 getpwnam()
 {
     asm("int3");
@@ -192,18 +178,13 @@ uid_t getuid(void)
     asm("int3");
     return -ENOSYS;
 }
-int isatty(int)
-{
-    asm("int3");
-    return -ENOSYS;
-}
+
 poll()
 {
     asm("int3");
     return -ENOSYS;
 }
-char *optarg = NULL;
-int optind = 0, opterr = 0, optopt = 0;
+
 strtoull()
 {
     asm("int3");
@@ -240,16 +221,8 @@ lstat()
     asm("int3");
     return -ENOSYS;
 }
-major()
-{
-    asm("int3");
-    return -ENOSYS;
-}
-minor()
-{
-    asm("int3");
-    return -ENOSYS;
-}
+
+
 putchar_unlocked()
 {
     asm("int3");

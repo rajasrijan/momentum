@@ -247,8 +247,8 @@ class string
     string operator+(const char *str) const
     {
         size_t m_szNewLen = size() + strlen(str);
-        string ret(m_szNewLen, ' ');
-        strcpy(strcpy(ret.c_str(), c_str()), str);
+        string ret(m_szNewLen, 0);
+        strcat(strcat(ret.c_str(), c_str()), str);
         return ret;
     }
 

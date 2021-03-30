@@ -17,13 +17,10 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef TYPES_H
 #define TYPES_H
 #include <stdint.h>
 #include <stddef.h>
-
-
 
 #define __pid_t_defined
 #define __uid_t_defined
@@ -104,4 +101,8 @@ typedef uint64_t trace_id_t;
 typedef uint64_t uid_t;
 
 typedef uint64_t useconds_t;
+
+dev_t makedev(uint32_t maj, uint32_t min);
+uint32_t major(dev_t dev);
+uint32_t minor(dev_t dev);
 #endif //TYPES_H

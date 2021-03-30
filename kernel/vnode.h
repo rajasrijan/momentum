@@ -20,6 +20,8 @@
 #ifndef NODE_H
 #define NODE_H
 #include <stdint.h>
+#include <string>
+#include <memory>
 
 enum vtype {
     VNON = 0,
@@ -91,6 +93,7 @@ class vnode
     virtual int setattr(void);
     virtual int symlink(void);
     virtual int strategy(void);
+    virtual int getSize(size_t &sz);
     virtual bool isPartitionable()
     {
         return true;

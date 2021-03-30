@@ -136,6 +136,7 @@ struct statfs_t {
 
 class vfile
 {
+  public:
     shared_ptr<class vnode> _parent;
     [[maybe_unused]] ssize_t posP, posG;
     [[maybe_unused]] mtx_t fileIOLock;
@@ -146,6 +147,7 @@ class vfile
     int read(char *data, size_t sz);
     int write(const char *data, size_t sz);
     int seekg(long int offset, int origin);
+    int readdir(struct dirent *buf, size_t *buf_size);
 };
 
 class vfs
@@ -218,6 +220,12 @@ int read(int fd, char *dst, size_t size);
 int write(int fd, const char *src, size_t size);
 
 int fseek(int fd, long int offset, int origin);
+
+int stat(const char *path, struct stat *buf);
+int stat(shared_ptr<vnode> &file_node, struct stat *buf);
+
+int readdir(int fd, struct dirent *buf, size_t *buf_size);
+int readdir(vfile *file, struct dirent *buf, size_t *buf_size);
 
 int mount(string mountPoint, string mountSource);
 int getdents(int fd, vector<string> &dir);

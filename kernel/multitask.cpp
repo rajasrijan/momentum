@@ -463,6 +463,7 @@ void process_info::release()
 
 extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
 {
+    int ret = 0;
     switch (callid) {
         case SYSCALL_EXIT: {
             multitask::getInstance()->destroyProcess(arg0);
@@ -500,7 +501,7 @@ extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
         case SYSCALL_GETDENTS: {
             getdents_args *args = (getdents_args *)arg0;
             vector<string> dir;
-            int ret = getdents(args->fd, dir);
+            ret = getdents(args->fd, dir);
             if (ret < 0)
                 return ret;
             auto dent_sz = dir.size();
@@ -511,7 +512,6 @@ extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
             return ret;
         }
         case SYSCALL_MMAP: {
-            int ret = 0;
             mmap_args *args = (mmap_args *)arg0;
             void **ptr = (void **)arg1;
             uint64_t vaddr = 0;
@@ -525,27 +525,48 @@ extern "C" uint64_t syscall(int64_t callid, int64_t arg0, int64_t arg1)
             return ret;
         }
         case SYSCALL_GETPID: {
-            int ret = 0;
             pid_t *args = (pid_t *)arg0;
             *args = multitask::getInstance()->getCurrentProcess()->getProcessId();
             return ret;
         }
         case SYSCALL_GETCMDLINE: {
-            int ret = 0;
             char *args = (char *)arg0;
             strcpy(args, multitask::getInstance()->getCurrentProcess()->getCommandLine().c_str());
             return ret;
         }
         case SYSCALL_READ: {
-            int ret = 0;
             read_args *args = (read_args *)arg0;
             ret = read(args->fd, (char *)args->buf, args->count);
             return ret;
         }
         case SYSCALL_WRITE: {
-            int ret = 0;
             write_args *args = (write_args *)arg0;
             ret = write(args->fd, (const char *)args->buf, args->count);
+            return ret;
+        }
+        case SYSCALL_ISATTY: {
+            auto process = multitask::getInstance()->getCurrentProcess();
+            vfile *file = nullptr;
+            ret = process->get_opened_file(arg0, &file);
+            if (ret) {
+                return ret;
+            }
+            if (!file) {
+                return -EBADF;
+            }
+            if (!file->_parent->isCharacterDevice()) {
+                return -ENOTTY;
+            }
+            return ret;
+        }
+        case SYSCALL_STAT: {
+            struct stat_args *args = (struct stat_args *)arg0;
+            ret = stat(args->path, args->buf);
+            return ret;
+        }
+        case SYSCALL_READDIR: {
+            struct readdir_args *args = (struct readdir_args *)arg0;
+            ret = readdir(args->fd, args->buf, args->buf_size);
             return ret;
         }
         default: {

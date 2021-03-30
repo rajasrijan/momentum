@@ -50,6 +50,8 @@ set(LIBC_SRC
     syscall.s
     setjmp.s
     setjmp.c
+    stat.c
+    types.c
 )
 
 add_library(c STATIC ${LIBC_SRC})

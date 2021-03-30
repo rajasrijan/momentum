@@ -25,22 +25,9 @@
 #include <kernel/syscall.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <arch/x86_64/mm.h>
 
-#define HEAP_EMPTY (1 << 0)
-#define HEAP_FULL (1 << 1)
-#define HEAP_DEFAULT_SIZE (256 * 1024 * 1024)
-
-typedef struct _heap_ {
-    uint64_t size;
-    struct _heap_ *next;
-    uint64_t flags : 56;
-    uint8_t checksum;
-} heap_t;
-#if __STDC_HOSTED__ == 1
-heap_t *pHeap;
-#else
-extern heap_t *pHeap;
-#endif
+heap_t *pHeap = NULL;
 
 static uint8_t checksum(uint8_t *ptr, uint32_t len)
 {
@@ -132,14 +119,28 @@ void *_malloc(uint32_t length)
     return _aligned_malloc(length, 4);
 }
 
-#if __STDC_HOSTED__ == 0
-extern void _free(void *ptr);
-#else
 void _free(void *ptr)
 {
-    __asm__("int3");
+    check_heap_integrity();
+    if (!ptr)
+        return;
+    heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));
+    if (heap_ptr->flags == HEAP_EMPTY) {
+        printf("Double free\n");
+        __asm__("cli;hlt;");
+    }
+    memset(ptr, 0xcc, heap_ptr->size - sizeof(heap_t));
+    if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
+        printf("heap corruption\n");
+        __asm__("cli;hlt;");
+    }
+    heap_ptr->flags = HEAP_EMPTY;
+    heap_ptr->checksum = 0;
+    heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
+    check_heap_integrity();
 }
 
+#if __STDC_HOSTED__ == 1
 __attribute__((noreturn)) void _exit(int status)
 {
     __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)

@@ -36,7 +36,6 @@
 #include "../../DDI/pci_driver.h"
 #include <DDI/driver.h>
 #include <string>
-#include "../../DDI/block_driver.h"
 #include <list>
 #include <map>
 #include <unistd.h>

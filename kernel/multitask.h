@@ -122,7 +122,7 @@ class process_info
         class sync lock(open_file_descriptor_mtx);
 
         if (fd < 0 || (size_t)fd >= open_file_descriptor.size())
-            return EBADF;
+            return -EBADF;
         *file_obj = open_file_descriptor[fd];
         return 0;
     }
