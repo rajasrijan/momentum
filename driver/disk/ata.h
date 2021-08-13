@@ -30,10 +30,11 @@
 #include <kernel/vfs.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-void ata_init(void);
+    void ata_init(void);
 
 #ifdef __cplusplus
 }

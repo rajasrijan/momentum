@@ -19,24 +19,28 @@
 #pragma once
 #pragma pack(push, 8)
 
-struct open_args {
+struct open_args
+{
     const char *pathname;
     int oflag;
 };
 
-struct openat_args {
+struct openat_args
+{
     int dirfd;
     const char *pathname;
     int flags;
 };
 
-struct getdents_args {
+struct getdents_args
+{
     int fd;
     struct dirent *dirp;
     size_t count;
 };
 
-struct mmap_args {
+struct mmap_args
+{
     void *addr;
     size_t len;
     int prot;
@@ -45,24 +49,28 @@ struct mmap_args {
     off_t off;
 };
 
-struct read_args {
+struct read_args
+{
     int fd;
     void *buf;
     size_t count;
 };
 
-struct write_args {
+struct write_args
+{
     int fd;
     const void *buf;
     size_t count;
 };
 
-struct stat_args {
+struct stat_args
+{
     const char *path;
     struct stat *buf;
 };
 
-struct readdir_args {
+struct readdir_args
+{
     int fd;
     struct dirent *buf;
     size_t *buf_size;

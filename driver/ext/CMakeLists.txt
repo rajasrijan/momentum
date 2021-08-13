@@ -34,7 +34,6 @@ if(MOMENTUM_MODULE_${MODULE_NAME} STREQUAL "Static")
     target_compile_options(${MODULE_NAME} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-m64 -fno-exceptions -fno-rtti -include new>
     )
-    target_link_libraries(momentum ${MODULE_NAME})
 elseif(MOMENTUM_MODULE_${MODULE_NAME} STREQUAL "Module")
     add_library(${MODULE_NAME} MODULE ${MODULE_NAME}_SRC)
     target_include_directories(${MODULE_NAME}
@@ -45,5 +44,4 @@ elseif(MOMENTUM_MODULE_${MODULE_NAME} STREQUAL "Module")
     target_compile_options(${MODULE_NAME} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-m64 -fno-exceptions -fno-rtti -include new>
     )
-    target_link_libraries(momentum ${MODULE_NAME})
 endif()

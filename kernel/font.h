@@ -17,24 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MULTIBOOT_H
-#define MULTIBOOT_H
+#pragma once
+extern const uint8_t *vga_font[];
 
-#include <kernel/config.h>
-
-#pragma pack(push, 8)
-struct kernel_multiboot_header {
-    alignas(8) multiboot_header mboot_header;
-    alignas(8) multiboot_header_tag_information_request tag_info_req;
-    multiboot_uint32_t requests[6];
-#if KERNEL_GRUB_VIDEO == 1
-    alignas(8) multiboot_header_tag_framebuffer tag_framebuffer;
-#endif
-    alignas(8) multiboot_header_tag_module_align tag_mod_align;
-    alignas(8) multiboot_header_tag tag_end;
-};
-#pragma pack(pop)
-
-extern kernel_multiboot_header momentum_multiboot_header;
-
-#endif
+void init_font();
+void get_font(char ch, uint32_t color, uint32_t pix[8 * 16]);

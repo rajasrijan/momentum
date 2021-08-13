@@ -17,4 +17,10 @@
 #  along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
 
 set(CMAKE_ASM_SOURCE_FILE_EXTENSIONS s;S;asm)
-set(CMAKE_ASM_COMPILE_OBJECT  "<CMAKE_ASM_COMPILER> -f elf64 -o <OBJECT> <SOURCE>")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Momentum")
+    set(CMAKE_ASM_COMPILE_OBJECT  "<CMAKE_ASM_COMPILER> -f elf64 -o <OBJECT> <SOURCE>")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "EFI")
+    set(CMAKE_ASM_COMPILE_OBJECT  "<CMAKE_ASM_COMPILER> -f win64 -o <OBJECT> <SOURCE>")
+else()
+    message(ERROR "Unknown system!")
+endif()

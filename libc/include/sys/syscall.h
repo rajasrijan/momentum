@@ -42,4 +42,4 @@
 #if __STDC_HOSTED__ == 1
 int _syscall(int64_t callid, int64_t arg0, int64_t arg1);
 #endif
-#endif //SYSCALL_H
+#endif // SYSCALL_H

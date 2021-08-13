@@ -44,12 +44,14 @@ typedef uint64_t rlim_t;
 //	Returns information about children of the current process.
 #define RUSAGE_CHILDREN (1 << 0)
 
-struct rlimit {
+struct rlimit
+{
 
     rlim_t rlim_cur; //  The current (soft) limit.
     rlim_t rlim_max; //  The hard limit.
 };
-struct rusage {
+struct rusage
+{
 
     struct timeval ru_utime; //  User time used.
     struct timeval ru_stime; //  System time used.

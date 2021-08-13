@@ -1,0 +1,43 @@
+;
+; Copyright 2009-2021 Srijan Kumar Sharma
+;
+; This file is part of Momentum.
+;
+; Momentum is free software: you can redistribute it AND/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+;
+; Momentum is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+;
+
+[BITS 64]
+[default abs]
+[global loader]
+[extern stage2]
+
+section .text
+align 8
+
+loader:
+    ;RBX has temporary page table structure
+    cli
+    MOV CR3, RBX
+
+    mov rax, entry_loc
+    mov rax,[rax]
+    jmp rax
+long_jump:
+    call stage2
+hang:
+    pause
+    jmp hang
+
+section .data
+entry_loc dq long_jump

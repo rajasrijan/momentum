@@ -105,4 +105,4 @@ typedef uint64_t useconds_t;
 dev_t makedev(uint32_t maj, uint32_t min);
 uint32_t major(dev_t dev);
 uint32_t minor(dev_t dev);
-#endif //TYPES_H
+#endif // TYPES_H

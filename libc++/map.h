@@ -22,7 +22,8 @@
 #include <utility>
 #include <vector>
 
-namespace std {
+namespace std
+{
 template <typename Key>
 uint64_t default_hash_map([[maybe_unused]] Key key)
 {
@@ -51,8 +52,7 @@ class map
         {
             return (mapIt == it.mapIt);
         }
-        iterator(typename vector<pair<Key, T>>::iterator It)
-            : mapIt(It)
+        iterator(typename vector<pair<Key, T>>::iterator It) : mapIt(It)
         {
         }
         pair<Key, T> *operator->()
@@ -65,8 +65,7 @@ class map
     vector<pair<Key, T>> k;
 
   public:
-    map()
-        : k()
+    map() : k()
     {
     }
     T &operator[](const Key &_k)

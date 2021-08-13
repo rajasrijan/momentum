@@ -21,7 +21,7 @@
 #include <vector>
 #include <DDI/driver.h>
 #include <DDI/pci_driver.h>
-#include <arch/x86_64/paging.h>
+#include <arch/paging.h>
 #include <arch/x86_64/timer.h>
 #include <errno.h>
 #include <stdio.h>
@@ -42,8 +42,7 @@ class ahci_controller
     sata_blk_vnode *sata_blk_root_node[32];
 
   public:
-    ahci_controller()
-        : abar(nullptr), sata_blk_root_node{}
+    ahci_controller() : abar(nullptr), sata_blk_root_node{}
     {
     }
     ~ahci_controller()
@@ -59,22 +58,27 @@ class ahci_controller
         // enable interrupt
         abar->ghc = abar->ghc | HBA_GHC::IE;
         uint32_t pi = abar->pi;
-        for (size_t i = 0; i < 32; i++) {
-            if (pi & (1 << i)) {
+        for (size_t i = 0; i < 32; i++)
+        {
+            if (pi & (1 << i))
+            {
                 auto det = abar->ports[i].ssts.det;
                 auto spd = abar->ports[i].ssts.spd;
                 auto ipm = abar->ports[i].ssts.ipm;
-                if (det > 0 || spd > 0 || ipm > 0) {
+                if (det > 0 || spd > 0 || ipm > 0)
+                {
                     printf("SATA%d disk at port: %d\n", spd, i);
                     string disk_name = "sda";
                     disk_name.back() += disk_no++;
                     sata_blk_root_node[i] = new sata_blk_vnode(abar, i, disk_name);
                     ret = mknod(("/dev/" + disk_name).c_str(), sata_blk_root_node[i]);
-                    if (ret) {
+                    if (ret)
+                    {
                         printf("Failed to register block device\n");
                         // ret = 0; // non fatal.
                     }
-                } else
+                }
+                else
                     printf("Port disconnected\n");
             }
         }
@@ -85,8 +89,10 @@ class ahci_controller
     {
         auto is = abar->is;
         //  check pending interrupts
-        for (size_t i = 0; i < 32; i++) {
-            if (is & (1 << i)) {
+        for (size_t i = 0; i < 32; i++)
+        {
+            if (is & (1 << i))
+            {
                 abar->ports[i].is = -1;
                 if (!sata_blk_root_node[i])
                     return -EFAULT;
@@ -98,7 +104,8 @@ class ahci_controller
 };
 
 static pci_device_id supportedDevices[] = {
-    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_SATA, (uint8_t)PCI_ANY_ID},
+    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_SATA,
+     (uint8_t)PCI_ANY_ID},
 };
 
 class sata_pci_driver : pci_driver
@@ -106,8 +113,7 @@ class sata_pci_driver : pci_driver
     ahci_controller *controller;
 
   public:
-    sata_pci_driver()
-        : pci_driver("SATA Driver")
+    sata_pci_driver() : pci_driver("SATA Driver")
     {
     }
     int probe(pci_device_t *dev, pci_device_id table)
@@ -115,7 +121,8 @@ class sata_pci_driver : pci_driver
         int ret = -ENXIO;
         controller = new ahci_controller;
 
-        if ((ret = controller->probe(dev)) == 0) {
+        if ((ret = controller->probe(dev)) == 0)
+        {
             printf("Using AHCI mode for SATA device.\n");
             return 0;
         }
@@ -141,7 +148,8 @@ void destroy_sata_interface(pci_driver *driver)
     delete driver;
 }
 
-pci_driver_interface sata_pci_driver_interface = {supportedDevices, sizeof(supportedDevices) / sizeof(supportedDevices[0]), create_sata_interface, destroy_sata_interface};
+pci_driver_interface sata_pci_driver_interface = {supportedDevices, sizeof(supportedDevices) / sizeof(supportedDevices[0]), create_sata_interface,
+                                                  destroy_sata_interface};
 
 void sata_init()
 {
@@ -154,14 +162,14 @@ int ahci_reset_host_contoller(HBA_MEM volatile *ahci)
     //  HBA Reset HR
     ahci->ghc = ahci->ghc | HBA_GHC::HR;
     //  wait for reset to complete
-    while (ahci->ghc & HBA_GHC::HR) {
+    while (ahci->ghc & HBA_GHC::HR)
+    {
         asm("pause");
     }
     return 0;
 }
 
-sata_blk_vnode::sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const string &_name)
-    : vnode(nullptr), abar(_abar), portId(_portId)
+sata_blk_vnode::sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const string &_name) : vnode(nullptr), abar(_abar), portId(_portId)
 {
     mtx_init(&port_lock, 0);
     mtx_init(&cmd_notify, 0);
@@ -180,21 +188,24 @@ sata_blk_vnode::sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const st
     // Command list entry size = 32
     // Command list entry maxim count = 32
     // Command list maxim size = 32*32 = 1K per port
-    if (PageManager::getPhysicalAddress((uint64_t)command_list, physical_address)) {
+    if (PageManager::getPhysicalAddress((uint64_t)command_list, physical_address))
+    {
         printf("Failed to get physical address\n");
         asm("cli;hlt");
     }
     Save_64BitPtr(port->clb, physical_address);
     // FIS offset: 32K+256*portno
     // FIS entry size = 256 bytes per port
-    if (PageManager::getPhysicalAddress((uint64_t)fis_list, physical_address)) {
+    if (PageManager::getPhysicalAddress((uint64_t)fis_list, physical_address))
+    {
         printf("Failed to get physical address\n");
         asm("cli;hlt");
     }
     Save_64BitPtr(port->fb, physical_address);
     //
     enableFISReceive();
-    if (enableCommand()) {
+    if (enableCommand())
+    {
         // enable failed try reset
         disableCommand(); // disable port
                           // port->sctl;
@@ -230,14 +241,17 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
 
     HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL *)aligned_malloc(sizeof(HBA_CMD_TBL), 10);
     memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
-    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address)) {
+    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address))
+    {
         printf("Failed to get physical address\n");
         asm("cli;hlt");
     }
     Save_64BitPtr(cmdheader->ctba, physical_address);
 
-    for (size_t i = 0, total_size = 0; i < cmdheader->prdtl; i++, total_size += 0x800000) {
-        if (PageManager::getPhysicalAddress((uint64_t)data + (i * 0x800000), physical_address)) {
+    for (size_t i = 0, total_size = 0; i < cmdheader->prdtl; i++, total_size += 0x800000)
+    {
+        if (PageManager::getPhysicalAddress((uint64_t)data + (i * 0x800000), physical_address))
+        {
             printf("Failed to get physical address\n");
             asm("cli;hlt");
         }
@@ -267,10 +281,12 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
 
     // The below loop waits until the port is no longer busy before issuing a new
     // command
-    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000) {
+    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000)
+    {
         spin++;
     }
-    if (spin == 1000000) {
+    if (spin == 1000000)
+    {
         printf("Drive is busy\n");
         return -EAGAIN;
     }
@@ -282,7 +298,8 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     mtx_unlock(&cmd_notify);
 
     // Check again
-    if (port->is & HBA_PxIS::TFES) {
+    if (port->is & HBA_PxIS::TFES)
+    {
         printf("Disk read failed\n");
         return -EIO;
     }
@@ -306,14 +323,17 @@ int sata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int 
 
     HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL *)aligned_malloc(sizeof(HBA_CMD_TBL), 10);
     memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
-    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address)) {
+    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address))
+    {
         printf("Failed to get physical address\n");
         asm("cli;hlt");
     }
     Save_64BitPtr(cmdheader->ctba, physical_address);
 
-    for (size_t i = 0, total_size = 0; i < cmdheader->prdtl; i++, total_size += 0x800000) {
-        if (PageManager::getPhysicalAddress((uint64_t)data + (i * 0x800000), physical_address)) {
+    for (size_t i = 0, total_size = 0; i < cmdheader->prdtl; i++, total_size += 0x800000)
+    {
+        if (PageManager::getPhysicalAddress((uint64_t)data + (i * 0x800000), physical_address))
+        {
             printf("Failed to get physical address\n");
             asm("cli;hlt");
         }
@@ -343,10 +363,12 @@ int sata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int 
 
     // The below loop waits until the port is no longer busy before issuing a new
     // command
-    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000) {
+    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000)
+    {
         spin++;
     }
-    if (spin == 1000000) {
+    if (spin == 1000000)
+    {
         printf("Drive is busy\n");
         return -EAGAIN;
     }
@@ -358,7 +380,8 @@ int sata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int 
     mtx_unlock(&cmd_notify);
 
     // Check again
-    if (port->is & HBA_PxIS::TFES) {
+    if (port->is & HBA_PxIS::TFES)
+    {
         printf("Disk read failed\n");
         return -EIO;
     }
@@ -369,20 +392,21 @@ int sata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int 
 int sata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
 {
     int ret = 0;
-    switch (command) {
-        case BLKPBSZGET: {
-            *((uint64_t *)data) = 512;
-            return 0;
-        }
-        case BLKGETSIZE64: {
-            ata_identity identity = {};
-            if ((ret = identify(identity)) < 0)
-                return ret;
-            *((uint64_t *)data) = identity.MAX_LBA;
-            return 0;
-        }
-        default:
-            return -EINVAL;
+    switch (command)
+    {
+    case BLKPBSZGET: {
+        *((uint64_t *)data) = 512;
+        return 0;
+    }
+    case BLKGETSIZE64: {
+        ata_identity identity = {};
+        if ((ret = identify(identity)) < 0)
+            return ret;
+        *((uint64_t *)data) = identity.MAX_LBA;
+        return 0;
+    }
+    default:
+        return -EINVAL;
     }
     return 0;
 }
@@ -402,7 +426,8 @@ int sata_blk_vnode::getCommandSlot()
     sync lock(port_lock);
     // If not set in SACT and CI, the slot is free
     uint32_t slots = (port->sact | port->ci);
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; i++)
+    {
         if ((slots & 1) == 0)
             return i;
         slots >>= 1;
@@ -434,7 +459,8 @@ int sata_blk_vnode::identify(ata_identity &ident)
     memset((void *)cmdtbl, 0, sizeof(HBA_CMD_TBL));
 
     // 8K bytes (16 sectors) per PRDT
-    if (PageManager::getPhysicalAddress((uint64_t)identify_data, physical_address)) {
+    if (PageManager::getPhysicalAddress((uint64_t)identify_data, physical_address))
+    {
         printf("Failed to get physical address\n");
         asm("cli;hlt");
     }
@@ -442,7 +468,8 @@ int sata_blk_vnode::identify(ata_identity &ident)
     cmdtbl->prdt_entry[0].dbc = 0x200 - 1; // 512 bytes per sector
     cmdtbl->prdt_entry[0].i = 0;
 
-    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address)) {
+    if (PageManager::getPhysicalAddress((uint64_t)cmdtbl, physical_address))
+    {
         printf("Failed to get physical address\n");
         asm("cli;hlt");
     }
@@ -470,10 +497,12 @@ int sata_blk_vnode::identify(ata_identity &ident)
 
     // The below loop waits until the port is no longer busy before issuing a new
     // command
-    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000) {
+    while ((port->tfd & (ATA_STATUS::BSY | ATA_STATUS::DRQ)) && spin < 1000000)
+    {
         spin++;
     }
-    if (spin == 1000000) {
+    if (spin == 1000000)
+    {
         printf("Drive is busy\n");
         asm("cli;hlt");
 
@@ -485,14 +514,16 @@ int sata_blk_vnode::identify(ata_identity &ident)
     mtx_lock(&cmd_notify);
     mtx_unlock(&cmd_notify);
     // Check again
-    if (port->is & HBA_PxIS::TFES) {
+    if (port->is & HBA_PxIS::TFES)
+    {
 
         printf("Disk read failed\n");
         asm("cli;hlt");
         return -EIO;
     }
     // Check again
-    if (port->tfd & 0xFF00) {
+    if (port->tfd & 0xFF00)
+    {
 
         printf("Disk read failed\n");
         asm("cli;hlt");
@@ -506,7 +537,8 @@ int sata_blk_vnode::identify(ata_identity &ident)
 int sata_blk_vnode::disableCommand()
 {
     port->cmd.st = 0;
-    while (port->cmd.cr == 1) {
+    while (port->cmd.cr == 1)
+    {
         asm("pause");
     }
     return 0;
@@ -517,7 +549,8 @@ int sata_blk_vnode::disableFISReceive()
     // disable FIS receiver
     port->cmd.fre = 0;
     // wait for FIS receiver to stop
-    while (port->cmd.fr == 1) {
+    while (port->cmd.fr == 1)
+    {
         asm("pause");
     }
     return 0;
@@ -526,7 +559,8 @@ int sata_blk_vnode::disableFISReceive()
 int sata_blk_vnode::enableCommand()
 {
     port->cmd.st = 1;
-    if (port->cmd.st == 0) {
+    if (port->cmd.st == 0)
+    {
         return -EFAULT;
     }
     return 0;
@@ -537,7 +571,8 @@ int sata_blk_vnode::enableFISReceive()
     // enable FIS receiver
     port->cmd.fre = 1;
     // wait for FIS receiver to start
-    while (port->cmd.fr == 0) {
+    while (port->cmd.fr == 0)
+    {
         asm("pause");
     }
     return 0;

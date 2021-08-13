@@ -20,7 +20,7 @@
 #include <kernel/vfs.h>
 #include <memory>
 #include <stdint.h>
-#include <arch/x86_64/paging.h>
+#include <arch/paging.h>
 
 #define EI_NIDENT 16
 #define Elf64_Addr alignas(8) uint64_t
@@ -91,6 +91,10 @@ typedef struct
 #define SHT_SHLIB 10
 // Contains a dynamic loader symbol table
 #define SHT_DYNSYM 11
+//  contains list of constructors
+#define SHT_INIT_ARRAY 14
+//  contains list of destructors
+#define SHT_FINI_ARRAY 15
 // Environment-specific use
 #define SHT_LOOS 0x60000000
 #define SHT_HIOS 0x6FFFFFFF
@@ -103,6 +107,9 @@ typedef struct
 #define SHF_EXECINSTR 0x04
 #define SHF_MASKOS 0x0F000000
 #define SHF_MASKPROC 0xF0000000
+
+//  Used to mark an undefined or meaningless section reference
+#define SHN_UNDEF 0
 
 typedef struct
 {
@@ -130,6 +137,16 @@ typedef struct
     Elf64_Xword p_align;
 } Elf64_Phdr;
 
+typedef struct
+{
+    Elf64_Word st_name;
+    unsigned char st_info;
+    unsigned char st_other;
+    Elf64_Half st_shndx;
+    Elf64_Addr st_value;
+    Elf64_Xword st_size;
+} Elf64_Sym;
+
 #pragma pack(pop)
 
 #define PT_NULL 0x00000000
@@ -143,6 +160,35 @@ typedef struct
 #define PT_HIOS 0x6FFFFFFF
 #define PT_LOPROC 0x70000000
 #define PT_HIPROC 0x7FFFFFFF
+//  Not visible outside the object file
+#define STB_LOCAL 0
+//  Global symbol, visible to all object files
+#define STB_GLOBAL 1
+//  Global scope, but with lower precedence than global symbols
+#define STB_WEAK 2
+//  Environment-specific use
+#define STB_LOOS 10
+#define STB_HIOS 12
+//  Processor-specific use
+#define STB_LOPROC 13
+#define STB_HIPROC 15
+
+#define STT_NOTYPE 0  // No type specified (e.g., an absolute symbol)
+#define STT_OBJECT 1  // Data object
+#define STT_FUNC 2    //   Function entry point
+#define STT_SECTION 3 //    Symbol is associated with a section
+#define STT_FILE 4    //   Source file associated with the object file
+#define STT_LOOS 10   //  Environment-specific use
+#define STT_HIOS 12
+#define STT_LOPROC 13 //  Processor-specific use
+#define STT_HIPROC 15
+
+typedef struct
+{
+    char *name;
+    uint64_t addr;
+    size_t size;
+} symbol_info;
 
 class binary_loader
 {
@@ -151,4 +197,25 @@ class binary_loader
     binary_loader(/* args */);
     ~binary_loader();
     static int load(shared_ptr<vnode> &node, vector<MemPage> &memory_map, uint64_t &entry_point);
+    static int load_kernel(shared_ptr<vnode> &node, vector<MemPage> &memory_map, uint64_t &entry_point, vector<symbol_info> &symbol_table);
+    static int read_elf64_hdr(shared_ptr<vnode> &node, Elf64_Ehdr &elf_hdr);
+    static int read_elf64_prog_hdrs(shared_ptr<vnode> &node, const Elf64_Ehdr &elf_hdr, vector<Elf64_Phdr> &pheader);
+    static int read_elf64_sect_hdrs(shared_ptr<vnode> &node, const Elf64_Ehdr &elf_hdr, vector<Elf64_Shdr> &sheader);
+    static int read_elf64_section(shared_ptr<vnode> &node, const Elf64_Shdr &sect_hdr, char *data);
+    static int get_physical_address(uint64_t vaddr, const vector<MemPage> &memory_map, uint64_t &paddr);
+    static void *get_symbol_by_name(const char *symbol_name, const vector<symbol_info> &symbol_table, const vector<MemPage> &memory_map, size_t *symbol_size);
+
+    template <typename symbol_type>
+    struct symbol
+    {
+        symbol_type *ptr;
+        uint64_t size;
+    };
+    template <typename symbol_type>
+    static symbol<symbol_type> get_symbol_by_name(const char *symbol_name, const vector<symbol_info> &symbol_table, const vector<MemPage> &memory_map)
+    {
+        symbol<symbol_type> s = {};
+        s.ptr = (symbol_type *)get_symbol_by_name(symbol_name, symbol_table, memory_map, &(s.size));
+        return s;
+    }
 };

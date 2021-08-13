@@ -27,7 +27,8 @@
 #define EXT_SUPERBLOCK_SIZE 1024
 
 #pragma pack(push, 1)
-struct superblock {
+struct superblock
+{
     uint32_t inode_count;
     uint32_t blk_count;
     uint32_t resv_blk_count;
@@ -73,7 +74,8 @@ struct superblock {
     uint8_t resv[788];
 };
 
-struct block_group_descriptor {
+struct block_group_descriptor
+{
     uint32_t block_bitmap_addr;
     uint32_t inode_bitmap_addr;
     uint32_t inode_tbl_addr;
@@ -91,7 +93,8 @@ struct block_group_descriptor {
 #define INODE_TYPE_SLNK 0xA000
 #define INODE_TYPE_SOCK 0xC000
 
-struct inode {
+struct inode
+{
     uint16_t type_permissions;
     uint16_t uid;
     uint32_t size_lo;
@@ -124,7 +127,8 @@ struct inode {
     }
 };
 
-struct directory {
+struct directory
+{
     uint32_t _inode;
     uint16_t entry_size;
     uint8_t name_sz_lo;
@@ -135,4 +139,4 @@ struct directory {
 
 #pragma pack(pop)
 
-#endif //EXT_H
+#endif // EXT_H

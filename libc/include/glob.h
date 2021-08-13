@@ -20,7 +20,8 @@
 #ifndef GLOB_H
 #define GLOB_H
 
-typedef struct glob {
+typedef struct glob
+{
     size_t gl_pathc; // count of paths matched by pattern
     char **gl_pathv; // pointer to a list of matched pathnames
     size_t gl_offs;  //  slots to reserve at the beginning of gl_pathv

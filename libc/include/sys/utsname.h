@@ -20,7 +20,8 @@
 #ifndef UTSNAME_H
 #define UTSNAME_H
 
-struct utsname {
+struct utsname
+{
     char sysname[256];  //  Name of this implementation of the operating system.
     char nodename[256]; // Name of this node within the communications network to which this node is attached, if any.
     char release[256];  //  Current release level of this implementation.

@@ -3,44 +3,34 @@ TARGET(elf64-x86-64)
 
 SECTIONS
 {
-	. = 0x100000;
-	kernel_start = . + ${MOMENTUM_KERNEL_BASE};
-	.text0 ALIGN (0x1000) : AT(ADDR(.text0))
-	{
-		*(.multiboot)
-		*(.text0*)
-		*(.rodata0*)
-		. = ALIGN(4096);
-	}
-
-	.data0 ALIGN (0x1000) : AT(ADDR(.data0))
-	{
-		*(.data0*)
-		. = ALIGN(4096);
-	}
-
-	. += ${MOMENTUM_KERNEL_BASE};
-	.text ALIGN (0x1000) : AT(ADDR(.text) - ${MOMENTUM_KERNEL_BASE})
+	. = ${MOMENTUM_KERNEL_BASE_VADDR};
+	kernel_start = .;
+	.text ALIGN (0x1000) : AT(ADDR(.text) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		*(.text*)
-		*(.rodata*)
 		. = ALIGN(4096);
 	}
 	
-	.data ALIGN (0x1000) : AT(ADDR(.data) - ${MOMENTUM_KERNEL_BASE})
+	.data ALIGN (0x1000) : AT(ADDR(.data) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		*(.data)
         . = ALIGN(4096);
 	}
+
+	.rodata ALIGN (0x1000) : AT(ADDR(.rodata) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
+	{
+		*(.rodata*)
+        . = ALIGN(4096);
+	}
 	
 	__MOD_LIST__ = .;
-    .mod_init ALIGN (0x1000) : AT(ADDR(.mod_init) - ${MOMENTUM_KERNEL_BASE})
+    .mod_init ALIGN (0x1000) : AT(ADDR(.mod_init) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		*(.mod_init)
 	}
 	__MOD_END__ = .;
     
-	.ctors ALIGN (0x1000) : AT(ADDR(.ctors) - ${MOMENTUM_KERNEL_BASE})
+	.ctors ALIGN (0x1000) : AT(ADDR(.ctors) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		__CTOR_LIST__ = .;
 		*(.ctors)
@@ -48,13 +38,13 @@ SECTIONS
 	}
 	__CTOR_END__ = .;
     
-	.dtors ALIGN (0x1000) : AT(ADDR(.dtors) - ${MOMENTUM_KERNEL_BASE})
+	.dtors ALIGN (0x1000) : AT(ADDR(.dtors) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		*(.dtors)
 		*(.fini_array)
 	}
 	
-	.bss ALIGN (0x1000) : AT(ADDR(.bss) - ${MOMENTUM_KERNEL_BASE})
+	.bss ALIGN (0x1000) : AT(ADDR(.bss) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		_sbss = .;
 		*(COMMON)
@@ -63,7 +53,7 @@ SECTIONS
 		. = ALIGN(4096);
 	}
 	
-	.eh_frame ALIGN (0x1000) : AT(ADDR(.eh_frame) - ${MOMENTUM_KERNEL_BASE})
+	.eh_frame ALIGN (0x1000) : AT(ADDR(.eh_frame) - ${MOMENTUM_KERNEL_BASE_VADDR} + ${MOMENTUM_KERNEL_BASE_PADDR})
 	{
 		*(.eh_frame)
 		. = ALIGN(4096);

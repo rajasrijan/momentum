@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef LOCALE_H
 #define LOCALE_H
 

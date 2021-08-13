@@ -19,19 +19,8 @@
 
 #pragma once
 #include <stdint.h>
-#include "multiboot2.h"
 
-enum DisplayMode {
-    TEXT_ONLY,
-    GRAPHICS
-};
 extern size_t text_width, text_height;
-extern void (*putcharacter)(const uint8_t ch, uint32_t x, uint32_t y);
-extern void (*scroll)(void);
-extern void (*setColor)(uint8_t c);
-int init_video(struct multiboot_tag_framebuffer *mbi);
-int set_io_functions(void (*putcharacter_new)(const uint8_t ch, uint32_t x, uint32_t y),
-                     void (*scroll_new)(void),
-                     void (*setColor_new)(uint8_t c));
-__uint128_t *get_framebuffer();
+
+int init_video();
 void get_screenparams(size_t *_screen_width, size_t *_screen_height, size_t *_pitch, size_t *_depth);

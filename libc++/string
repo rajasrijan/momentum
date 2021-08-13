@@ -28,81 +28,81 @@ namespace std {
 
 class string
 {
-    char *data;
+    char * data;
     size_t string_length;
     size_t container_capacity;
 
   public:
-    static const size_t npos = -1;
+    static const size_t npos = (size_t)-1;
 
   public:
-    string()
-        : data(nullptr), string_length(0), container_capacity(0)
+    string() :
+        data(nullptr), string_length(0), container_capacity(0)
     {
         container_capacity = 32;
-        string_length = 0;
-        data = new char[container_capacity];
+        string_length      = 0;
+        data               = new char[container_capacity];
         memset(data, 0, container_capacity);
     }
 
-    string(const char *str)
-        : data(nullptr), string_length(0), container_capacity(0)
+    string(const char *str) :
+        data(nullptr), string_length(0), container_capacity(0)
     {
         if (str != 0) {
             for (string_length = 0; str[string_length] != 0; string_length++)
                 ;
             container_capacity = string_length + 32;
-            data = new char[container_capacity];
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
             copy(str, &str[string_length], data);
             data[string_length] = 0;
         } else {
             container_capacity = 32;
-            string_length = 0;
-            data = new char[container_capacity];
+            string_length      = 0;
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
         }
     }
 
-    string(const char *str, size_t n)
-        : data(nullptr), string_length(0), container_capacity(0)
+    string(const char *str, size_t n) :
+        data(nullptr), string_length(0), container_capacity(0)
     {
         if (str != 0) {
             for (string_length = 0; str[string_length] != 0; string_length++)
                 ;
-            string_length = (n < string_length) ? n : string_length;
+            string_length      = (n < string_length) ? n : string_length;
             container_capacity = string_length + 32;
-            data = new char[container_capacity];
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
             copy(str, &str[string_length], data);
             data[string_length] = 0;
         } else {
             container_capacity = 32;
-            string_length = 0;
-            data = new char[container_capacity];
+            string_length      = 0;
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
         }
     }
 
-    string(const string &str)
-        : data(nullptr), string_length(0), container_capacity(0)
+    string(const string &str) :
+        data(nullptr), string_length(0), container_capacity(0)
     {
         if (!str.empty()) {
-            string_length = str.size();
+            string_length      = str.size();
             container_capacity = string_length + 32;
-            data = new char[container_capacity];
+            data               = new char[container_capacity];
             memcpy(data, str.c_str(), string_length);
         } else {
             container_capacity = 32;
-            string_length = 0;
-            data = new char[container_capacity];
+            string_length      = 0;
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
         }
         data[string_length] = 0;
     }
 
-    string(const string &str, size_t pos, size_t len = npos)
-        : data(nullptr), string_length(0), container_capacity(0)
+    string(const string &str, size_t pos, size_t len = npos) :
+        data(nullptr), string_length(0), container_capacity(0)
     {
         if (!str.empty()) {
             if (len == npos || (pos + len) > str.size()) {
@@ -111,22 +111,22 @@ class string
                 string_length = len;
             }
             container_capacity = string_length + 32;
-            data = new char[container_capacity];
+            data               = new char[container_capacity];
             memcpy(data, str.c_str() + pos, string_length);
         } else {
             container_capacity = 32;
-            string_length = 0;
-            data = new char[container_capacity];
+            string_length      = 0;
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
         }
     }
 
-    string(size_t n, char c)
-        : data(nullptr), string_length(0), container_capacity(0)
+    string(size_t n, char c) :
+        data(nullptr), string_length(0), container_capacity(0)
     {
-        string_length = n;
+        string_length      = n;
         container_capacity = string_length + 32;
-        data = new char[container_capacity];
+        data               = new char[container_capacity];
         memset(data, 0, container_capacity);
         for (size_t i = 0; i < n; i++)
             data[i] = c;
@@ -137,7 +137,7 @@ class string
         if (data != nullptr)
             delete data;
         container_capacity = 0;
-        data = nullptr;
+        data               = nullptr;
     }
 
     string &operator=(const char *str)
@@ -146,20 +146,20 @@ class string
         if (data != nullptr)
             delete data;
         container_capacity = 0;
-        data = nullptr;
+        data               = nullptr;
         // add
         if (str != 0) {
             for (string_length = 0; str[string_length] != 0; string_length++)
                 ;
             container_capacity = string_length + 32;
-            data = new char[container_capacity];
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
             copy(str, &str[string_length], data);
             data[string_length] = 0;
         } else {
             container_capacity = 32;
-            string_length = 0;
-            data = new char[container_capacity];
+            string_length      = 0;
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
         }
         return *this;
@@ -173,20 +173,20 @@ class string
         if (data != 0)
             delete data;
         container_capacity = 0;
-        data = nullptr;
+        data               = nullptr;
         // add
         if (str != 0) {
             for (string_length = 0; str[string_length] != 0; string_length++)
                 ;
             container_capacity = string_length + 32;
-            data = new char[container_capacity];
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
             copy(str, &str[string_length], data);
             data[string_length] = 0;
         } else {
             container_capacity = 32;
-            string_length = 0;
-            data = new char[container_capacity];
+            string_length      = 0;
+            data               = new char[container_capacity];
             memset(data, 0, container_capacity);
         }
         return *this;
@@ -236,7 +236,7 @@ class string
 
     bool operator==(const string &str2) const
     {
-        int i = 0;
+        size_t i = 0;
         do {
             if (data[i] != str2[i])
                 return false;
@@ -257,7 +257,7 @@ class string
         auto szNewLen = string_length + str.size();
         if (szNewLen >= container_capacity) {
             container_capacity = szNewLen + 32;
-            auto tmp = new char[container_capacity];
+            auto tmp           = new char[container_capacity];
             memset(tmp, 0, container_capacity);
             strcpy(tmp, c_str());
             delete data;
@@ -277,7 +277,7 @@ class string
     {
         for (; data[offset] != 0; offset++) {
             int diff = 0;
-            for (int i = 0; str[i] != 0 && data[offset + i] != 0; i++) {
+            for (size_t i = 0; str[i] != 0 && data[offset + i] != 0; i++) {
                 diff = str[i] - data[offset + i];
                 if (diff != 0) {
                     break;
@@ -307,7 +307,7 @@ class string
         } else {
             char *tmp = new char[n];
             memcpy(tmp, data, string_length);
-            string_length = n;
+            string_length      = n;
             container_capacity = n;
             delete data;
             data = tmp;

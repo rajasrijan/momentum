@@ -21,7 +21,8 @@
 #define _STDC_CTYPE_H_
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #define isalnum(c) (isalpha(c) || isdigit(c))
@@ -38,7 +39,7 @@ extern "C" {
 #define tolower(c) (isupper(c) ? ((c) + 'a' - 'A') : (c))
 #define toupper(c) (islower(c) ? ((c) + 'A' - 'a') : (c))
 
-int isblank(int c);
+    int isblank(int c);
 
 #ifdef __cplusplus
 }

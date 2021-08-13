@@ -17,245 +17,27 @@
 ; along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-[BITS 32]
-[global loader]
-[global stack]
-[extern stage2]
-[extern find_framebuffer]
-[extern framebuffer_ptr]
-[extern early_print]
-[extern PAGE_DIRECTORY]
-[extern create_page_directory]
-
-section .text0
-align 8
-STACKSIZE equ 0x1000
-align 8
-[BITS 32]
-loader:
-    ;EBX has multiboot info structure.
-    cli
-    MOV ESP,stack+STACKSIZE
-    push ebx
-    call find_framebuffer
-    add esp,4
-;
-;    KILL PIC, its dead.
-;    
-    mov al, 0xff
-    out 0xa1, al
-    out 0x21, al
-;
-;    End any pending interrupt
-;
-    mov al, 0x20
-    out 0xa0, al
-    out 0x20, al
-.gdt:
-    MOV eax,gdt_start
-    lgdt [EAX]
-    jmp 0x08:.reload_cs
-.reload_cs:
-    MOV    AX, 0x10 ; 0x10 points at the new data selector
-    MOV    DS, AX
-    MOV    ES, AX
-    MOV    FS, AX
-    MOV    GS, AX
-    MOV    SS, AX
-.load_tss:
-    MOV    eax,TSS64
-    mov    [GDT64.task_section+2],ax
-    shr    eax,16
-    mov    [GDT64.task_section+4],al
-    mov    [GDT64.task_section+7],ah
-    MOV    eax,TSS64.end-TSS64
-    mov    [GDT64.task_section],ax
-;
-;    enable cr0.PM
-;
-.enable_protected_mode:
-    mov eax, 0x00000001
-    mov cr0, eax
-;
-;    Load new page table. 1GB identity mapped
-;
-.load_page_table:
-    call create_page_directory
-    mov dword eax,[PAGE_DIRECTORY]
-    mov cr3,eax
-;
-;    enable PAE
-;
-.load_pae:
-    mov eax, cr4                 ; Set the A-register to control register 4.
-    or eax, 1 << 5               ; Set the PAE-bit, which is the 6th bit (bit 5).
-    mov cr4, eax                 ; Set control register 4 to the A-register.
-;
-;    The Switch from Protected Mode to long mode
-;
-    mov ecx, 0xC0000080          ; Set the C-register to 0xC0000080, which is the EFER MSR.
-    rdmsr                        ; Read from the model-specific register.
-    or eax, 1 << 8|1             ; Set the LM-bit and SCE-bit which are bit 8 and 1.
-    wrmsr                        ; Write to the model-specific register.
-
-;
-;    Enabling paging
-;
-    mov eax, cr0                 ; Set the A-register to control register 0.
-    or eax, 1 << 31              ; Set the PG-bit, which is the 32nd bit (bit 31).
-    mov cr0, eax                 ; Set control register 0 to the A-register.
-
-.gdt64:
-    lgdt [GDT64.Pointer]
-    jmp GDT64.Code_ring0:Realm64
-
-; Use 64-bit.
 [BITS 64]
- 
-Realm64:
-    mov ax, GDT64.Data_ring0            ; Set the A-register to the data descriptor.
-    mov ds, ax                    ; Set the data segment to the A-register.
-    mov es, ax                    ; Set the extra segment to the A-register.
-    mov ss, ax                    ; Set the stack segment to the A-register.
-    mov fs, ax                    ; Set the F-segment to the A-register.
-    mov gs, ax                    ; Set the G-segment to the A-register.
-    MOV QWORD RAX, [PAGE_DIRECTORY]
-    MOV cr3,RAX
+[default abs]
+[global loader]
+[extern stage2]
+
+section .text
+align 8
+
+loader:
+    ;RBX has temporary page table structure
     cli
-    ;now enable SSE and the like
-.enable_sse:
-    mov RAX, cr0
-    and ax, 0xFFFB        ;clear coprocessor emulation CR0.EM
-    or ax, 0x2            ;set coprocessor monitoring  CR0.MP
-    mov cr0, RAX
-    mov RAX, cr4
-    or ax, 3 << 9        ;set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
-    mov cr4, RAX
-    
-    ;
-    ;enable tss
-    ;
-.enable_tss:
-    mov ax, GDT64.task_gate
-    ltr ax
+    MOV CR3, RBX
 
-.call_stage2:
-;
-;    push stack magic marker.
-;
-    MOV RBP,0xDEADBEEFDEADBEEF
-    PUSH RBP
-    PUSH RBP
-    MOV RBP,RSP
-    MOV rdi,rbx
-    MOV RAX, stage2
-    CALL RAX
+    mov rax, entry_loc
+    mov rax,[rax]
+    jmp rax
+long_jump:
+    call stage2
 hang:
-    cli;
-    hlt;
+    pause
+    jmp hang
 
-section .data0
-align 8
-data:
-
-align 8
-gdt_start:
-.gdt_ptr_start:
-    .limit dw gdt_start.gdt_end - gdt_start.gdt_entry_start-1
-    .base dd gdt_start.gdt_entry_start
-.gdt_ptr_end:
-.gdt_entry_start:
-    .gdt_null dd 0,0
-    .gdt_cs dd 0x0000FFFF,0x00CF9A00
-    .gdt_ds dd 0x0000FFFF,0x00CF9200
-    .gdt_ucs dd 0x0000FFFF,0x00CFFA00
-    .gdt_uds dd 0x0000FFFF,0x00CFF200
-    .gdt_TIB dd 0x0000FFFF,0x00CFF200
-.gdt_end:
-
-;
-; 64-bit TSS
-;
-TSS64:
-    dd 0x0
-    .rsp0 dq stack
-    .rsp1 dq stack
-    .rsp2 dq stack
-    dq 0x0
-    .ist1 dq 0x0
-    .ist2 dq 0x0
-    .ist3 dq 0x0
-    .ist4 dq 0x0
-    .ist5 dq 0x0
-    .ist6 dq 0x0
-    .ist7 dq 0x0
-    dq 0x0
-    dd 0x0
-    .io_base_map dd 0x0
-    .end:
-;
-; Establish a temporary 32-bit GDT and IDT.
-;
-GDT64:                   ; Global Descriptor Table (64-bit).
-    .Null: equ $ - GDT64     ; The null descriptor.
-    dw 0                 ; Limit (low).
-    dw 0                 ; Base (low).
-    db 0                 ; Base (middle)
-    db 0                 ; Access.
-    db 0                 ; Granularity.
-    db 0                 ; Base (high).
-    .Code_ring0: equ $ - GDT64   ; The code descriptor.
-    dw 0                 ; Limit (low).
-    dw 0                 ; Base (low).
-    db 0                 ; Base (middle)
-    db 10011010b             ; Access (exec/read).
-    db 00100000b             ; Granularity.
-    db 0                 ; Base (high).
-    .Data_ring0: equ $ - GDT64   ; The data descriptor.
-    dw 0                 ; Limit (low).
-    dw 0                 ; Base (low).
-    db 0                 ; Base (middle)
-    db 10010010b             ; Access (read/write).
-    db 00000000b             ; Granularity.
-    db 0                 ; Base (high).
-    .Data_ring3 : equ $ - GDT64   ; The data descriptor.
-    dw 0                 ; Limit (low).
-    dw 0                 ; Base (low).
-    db 0                 ; Base (middle)
-    db 11110010b             ; Access (read/write).
-    db 00000000b             ; Granularity.
-    db 0                 ; Base (high).
-    .Code_ring3: equ $ - GDT64   ; The code descriptor.
-    dw 0                 ; Limit (low).
-    dw 0                 ; Base (low).
-    db 0                 ; Base (middle)
-    db 11111010b             ; Access (exec/read).
-    db 00100000b             ; Granularity.
-    db 0                 ; Base (high).
-    .task_gate : equ $ - GDT64   ; The task descriptor.
-    .task_section:
-    dw 0                 ; Limit (low).
-    dw 0                 ; Base (low).
-    db 0                 ; Base (middle)
-    db 10001001b             ; Access (read/write).
-    db 00100000b             ; Granularity.
-    db 0                 ; Base (high).
-    dd 0
-    dd 0
-    .Pointer:            ; The GDT-pointer.
-    dw $ - GDT64 - 1         ; Limit.
-    dq GDT64             ; Base.
-
-pIDE64: ; Used by LGDT.
-    dw IDT64.end-IDT64 ; GDT limit ...
-    dq IDT64 ; and 32-bit GDT base
-IDT64:
-    dd 0,0
-    dd 0x0000FFFF,0x00CF9A00
-    dd 0x0000FFFF,0x00CF9200
-.end:
-
-align 0x1000
-stack:
-    TIMES STACKSIZE db 0
-
+section .data
+entry_loc dq long_jump

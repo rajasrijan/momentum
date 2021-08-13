@@ -36,9 +36,11 @@ int ide_probe(pci_device_t *dev)
     int ret = 0;
     uint32_t standard_bars[] = {0x1F0, 0x3F6, 0x170, 0x376};
     uint32_t BAR[6] = {0};
-    for (uint32_t j = 0; j < 6; j++) {
+    for (uint32_t j = 0; j < 6; j++)
+    {
         BAR[j] = pci_resource_start(dev, j);
-        if (j < 4) {
+        if (j < 4)
+        {
             //  Replace BAR[j] with standard bars if it is 0x0 or 0x1
             BAR[j] = ((BAR[j] == 0) || (BAR[j] == 1)) ? standard_bars[j] : BAR[j];
         }
@@ -47,10 +49,13 @@ int ide_probe(pci_device_t *dev)
     // start setup DMA
     // end setup DMA
     ret = -ENODEV;
-    for (int bus = 0; bus < 2; bus++) {
-        for (int master = 0; master <= 1; master++) {
+    for (int bus = 0; bus < 2; bus++)
+    {
+        for (int master = 0; master <= 1; master++)
+        {
             ata_identity ident = {};
-            if (ataIdentify(ident, (uint16_t)BAR[bus * 2], !master)) {
+            if (ataIdentify(ident, (uint16_t)BAR[bus * 2], !master))
+            {
                 continue;
             }
 
@@ -59,7 +64,8 @@ int ide_probe(pci_device_t *dev)
             disk_name.back() += disk_no++;
             auto ataBlkInterface = new ata_blk_vnode(BAR[bus * 2], !master, disk_name);
             ret = mknod(("/dev/" + disk_name).c_str(), ataBlkInterface);
-            if (ret) {
+            if (ret)
+            {
                 printf("Failed to register block device\n");
                 // ret = 0; // non fatal.
             }

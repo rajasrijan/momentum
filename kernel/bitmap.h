@@ -30,8 +30,7 @@ class bitmap
     uint64_t *dat;
 
   public:
-    bitmap(size_t count)
-        : bit_count(count), dat(nullptr)
+    bitmap(size_t count) : bit_count(count), dat(nullptr)
     {
         dat = new uint64_t[(bit_count + 63) / 64];
     }
@@ -41,7 +40,8 @@ class bitmap
     }
     bool isBitSet(size_t index)
     {
-        if (index >= bit_count) {
+        if (index >= bit_count)
+        {
             log_error("index out of range\n");
             asm("cli;hlt");
         }
@@ -50,7 +50,8 @@ class bitmap
     int alloc_bit(size_t &index)
     {
         bool found = false;
-        for (size_t i = 0; i < bit_count / 64; i++) {
+        for (size_t i = 0; i < bit_count / 64; i++)
+        {
             if (dat[i] == 0xFFFFFFFFFFFFFFFF)
                 continue;
             int pos = __builtin_ctz(~dat[i]);
@@ -58,7 +59,8 @@ class bitmap
             found = true;
             break;
         }
-        if (found && index < bit_count) {
+        if (found && index < bit_count)
+        {
             dat[index / 64] |= (1 << (index % 64));
             return 0;
         }
@@ -71,4 +73,4 @@ class bitmap
     }
 };
 
-#endif //BITMAP_H
+#endif // BITMAP_H

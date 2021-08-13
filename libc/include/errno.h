@@ -17,38 +17,38 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef _ERRNO_H
 #define _ERRNO_H
 
 #if __STDC_HOSTED__ == 1
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-extern int errno;
-extern char *program_invocation_short_name;
-extern char *program_invocation_name;
+    extern int errno;
+    extern char *program_invocation_short_name;
+    extern char *program_invocation_name;
 #ifdef __cplusplus
 }
 #endif
 #endif
 
-#define EPERM 1   /* Operation not permitted */
-#define ENOFILE 2 /* No such file or directory */
-#define ENOENT 2
-#define ESRCH 3   /* No such process */
-#define EINTR 4   /* Interrupted function call */
-#define EIO 5     /* Input/output error */
-#define ENXIO 6   /* No such device or address */
-#define E2BIG 7   /* Arg list too long */
-#define ENOEXEC 8 /* Exec format error */
-#define EBADF 9   /* Bad file descriptor */
-#define ECHILD 10 /* No child processes */
-#define EAGAIN 11 /* Resource temporarily unavailable */
-#define ENOMEM 12 /* Not enough space */
-#define EACCES 13 /* Permission denied */
-#define EFAULT 14 /* Bad address */
-/* 15 - Unknown Error */
+#define EPERM 1    /* Operation not permitted */
+#define ENOFILE 2  /* No such file or directory */
+#define ENOENT 2   /*  No such entry */
+#define ESRCH 3    /* No such process */
+#define EINTR 4    /* Interrupted function call */
+#define EIO 5      /* Input/output error */
+#define ENXIO 6    /* No such device or address */
+#define E2BIG 7    /* Arg list too long */
+#define ENOEXEC 8  /* Exec format error */
+#define EBADF 9    /* Bad file descriptor */
+#define ECHILD 10  /* No child processes */
+#define EAGAIN 11  /* Resource temporarily unavailable */
+#define ENOMEM 12  /* Not enough space */
+#define EACCES 13  /* Permission denied */
+#define EFAULT 14  /* Bad address */
+#define EUNK 15    /* Unknown Error */
 #define EBUSY 16   /* strerror reports "Resource device" */
 #define EEXIST 17  /* File exists */
 #define EXDEV 18   /* Improper link (cross-device link?) */

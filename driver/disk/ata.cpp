@@ -33,8 +33,7 @@
 #define ATA_HDDEVSEL_PORT(x) (x + 6)
 #define ATA_COMMAND_PORT(x) (x + 7)
 
-ata_blk_vnode::ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name)
-    : vnode(nullptr), data_port(dataPort), IsMaster(isMaster)
+ata_blk_vnode::ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name) : vnode(nullptr), data_port(dataPort), IsMaster(isMaster)
 {
     setName(name.c_str());
     v_type = VBLK;
@@ -80,34 +79,38 @@ int ata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int *
 
 int ata_blk_vnode::ioctl(uint32_t command, void *data, int fflag)
 {
-    switch (command) {
-        case BLKGETSIZE64: {
-            ata_identity ident = {};
-            ataIdentify(ident, data_port, IsMaster);
-            *((uint64_t *)data) = ident.MAX_LBA;
-        } break;
-        default:
-            return EINVAL;
+    switch (command)
+    {
+    case BLKGETSIZE64: {
+        ata_identity ident = {};
+        ataIdentify(ident, data_port, IsMaster);
+        *((uint64_t *)data) = ident.MAX_LBA;
+    }
+    break;
+    default:
+        return EINVAL;
     }
     return 0;
 }
 
 static pci_device_id supportedDevices[] = {
-    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_IDE, (uint8_t)PCI_ANY_ID},
-    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_ATA, (uint8_t)PCI_ANY_ID},
+    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_IDE,
+     (uint8_t)PCI_ANY_ID},
+    {(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_STORAGE, PCI_CLASS_STORAGE_ATA,
+     (uint8_t)PCI_ANY_ID},
 };
 
 class ata_pci_driver : public pci_driver
 {
   public:
-    ata_pci_driver()
-        : pci_driver("IDE Device")
+    ata_pci_driver() : pci_driver("IDE Device")
     {
     }
     int probe(pci_device_t *dev, pci_device_id table)
     {
         int ret = 0;
-        if (table.SubClass != PCI_CLASS_STORAGE_IDE) {
+        if (table.SubClass != PCI_CLASS_STORAGE_IDE)
+        {
             printf("Storage device not supported\n");
             return 1;
         }
@@ -130,7 +133,8 @@ void destroy_ata_interface(pci_driver *driver)
     delete driver;
 }
 
-pci_driver_interface ata_pci_driver_interface = {supportedDevices, sizeof(supportedDevices) / sizeof(supportedDevices[0]), create_ata_interface, destroy_ata_interface};
+pci_driver_interface ata_pci_driver_interface = {supportedDevices, sizeof(supportedDevices) / sizeof(supportedDevices[0]), create_ata_interface,
+                                                 destroy_ata_interface};
 
 void ata_init()
 {
@@ -146,8 +150,9 @@ int ataReadSectors_dma(uint16_t data_port, bool IsMaster, size_t offset, size_t 
 
 int ataReadSectors_pio(uint16_t data_port, bool IsMaster, size_t offset, size_t count, void *data)
 {
-    while (count > 0) {
-        auto size = min(count, 0xfful);
+    while (count > 0)
+    {
+        auto size = min(count, (size_t)0xff);
         offset &= 0x0FFFFFFF;
         uint32_t status = 0;
         uint16_t porta = data_port + 6; // Where bit 24 to 27 are sent.
@@ -176,8 +181,10 @@ int ataReadSectors_pio(uint16_t data_port, bool IsMaster, size_t offset, size_t 
         outb(command_port, READ_PIO);
 
         // while (((status = inb(command_port)) & BSY) != BSY);
-        for (size_t c = 0; c < size; c++) {
-            while (true) {
+        for (size_t c = 0; c < size; c++)
+        {
+            while (true)
+            {
                 status = inb(command_port);
                 assert(status & (ERR | DF));
                 if (status & DRQ)
@@ -186,7 +193,8 @@ int ataReadSectors_pio(uint16_t data_port, bool IsMaster, size_t offset, size_t 
             // printf("\nout of loop.YAY");
             uint16_t *dst = ((uint16_t *)data);
 
-            for (int i = 0; i < 256; i++) {
+            for (int i = 0; i < 256; i++)
+            {
                 uint16_t tmp = inw(data_port);
                 dst[(c * 256) + i] = tmp;
             }
@@ -212,16 +220,19 @@ int ataIdentify(ata_identity &ident, uint16_t data_port, bool IsMaster)
     outb(ATA_HDDEVSEL_PORT(data_port), 0xA0 | (IsMaster ? 0 : 16)); // Select Drive.
     //  read with retry
     outb(ATA_COMMAND_PORT(data_port), IDENTIFY);
-    while (true) {
+    while (true)
+    {
         int status = inb(ATA_COMMAND_PORT(data_port));
-        if ((status == 0) || (status & (ERR | DF)) != 0) {
+        if ((status == 0) || (status & (ERR | DF)) != 0)
+        {
             return 1;
         }
         if (status & DRQ)
             break;
     }
     uint16_t dst[256] = {0};
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < 256; i++)
+    {
         dst[i] = inw(data_port);
     }
     ident = *((ata_identity *)dst);

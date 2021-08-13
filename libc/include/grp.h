@@ -17,12 +17,12 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef GRP_H
 #define GRP_H
 #include <sys/types.h>
 
-struct group {
+struct group
+{
     char *gr_name;
     char *gr_passwd;
     gid_t gr_gid;

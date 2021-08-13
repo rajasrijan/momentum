@@ -25,7 +25,8 @@
 #define TIOCGWINSZ 3
 //  ioctl list end
 
-struct winsize {
+struct winsize
+{
     uint16_t ws_row;
     uint16_t ws_col;
     uint16_t ws_xpixel;

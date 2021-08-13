@@ -17,12 +17,12 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef MNTENT_H
 #define MNTENT_H
 #define MOUNTED "/proc/mounts"
 
-struct mntent {
+struct mntent
+{
     char *mnt_fsname;
     char *mnt_dir;
     char *mnt_type;
@@ -31,4 +31,4 @@ struct mntent {
     int mnt_passno;
 };
 
-#endif  //  MNTENT_H
+#endif //  MNTENT_H

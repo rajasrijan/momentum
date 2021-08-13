@@ -34,11 +34,13 @@
 #define F_GETFL (0)
 #define F_SETFL (1)
 
-#define O_RDONLY (1 << 0)   //    Open for reading only.
-#define O_WRONLY (1 << 1)   //    Open for writing only.
-#define O_RDWR (1 << 2)     //    Open for reading and writing. The result is undefined \
+#define O_RDONLY (1 << 0) //    Open for reading only.
+#define O_WRONLY (1 << 1) //    Open for writing only.
+#define O_RDWR                                                                                                                                                 \
+    (1 << 2) //    Open for reading and writing. The result is undefined \
                              //    if this flag is applied to a FIFO.
-#define O_NONBLOCK (1 << 3) //    When opening a FIFO with O_RDONLY or O_WRONLY set: If     \
+#define O_NONBLOCK                                                                                                                                             \
+    (1 << 3) //    When opening a FIFO with O_RDONLY or O_WRONLY set: If     \
                              //    O_NONBLOCK is set: An open() for reading only will return \
                              //    without delay. An open() for writing only will return an  \
                              //    error if no process currently has the file open for reading.

@@ -17,9 +17,9 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <kernel/logging.h>
 #include <stddef.h>
 #include "ext_vnode.h"
-#include <kernel/logging.h>
 #include <algorithm>
 
 directory *make_entry(directory *ent, const std::string &name, uint32_t _inode_id)
@@ -62,37 +62,37 @@ directory *insert_entry_after(directory *ent, const std::string &name, uint32_t 
     return ent;
 }
 
-ext_vnode::ext_vnode(ext_vfs *vfsp, size_t _inode_id)
-    : vnode(vfsp), inode_id(_inode_id), _inode(nullptr)
+ext_vnode::ext_vnode(ext_vfs *vfsp, size_t _inode_id) : vnode(vfsp), inode_id(_inode_id), _inode(nullptr)
 {
     vfsp->read_inode(inode_id, &_inode);
 
-    switch ((_inode->type_permissions & 0xF000)) {
-        case INODE_TYPE_FIFO:
-            v_type = VNON;
-            break;
-        case INODE_TYPE_CDEV:
-            v_type = VCHR;
-            break;
-        case INODE_TYPE_DIR:
-            v_type = VDIR;
-            break;
-        case INODE_TYPE_BLK:
-            v_type = VBLK;
-            break;
-        case INODE_TYPE_FILE:
-            v_type = VREG;
-            break;
-        case INODE_TYPE_SLNK:
-            v_type = VLNK;
-            break;
-        case INODE_TYPE_SOCK:
-            v_type = VSOCK;
-            break;
-        default:
-            log_error("Unknown inode type\n");
-            asm("cli;hlt");
-            break;
+    switch ((_inode->type_permissions & 0xF000))
+    {
+    case INODE_TYPE_FIFO:
+        v_type = VNON;
+        break;
+    case INODE_TYPE_CDEV:
+        v_type = VCHR;
+        break;
+    case INODE_TYPE_DIR:
+        v_type = VDIR;
+        break;
+    case INODE_TYPE_BLK:
+        v_type = VBLK;
+        break;
+    case INODE_TYPE_FILE:
+        v_type = VREG;
+        break;
+    case INODE_TYPE_SLNK:
+        v_type = VLNK;
+        break;
+    case INODE_TYPE_SOCK:
+        v_type = VSOCK;
+        break;
+    default:
+        log_error("Unknown inode type\n");
+        asm("cli;hlt");
+        break;
     }
 }
 
@@ -107,14 +107,16 @@ int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
     size_t read_count = 0;
     shared_ptr<char> buffer = new char[v_ext_vfs->blk_sz];
     size_t blkIdx = 0;
-    while (get_block_id_from_position(position, blkIdx) == 0) {
+    while (get_block_id_from_position(position, blkIdx) == 0)
+    {
         v_ext_vfs->read_block(blkIdx, buffer);
         auto blk_offset = position % v_ext_vfs->blk_sz;
         auto cpy_sz = min((uint64_t)size - read_count, v_ext_vfs->blk_sz - blk_offset);
         memcpy(&data[read_count], &(buffer.get()[blk_offset]), cpy_sz);
         read_count += cpy_sz;
         position += cpy_sz;
-        if (read_count >= size) {
+        if (read_count >= size)
+        {
             break;
         }
     }
@@ -123,10 +125,12 @@ int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
 
     return ret;
 }
+
 int ext_vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
 {
     return -ENOSYS;
 }
+
 int ext_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
 {
     int ret = 0;
@@ -134,7 +138,8 @@ int ext_vnode::readdir(vector<shared_ptr<vnode>> &vnodes)
         return -ENOTDIR;
 
     auto end = directory_it_end();
-    for (auto current = directory_it_begin(); current != end; ++current) {
+    for (auto current = directory_it_begin(); current != end; ++current)
+    {
         directory &dir = *current;
         string name;
         name.resize(dir.name_sz_lo);
@@ -175,24 +180,29 @@ int ext_vnode::mkdir(std::string name, std::shared_ptr<vnode> &pDir)
     directory *new_dir = nullptr;
 
     size_t remaining = 0;
-    while (remaining < size) {
+    while (remaining < size)
+    {
 
         ret = read_block(remaining / blk_sz, buffer);
-        if (ret < 0) {
+        if (ret < 0)
+        {
             log_error("Failed to read from disk\n");
             return -EIO;
         }
 
         directory *dir = (directory *)buffer.get();
-        for (size_t idx = 0; idx < blk_sz; idx += dir->entry_size) {
+        for (size_t idx = 0; idx < blk_sz; idx += dir->entry_size)
+        {
             dir = (directory *)(buffer.get() + idx);
             new_dir = insert_entry_after(dir, name, new_inode);
             if (new_dir)
                 break;
         }
-        if (new_dir) {
+        if (new_dir)
+        {
             ret = write_block(remaining / blk_sz, buffer);
-            if (ret < 0) {
+            if (ret < 0)
+            {
                 log_error("Failed to write to disk\n");
                 return -EIO;
             }
@@ -207,7 +217,8 @@ int ext_vnode::mkdir(std::string name, std::shared_ptr<vnode> &pDir)
     tmp_dir->entry_size = blk_sz;
     tmp_dir = insert_entry_after(tmp_dir, "..", inode_id);
     ret = v_ext_vfs->write_block(new_dir_inode->direct_block_pointer[0], buffer);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         log_error("Failed to write to disk\n");
         return -EIO;
     }
@@ -229,17 +240,20 @@ int ext_vnode::open(uint64_t flags)
         return -EISDIR;
     return -ENOSYS;
 }
+
 int ext_vnode::lookup(char const *path, shared_ptr<vnode> &node)
 {
     if (v_type != VDIR)
         return -ENOTDIR;
     auto end = directory_it_end();
-    for (auto current = directory_it_begin(); current != end; ++current) {
+    for (auto current = directory_it_begin(); current != end; ++current)
+    {
         directory &dir = *current;
         string name;
         name.resize(dir.name_sz_lo);
         memcpy(name.c_str(), dir.name, dir.name_sz_lo);
-        if (name == path) {
+        if (name == path)
+        {
             ext_vnode *tmp = new ext_vnode((ext_vfs *)v_vfsp, dir._inode);
             tmp->setName(name.c_str());
             node = (vnode *)tmp;
@@ -261,7 +275,8 @@ int ext_vnode::read_block(uint32_t block_index, shared_ptr<char> &buffer)
     if (block_index >= 12)
         return -ENOSYS;
     ret = v_ext_vfs->read_block(_inode->direct_block_pointer[block_index], buffer);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         log_error("Failed to read from disk\n");
         return -EIO;
     }
@@ -280,7 +295,8 @@ int ext_vnode::write_block(uint32_t block_index, shared_ptr<char> &buffer)
     if (block_index >= 12)
         return -ENOSYS;
     ret = v_ext_vfs->write_block(_inode->direct_block_pointer[block_index], buffer);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         log_error("Failed to write to disk\n");
         return -EIO;
     }
@@ -290,7 +306,8 @@ int ext_vnode::write_block(uint32_t block_index, shared_ptr<char> &buffer)
 int ext_vnode::create(const string &path, shared_ptr<vnode> &created_node)
 {
     int ret = -ENOSYS;
-    if (v_type != VDIR) {
+    if (v_type != VDIR)
+    {
         return -ENOTDIR;
     }
     ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
@@ -317,16 +334,17 @@ ext_vnode::ext_dir_iterator ext_vnode::directory_it_begin()
 {
     return ext_vnode::ext_dir_iterator(this, 0u);
 }
+
 ext_vnode::ext_dir_iterator ext_vnode::directory_it_end()
 {
     return ext_vnode::ext_dir_iterator(this, _inode->size());
 }
 
-ext_vnode::ext_dir_iterator::ext_dir_iterator(ext_vnode *_parent_vnode, size_t _offset)
-    : parent_vnode(_parent_vnode), offset(_offset)
+ext_vnode::ext_dir_iterator::ext_dir_iterator(ext_vnode *_parent_vnode, size_t _offset) : parent_vnode(_parent_vnode), offset(_offset)
 {
     ext_vfs *v_ext_vfs = (ext_vfs *)parent_vnode->v_vfsp;
-    if (offset < parent_vnode->_inode->size()) {
+    if (offset < parent_vnode->_inode->size())
+    {
         buffer = new char[v_ext_vfs->blk_sz];
         parent_vnode->read_block(offset / v_ext_vfs->blk_sz, buffer);
     }
@@ -342,7 +360,8 @@ void ext_vnode::ext_dir_iterator::operator++()
     const auto &dir = this->operator*();
     auto new_offset = offset + dir.entry_size;
     //  if offset crossed over to next block then read next block
-    if ((new_offset / v_ext_vfs->blk_sz) != (offset / v_ext_vfs->blk_sz)) {
+    if ((new_offset / v_ext_vfs->blk_sz) != (offset / v_ext_vfs->blk_sz))
+    {
         parent_vnode->read_block(offset / v_ext_vfs->blk_sz, buffer);
     }
     offset = new_offset;
@@ -374,13 +393,17 @@ int ext_vnode::get_block_id_from_position(size_t pos, size_t &blk_id)
     const auto direct_block_count = sizeof(_inode->direct_block_pointer) / sizeof(_inode->direct_block_pointer[0]);
     const auto single_block_count = v_ext_vfs->blk_sz / sizeof(_inode->direct_block_pointer[0]);
     auto blk_idx = pos / v_ext_vfs->blk_sz;
-    if (blk_idx < direct_block_count) {
+    if (blk_idx < direct_block_count)
+    {
         blk_id = _inode->direct_block_pointer[blk_idx];
         return 0;
-    } else if ((blk_idx - direct_block_count) < single_block_count) {
+    }
+    else if ((blk_idx - direct_block_count) < single_block_count)
+    {
         std::shared_ptr<char> buffer = new char[v_ext_vfs->blk_sz];
         ret = v_ext_vfs->read_block(_inode->single_block_pointer, buffer);
-        if (ret != 0) {
+        if (ret != 0)
+        {
             return ret;
         }
         blk_id = ((uint32_t *)buffer.get())[(blk_idx - direct_block_count)];

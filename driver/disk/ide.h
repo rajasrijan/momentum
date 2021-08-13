@@ -17,7 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-enum ATA_STATUS {
+enum ATA_STATUS
+{
     ERR = 1,
     DRQ = 8,
     SRV = 16,
@@ -26,13 +27,15 @@ enum ATA_STATUS {
     BSY = 128
 };
 
-enum ATA_CONTROL {
+enum ATA_CONTROL
+{
     nIEN = 2,
     SRST = 4,
     HOB = 0x80
 };
 
-enum ATA_COMMAND {
+enum ATA_COMMAND
+{
     READ_PIO = 0x20,
     READ_PIO_EXT = 0x24,
     READ_DMA = 0xC8,
@@ -49,7 +52,8 @@ enum ATA_COMMAND {
 };
 
 #pragma pack(push, 1)
-struct ata_identity {
+struct ata_identity
+{
     uint16_t DEVICETYPE;  // 0
     char pad1[118];       // 2
     uint32_t MAX_LBA;     // 120

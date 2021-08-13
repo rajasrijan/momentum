@@ -19,32 +19,130 @@
 #pragma once
 
 template <uint64_t bitmap_size, uint64_t block_size>
-struct bitmap_allocator {
+struct bitmap_allocator
+{
     uint64_t paddr, vaddr;
     uint64_t bitmap[bitmap_size / 64];
 };
 
 template <uint64_t bitmap_size, uint64_t block_size>
-static inline int bitmap_alloc(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t &paddr, uint64_t &vaddr)
+static inline int bitmap_alloc(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t &paddr, uint64_t &vaddr, size_t count = 1)
 {
-    for (size_t i = 0; i < (sizeof(allocator.bitmap) / sizeof(allocator.bitmap[0])); i++) {
+    size_t count_so_far = 0;
+    uint64_t i_start, j_start;
+    for (size_t i = 0; i < (sizeof(allocator.bitmap) / sizeof(allocator.bitmap[0])); i++)
+    {
         if (allocator.bitmap[i] == 0xFFFFFFFFFFFFFFFF)
             continue;
-        auto ctz = __builtin_ctz(~(allocator.bitmap[i]));
-        allocator.bitmap[i] |= (1 << ctz);
-        auto index = (i * 64) + ctz;
-        paddr = allocator.paddr + (index * block_size);
-        vaddr = allocator.vaddr + (index * block_size);
-        return 0;
+        for (size_t j = 0; j < 64; j++)
+        {
+            if (!((1ull << j) & allocator.bitmap[i]))
+            {
+                if (count_so_far == 0)
+                {
+                    i_start = i;
+                    j_start = j;
+                }
+                count_so_far++;
+                if (count_so_far == count)
+                {
+                    auto index = (i_start * 64) + j_start;
+                    paddr = allocator.paddr + (index * block_size);
+                    vaddr = allocator.vaddr + (index * block_size);
+                    while (count_so_far)
+                    {
+                        allocator.bitmap[i_start] |= (1ull << j_start);
+                        j_start++;
+                        if (j_start >= 64)
+                        {
+                            j_start = 0;
+                            i_start++;
+                        }
+                        count_so_far--;
+                    }
+                    return 0;
+                }
+            }
+            else
+            {
+                count_so_far = 0;
+            }
+        }
     }
     return -ENOMEM;
 }
 
 template <uint64_t bitmap_size, uint64_t block_size>
-static inline int bitmap_free(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t paddr)
+static inline int bitmap_isfree(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t &paddr, uint64_t &vaddr)
 {
     const uint64_t offset = paddr - allocator.paddr;
     const uint64_t index = offset / block_size;
-    allocator.bitmap[index / 64] &= (~(1ull << (index % 64)));
+    return !(allocator.bitmap[index / 64] & (~(1ull << (index % 64))));
+}
+
+template <uint64_t bitmap_size, uint64_t block_size>
+static inline int bitmap_free(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t paddr, size_t count = 1)
+{
+    const uint64_t offset = paddr - allocator.paddr;
+    const uint64_t index = offset / block_size;
+    auto i = index / 64;
+    auto j = index % 64;
+
+    while (count)
+    {
+        allocator.bitmap[i] &= (~(1ull << j));
+        j++;
+        if (j >= 64)
+        {
+            j = 0;
+            i++;
+        }
+        count--;
+    }
+    return 0;
+}
+
+template <uint64_t bitmap_size, uint64_t block_size>
+static inline int bitmap_setall(bitmap_allocator<bitmap_size, block_size> &allocator)
+{
+    for (auto &v : allocator.bitmap)
+        v = 0xFFFFFFFFFFFFFFFF;
+    return 0;
+}
+
+template <uint64_t bitmap_size, uint64_t block_size>
+static inline int bitmap_clearall(bitmap_allocator<bitmap_size, block_size> &allocator)
+{
+    for (auto &v : allocator.bitmap)
+        v = 0;
+    return 0;
+}
+
+template <uint64_t bitmap_size, uint64_t block_size>
+static inline int bitmap_set(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t paddr, size_t count = 1)
+{
+    const uint64_t offset = paddr - allocator.paddr;
+    const uint64_t index = offset / block_size;
+    auto i = index / 64;
+    auto j = index % 64;
+
+    while (count)
+    {
+        allocator.bitmap[i] |= (1ull << j);
+        j++;
+        if (j >= 64)
+        {
+            j = 0;
+            i++;
+        }
+        count--;
+    }
+    return 0;
+}
+
+template <uint64_t bitmap_size, uint64_t block_size>
+static inline int bitmap_get_vaddr(bitmap_allocator<bitmap_size, block_size> &allocator, uint64_t paddr, uint64_t &vaddr)
+{
+    vaddr = (paddr - allocator.paddr) + allocator.vaddr;
     return 0;
 }

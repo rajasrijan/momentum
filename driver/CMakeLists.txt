@@ -16,13 +16,14 @@
 #  You should have received a copy of the GNU General Public License
 #  along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
 
-set(MOMENTUM_MODULE_LIST 
-    disk
-    fatgen
-    ext
-    standard_output
-)
-
 foreach(MODULE_NAME ${MOMENTUM_MODULE_LIST})
     add_subdirectory(${MODULE_NAME})
+    if(TARGET ${MODULE_NAME})
+        if(TARGET momentum)
+            target_link_libraries(momentum ${MODULE_NAME})
+        endif()
+        if(TARGET BOOTX64)
+            target_link_libraries(BOOTX64 ${MODULE_NAME})
+        endif()
+    endif()
 endforeach()

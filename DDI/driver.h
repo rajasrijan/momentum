@@ -22,13 +22,15 @@
 
 typedef void (*pfn_module_init_fn_t)(void);
 
-#define JOIN_NAME(x, y) x##y
-#define MODULT_INIT(module_init_fn) __attribute__((section("mod_init"))) pfn_module_init_fn_t pfn_##module_init_fn = module_init_fn;
+extern "C" uint64_t __MOD_LIST__;
+extern "C" uint64_t __MOD_END__;
+
+#define MODULT_INIT(module_init_fn) __attribute__((section(".mod_init"))) pfn_module_init_fn_t pfn_##module_init_fn = module_init_fn;
 
 /*
  * Initializes builtin drivers.
  * Implements basic functionality.
  */
-void init_drivers(void);
+int init_drivers(void);
 
 #endif /* DRIVER_H */

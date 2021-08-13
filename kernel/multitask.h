@@ -20,9 +20,9 @@
 #ifndef MULTITASK_H
 #define MULTITASK_H
 
-#include "multitask.h"
+#include <kernel/config.h>
 #include <arch/x86_64/interrupts.h>
-#include <arch/x86_64/paging.h>
+#include <arch/paging.h>
 #include <errno.h>
 #include <memory>
 #include <ring_buffer>
@@ -58,8 +58,10 @@ class process_info
 
   public:
     uint64_t flags;
+#if KERNEL_ENABLE_MULTITASKING == 1
     std::vector<MemPage> memory_map;
     ring_buffer<char, 256> key_buffer;
+#endif
     std::vector<std::shared_ptr<class vnode>> path_history;
 
   private:
@@ -83,10 +85,12 @@ class process_info
     {
         threads.push_back(thd);
     }
+#if KERNEL_ENABLE_MULTITASKING == 1
     void setMemoryMap(std::vector<MemPage> &p)
     {
         memory_map = p;
     }
+#endif
     void setEntry(uint64_t entry)
     {
         uiEntry = entry;
@@ -136,10 +140,11 @@ class thread_info
   public:
     mtx_t mtx;
     uint64_t flags;
+#if KERNEL_ENABLE_MULTITASKING == 1
     uint64_t stackSize;
     retStack_t context;
     general_registers_t regs;
-
+#endif
   private:
     process_t parentProcess;
     uint64_t uiThreadId;
@@ -160,11 +165,12 @@ class thread_info
     void *arg;
 };
 
-typedef struct core_info {
+typedef struct core_info
+{
     thread_info *threads;
 } __attribute__((packed)) core_info_t;
 
-void init_multitask(void);
+int init_multitask(void);
 void DestroyStack(uint32_t esp);
 void init_kernel_stack(void);
 [[noreturn]] void change_thread(const thread_t thread, bool enable_interrupts = true);
@@ -183,10 +189,13 @@ class multitask
     int allocateStack(uint64_t &stackSize, uint64_t &stackPtr, PageManager::Privilege privilege);
     thread_t getKernelThread();
     // const thread_t getKernelProcess();
+#if KERNEL_ENABLE_MULTITASKING == 1
     int createProcess(process_t &prs, const char *processName, const std::string &cmd_line, int ring, std::vector<MemPage> &mem_map, uint64_t entry);
-    int createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     int createThread(process_t prs, thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
+    int createKernelThread(thread_t &thd, const char *threadName, void *(*start_routine)(void *), void *arg);
     thread_t getNextThread(retStack_t *stack, general_registers_t *regs);
+    int allocate_virtual_memory(uint64_t &vaddr, size_t len, PageManager::PageType pageType);
+#endif
     void setActiveProcess(process_t prs);
     process_t getActiveProcess();
     process_t getCurrentProcess();
@@ -200,7 +209,6 @@ class multitask
     {
         return processList;
     }
-    int allocate_virtual_memory(uint64_t &vaddr, size_t len, PageManager::PageType pageType);
 
   private:
     mtx_t multitaskMutex;
@@ -209,8 +217,9 @@ class multitask
     std::vector<thread_t> threadList;
     std::vector<process_t> processList;
     process_t active_process;
+#if KERNEL_ENABLE_MULTITASKING == 1
     static std::vector<MemPage> *kernel_memory_map;
-
+#endif
   private:
     multitask();
 };

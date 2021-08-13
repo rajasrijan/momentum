@@ -16,6 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#pragma once
-extern const uint8_t *vga_font[];
+#ifndef STDATOMIC_H
+#define STDATOMIC_H
+template <typename t1>
+t1 atomic_fetch_add(volatile t1 *obj, t1 arg)
+{
+    auto old = obj[0];
+    obj[0] += arg;
+    return old;
+}
+#endif

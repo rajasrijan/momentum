@@ -23,12 +23,14 @@
 #include <stdint.h>
 
 #pragma pack(push, 1)
-struct general_registers_t {
+struct general_registers_t
+{
     char xmm[512];
     uint64_t R15, R14, R13, R12, R11, R10, R9, R8, rdi, rsi, rbp, rsp, rbx, rdx, rcx, rax; // Pushed by pusha.
 };
 
-struct retStack_t {
+struct retStack_t
+{
     uint64_t padding;                  // make struct multiple of 16
     uint64_t interruptNumber, err;     // Interrupt number and error code (if applicable)
     uint64_t rip, cs, rflags, rsp, ss; // Pushed by the processor automatically.
@@ -38,9 +40,10 @@ struct retStack_t {
 typedef void (*isr_t)(retStack_t *, general_registers_t *);
 void register_interrupt_handler(uint8_t n, isr_t handler);
 /*This thing is called from asm code. So extern is needed*/
-extern "C" {
-/*called for every interrupt*/
-void isr_handler(retStack_t *stack, general_registers_t *regs);
+extern "C"
+{
+    /*called for every interrupt*/
+    void isr_handler(retStack_t *stack, general_registers_t *regs);
 }
 void eoi(void);
 #endif /* INTERRUPTS_H */

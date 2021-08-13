@@ -19,13 +19,3 @@
 #pragma once
 #include "ELFFile.h"
 #include <string>
-
-class ELFLoader
-{
-  public:
-    ELFLoader();
-    ~ELFLoader();
-
-  public:
-    static int loadFile(std::string filePath, ELFFile &elfFile);
-};

@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef STDIO_EXT_H
 #define STDIO_EXT_H
 #include <stdio.h>
@@ -36,6 +35,6 @@ int __fwriting(FILE *stream);
 int __fsetlocking(FILE *stream, int type);
 void _flushlbf(void);
 void __fpurge(FILE *stream);
-void __freadptrinc (FILE *fp, size_t increment);
+void __freadptrinc(FILE *fp, size_t increment);
 #endif
 #endif //  STDIO_EXT_H

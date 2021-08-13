@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef _STDDEF_H_
 #define _STDDEF_H_
 
@@ -31,7 +30,17 @@
 #define NAME_MAX 256
 #endif
 
+#if __STDC_HOSTED__ == 1
 #define size_t unsigned long
+#else
+#if defined(_arch_x86_64_)
+#define size_t unsigned long
+#elif defined(_arch_efi_)
+#define size_t unsigned long long
+#else
+#error "Arch is not defined"
+#endif
+#endif
 #define ptrdiff_t int64_t
 
 #define offsetof(S, d) ((size_t)(&(((S *)0)->d)))

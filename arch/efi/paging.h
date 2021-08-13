@@ -1,0 +1,114 @@
+/*
+ * Copyright 2009-2021 Srijan Kumar Sharma
+ *
+ * This file is part of Momentum.
+ *
+ * Momentum is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Momentum is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef PAGING_H
+#define PAGING_H
+#include <arch/efi/efi.h>
+
+#define PG_LVL_IDX(vaddr, lvl) (((vaddr) >> ((9 * lvl) + 3)) & 0x1FF)
+#define PG_LVL_SZ(lvl) (1ull << ((9 * lvl) + 3))
+#define PG_LVL_ALIGN(vaddr, lvl) ((vaddr) & (0xFFFFFFFFFFFFFFFFull << ((9 * lvl) + 3)))
+#define PG_LVL_OFFSET(vaddr, lvl) ((vaddr) & ((1ull << ((9 * lvl) + 3)) - 1))
+#define PG_LVL_VADDR(l4, l3, l2, l1) (((l4 & 0x1FF) << 39) | ((l3 & 0x1FF) << 30) | ((l2 & 0x1FF) << 21) | ((l1 & 0x1FF) << 12))
+#define PG_GET_ADDRESS(pg) ((pg)->paddr << 12)
+
+#pragma pack(push, 1)
+union page_struct {
+    struct
+    {
+        uint64_t present:1;
+        uint64_t rw:1;
+        uint64_t us:1;
+        uint64_t pwt:1;
+        uint64_t pcd:1;
+        uint64_t a:1;
+        uint64_t d:1;
+        uint64_t ps:1;
+        uint64_t ign1:4;
+        uint64_t paddr:51;
+        uint64_t xd:1;
+    };
+    uint64_t addr;
+};
+#pragma pack(pop)
+static_assert(sizeof(page_struct) == 8, "Size of page_struct is invalid");
+
+struct MemPage
+{
+    uint64_t vaddr, paddr, size;
+    uint64_t vend() const
+    {
+        return vaddr + size;
+    }
+    bool vinside(uint64_t addr) const
+    {
+        return (addr >= vaddr) && (addr < vend());
+    }
+};
+
+namespace PageManager
+{
+const uint64_t PAGESIZE = EFI_PAGE_SIZE;
+const uint64_t PAGEMASK = EFI_PAGE_MASK;
+
+enum Privilege
+{
+    Supervisor = 0,
+    User = 1
+};
+enum PageType
+{
+    Read_Only = 0,
+    Read_Write = 1
+};
+
+int set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pageType);
+/*
+    handle page faults
+*//**
+ * Round up to page size
+ *
+ */
+uint64_t round_up_to_pagesize(uint64_t sz);
+
+/**
+ * Round up to page boundry
+ *
+ */
+uint64_t round_down_to_pagesize(uint64_t addr);
+int setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType);
+int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType);
+int getPhysicalAddress(uint64_t vaddr, uint64_t &paddr);
+int getVirtualAddress(uint64_t paddr, uint64_t length, uint64_t &vaddr);
+int freeVirtualMemory(uint64_t vaddr, uint64_t size);
+int IdentityMap2MBPages(uint64_t paddr);
+int IdentityMapPages(uint64_t paddr, uint64_t size);
+int initialize();
+int findVirtualMemory(uint64_t paddr, uint64_t &vaddr);
+int findFreeVirtualMemory(uint64_t &vaddr, uint64_t sz, uint64_t offset = 0x0);
+int getMemoryMap(uint64_t &memoryMapKey, uint64_t &memoryMapSize, uint64_t &descriptorSize, EFI_MEMORY_DESCRIPTOR **memoryMap);
+int applyMemoryMap(const std::vector<MemPage> &memMap, Privilege privilege, PageType pageType);
+int removeMemoryMap(const std::vector<MemPage> &memMap);
+int add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size);
+}; // namespace PageManager
+
+typedef volatile struct paging_structure paging_structure_t;
+void new_paging_structure(paging_structure_t *ps);
+
+#endif /* PAGING_H */

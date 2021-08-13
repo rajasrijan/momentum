@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -50,7 +49,8 @@ typedef uint64_t tcflag_t; //        Used for terminal modes.
 #define VTIME 17
 #define VWERASE 18
 #define NCCS 19
-struct termios {
+struct termios
+{
 
     tcflag_t c_iflag; //     Input modes.
     tcflag_t c_oflag; //     Output modes.
@@ -58,7 +58,8 @@ struct termios {
     tcflag_t c_lflag; //     Local modes.
     cc_t c_cc[NCCS];  //  Control characters.
 };
-//    The <termios.h> header shall define the following symbolic constants for use as flags in the c_iflag field. The c_iflag field describes the basic terminal input control.
+//    The <termios.h> header shall define the following symbolic constants for use as flags in the c_iflag field. The c_iflag field describes the basic terminal
+//    input control.
 
 //	Signal interrupt on break.
 #define BRKINT (1 << 0)
@@ -87,7 +88,8 @@ struct termios {
 
 // Output Modes
 
-// The <termios.h> header shall define the following symbolic constants for use as flags in the c_oflag field. The c_oflag field specifies the system treatment of output.
+// The <termios.h> header shall define the following symbolic constants for use as flags in the c_oflag field. The c_oflag field specifies the system treatment
+// of output.
 
 //	Post-process output.
 #define OPOST (1 << 0)
@@ -163,7 +165,8 @@ struct termios {
 
 // The <termios.h> header shall define the following symbolic constants for use as values of objects of type speed_t.
 
-// The input and output baud rates are stored in the termios structure. These are the valid values for objects of type speed_t. Not all baud rates need be supported by the underlying hardware.
+// The input and output baud rates are stored in the termios structure. These are the valid values for objects of type speed_t. Not all baud rates need be
+// supported by the underlying hardware.
 
 //	Hang up
 #define B0 (1 << 0)
@@ -200,7 +203,8 @@ struct termios {
 
 // Control Modes
 
-// The <termios.h> header shall define the following symbolic constants for use as flags in the c_cflag field. The c_cflag field describes the hardware control of the terminal; not all values specified are required to be supported by the underlying hardware.
+// The <termios.h> header shall define the following symbolic constants for use as flags in the c_cflag field. The c_cflag field describes the hardware control
+// of the terminal; not all values specified are required to be supported by the underlying hardware.
 
 //	Character size:
 //#define CSIZE
@@ -230,7 +234,8 @@ struct termios {
 // The implementation shall support the functionality associated with the symbols CS7, CS8, CSTOPB, PARODD, and PARENB.
 // Local Modes
 
-// The <termios.h> header shall define the following symbolic constants for use as flags in the c_lflag field. The c_lflag field of the argument structure is used to control various terminal functions.
+// The <termios.h> header shall define the following symbolic constants for use as flags in the c_lflag field. The c_lflag field of the argument structure is
+// used to control various terminal functions.
 
 //	Enable echo.
 #define ECHO (1 << 0)
@@ -300,4 +305,4 @@ pid_t tcgetsid(int);
 int tcsendbreak(int, int);
 int tcsetattr(int, int, const struct termios *);
 
-#endif //TERMIOS_H
+#endif // TERMIOS_H

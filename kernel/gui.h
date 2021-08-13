@@ -46,8 +46,7 @@ class window
 
   private:
     texture fb;
-    window(size_t _x, size_t _y, size_t width, size_t height)
-        : x(_x), y(_y), fb(width, height, width * 4, 4)
+    window(size_t _x, size_t _y, size_t width, size_t height) : x(_x), y(_y), fb(width, height, width * 4, 4)
     {
     }
 
@@ -95,7 +94,8 @@ class window_manager
 
     void draw_all(__uint128_t *framebuffer, size_t screen_height, size_t pitch)
     {
-        for (auto current_window : window_list) {
+        for (auto current_window : window_list)
+        {
             auto &fb_ex = current_window->fb;
             auto blit_start_point = (__uint128_t *)(((uint64_t)framebuffer) + (current_window->y * pitch) + current_window->x);
             current_window->draw();

@@ -32,8 +32,7 @@ class pci_driver
 {
   public:
     const char *name;
-    pci_driver(const char *_name)
-        : name(_name)
+    pci_driver(const char *_name) : name(_name)
     {
     }
     virtual ~pci_driver()
@@ -58,7 +57,8 @@ class pci_driver
     }
 };
 
-struct pci_driver_interface {
+struct pci_driver_interface
+{
     const pci_device_id *deviceTable;
     const int pci_device_count;
     function<pci_driver *(pci_device_t *)> create_driver_instance;

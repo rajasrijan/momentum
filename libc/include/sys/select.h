@@ -17,13 +17,13 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef SELECT_H
 #define SELECT_H
 
 #define FD_SETSIZE 1024
 
-typedef struct fd_set {
+typedef struct fd_set
+{
     int fds_bits[1];
 } fd_set;
 typedef uint64_t sigset_t;

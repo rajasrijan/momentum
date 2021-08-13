@@ -17,9 +17,8 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef GETOPT_H
 #define GETOPT_H
 extern char *optarg;
 extern int optind, opterr, optopt;
-#endif //GETOPT_H
+#endif // GETOPT_H

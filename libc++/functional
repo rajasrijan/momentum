@@ -24,13 +24,22 @@ class function; // no definition
 template <typename ReturnValue, typename... Args>
 class function<ReturnValue(Args...)>
 {
-private:
+  private:
     ReturnValue (*_fn)(Args...);
 
-public:
-    function() {}
-    function(const function &f) : _fn(f._fn) {}
-    function(ReturnValue (*fn)(Args...)) : _fn(fn) {}
+  public:
+    function() :
+        _fn(nullptr)
+    {
+    }
+    function(const function &f) :
+        _fn(f._fn)
+    {
+    }
+    function(ReturnValue (*fn)(Args...)) :
+        _fn(fn)
+    {
+    }
     ReturnValue operator()(Args... args) const
     {
         return _fn(args...);
@@ -39,5 +48,15 @@ public:
     {
         _fn = f._fn;
         return *this;
+    }
+
+    bool operator==(const function &rhs)
+    {
+        return _fn == rhs._fn;
+    }
+
+    explicit operator bool() const noexcept
+    {
+        return _fn != nullptr;
     }
 };

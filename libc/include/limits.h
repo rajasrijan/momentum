@@ -27,4 +27,4 @@
 #ifndef NAME_MAX
 #define NAME_MAX 256
 #endif
-#endif //LIMITS_H
+#endif // LIMITS_H

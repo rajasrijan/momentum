@@ -22,7 +22,8 @@
 
 #define PCI_STATUS_INTERRUPT (0x08)
 
-struct _PCI_HEADER_TYPE_0 {
+struct _PCI_HEADER_TYPE_0
+{
     uint32_t BaseAddresses[6];
     uint32_t CIS;
     uint16_t SubVendorID;
@@ -36,7 +37,8 @@ struct _PCI_HEADER_TYPE_0 {
     uint8_t MaximumLatency;
 };
 
-struct _PCI_HEADER_TYPE_1 {
+struct _PCI_HEADER_TYPE_1
+{
     uint32_t BaseAddresses[2];
     uint8_t PrimaryBusNumber;
     uint8_t SecondaryBusNumber;
@@ -60,7 +62,8 @@ struct _PCI_HEADER_TYPE_1 {
     uint16_t BridgeControl;
 };
 
-struct _PCI_HEADER_TYPE_2 {
+struct _PCI_HEADER_TYPE_2
+{
     uint32_t BaseAddress;
     uint8_t CapabilitiesPtr;
     uint8_t Reserved2;
@@ -103,7 +106,8 @@ struct _PCI_HEADER_TYPE_2 {
     uint8_t Diagnostic;
 };
 
-struct PCI_COMMON_CONFIG {
+struct PCI_COMMON_CONFIG
+{
     uint16_t VendorID;
     uint16_t DeviceID;
     uint16_t Command;
@@ -125,7 +129,8 @@ struct PCI_COMMON_CONFIG {
     uint8_t DeviceSpecific[108];
 };
 
-struct pci_device_id {
+struct pci_device_id
+{
     uint16_t VendorID;
     uint16_t DeviceID;
     uint16_t SubVendorID;
@@ -136,16 +141,17 @@ struct pci_device_id {
     bool IsMatching(const pci_device_id &in) const;
 } __attribute__((packed));
 
-struct pci_device_t {
+struct pci_device_t
+{
     union {
         struct
         {
             uint8_t resv1;
-            uint8_t func : 3;
-            uint8_t slot : 5;
+            uint8_t func:3;
+            uint8_t slot:5;
             uint8_t bus;
-            uint8_t resv0 : 7;
-            uint8_t enable : 1;
+            uint8_t resv0:7;
+            uint8_t enable:1;
         } __attribute__((packed));
         uint32_t address;
     };
@@ -157,7 +163,8 @@ struct pci_device_t {
     void getDeviceId(pci_device_id *devID) const;
 };
 
-struct pci_routing {
+struct pci_routing
+{
     uint64_t address; // it's more of a address filter
     uint32_t pin;     //  0 = INTA
     uint32_t irq;

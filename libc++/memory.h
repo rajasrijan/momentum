@@ -21,7 +21,8 @@
 
 #include "native_sync.h"
 
-namespace std {
+namespace std
+{
 template <class T>
 class shared_ptr
 {
@@ -32,13 +33,11 @@ class shared_ptr
     mtx_t *lock;
 
   public:
-    shared_ptr()
-        : __data(nullptr), __refCount(nullptr), lock(nullptr)
+    shared_ptr() : __data(nullptr), __refCount(nullptr), lock(nullptr)
     {
     }
 
-    shared_ptr(T *data_ptr)
-        : __data(nullptr), __refCount(nullptr), lock(nullptr)
+    shared_ptr(T *data_ptr) : __data(nullptr), __refCount(nullptr), lock(nullptr)
     {
         __data = data_ptr;
         lock = new mtx_t;
@@ -47,12 +46,12 @@ class shared_ptr
         __refCount[0] = 1;
     }
 
-    shared_ptr(const shared_ptr &src)
-        : __data(nullptr), __refCount(nullptr), lock(nullptr)
+    shared_ptr(const shared_ptr &src) : __data(nullptr), __refCount(nullptr), lock(nullptr)
     {
         lock = src.lock;
-        if (lock) {
-            sync auto_lock(*lock);
+        if (lock)
+        {
+            class sync auto_lock(*lock);
             __refCount = src.__refCount;
             __data = src.__data;
             __refCount[0]++;
@@ -60,12 +59,12 @@ class shared_ptr
     }
 
     template <class Y>
-    shared_ptr(shared_ptr<Y> &&src)
-        : __data(nullptr), __refCount(nullptr), lock(nullptr)
+    shared_ptr(shared_ptr<Y> &&src) : __data(nullptr), __refCount(nullptr), lock(nullptr)
     {
         lock = src.lock;
-        if (lock) {
-            sync auto_lock(*lock);
+        if (lock)
+        {
+            class sync auto_lock(*lock);
             __refCount = src.__refCount;
             __data = src.__data;
             __refCount[0]++;
@@ -77,23 +76,29 @@ class shared_ptr
     {
         //	Relese old
         {
-            if (__refCount != 0) {
-                sync auto_lock(*lock);
-                if (__refCount != 0) {
+            if (__refCount != 0)
+            {
+                class sync auto_lock(*lock);
+                if (__refCount != 0)
+                {
                     __refCount[0]--;
 
-                    if (__refCount[0] == 0) {
-                        if (__data != 0) {
+                    if (__refCount[0] == 0)
+                    {
+                        if (__data != 0)
+                        {
                             delete __data;
                             __data = 0;
                         }
-                        if (lock != 0) {
+                        if (lock != 0)
+                        {
                             auto_lock.invalidateLock();
                             delete lock;
                             lock = 0;
                         }
 
-                        if (__refCount != 0) {
+                        if (__refCount != 0)
+                        {
                             delete __refCount;
                             __refCount = 0;
                         }
@@ -102,8 +107,9 @@ class shared_ptr
             }
         }
         lock = r.lock;
-        if (lock) {
-            sync auto_lock(*lock);
+        if (lock)
+        {
+            class sync auto_lock(*lock);
             __data = r.__data;
             __refCount = r.__refCount;
             __refCount[0]++;
@@ -115,23 +121,29 @@ class shared_ptr
     {
         //	Relese old
         {
-            if (__refCount != 0) {
-                sync auto_lock(*lock);
-                if (__refCount != 0) {
+            if (__refCount != 0)
+            {
+                class sync auto_lock(*lock);
+                if (__refCount != 0)
+                {
                     __refCount[0]--;
 
-                    if (__refCount[0] == 0) {
-                        if (__data != 0) {
+                    if (__refCount[0] == 0)
+                    {
+                        if (__data != 0)
+                        {
                             delete __data;
                             __data = 0;
                         }
-                        if (lock != 0) {
+                        if (lock != 0)
+                        {
                             auto_lock.invalidateLock();
                             delete lock;
                             lock = 0;
                         }
 
-                        if (__refCount != 0) {
+                        if (__refCount != 0)
+                        {
                             delete __refCount;
                             __refCount = 0;
                         }
@@ -140,8 +152,9 @@ class shared_ptr
             }
         }
         lock = r.lock;
-        if (lock) {
-            sync auto_lock(*lock);
+        if (lock)
+        {
+            class sync auto_lock(*lock);
             __data = r.__data;
             __refCount = r.__refCount;
             __refCount[0]++;
@@ -153,23 +166,29 @@ class shared_ptr
     {
         //	Relese old
         {
-            if (__refCount != 0) {
-                sync auto_lock(*lock);
-                if (__refCount != 0) {
+            if (__refCount != 0)
+            {
+                class sync auto_lock(*lock);
+                if (__refCount != 0)
+                {
                     __refCount[0]--;
 
-                    if (__refCount[0] == 0) {
-                        if (__data != 0) {
+                    if (__refCount[0] == 0)
+                    {
+                        if (__data != 0)
+                        {
                             delete __data;
                             __data = 0;
                         }
-                        if (lock != 0) {
+                        if (lock != 0)
+                        {
                             auto_lock.invalidateLock();
                             delete lock;
                             lock = 0;
                         }
 
-                        if (__refCount != 0) {
+                        if (__refCount != 0)
+                        {
                             delete __refCount;
                             __refCount = 0;
                         }
@@ -189,20 +208,26 @@ class shared_ptr
 
     ~shared_ptr()
     {
-        if (__refCount != 0) {
-            sync auto_lock(*lock);
-            if (__refCount != 0) {
+        if (__refCount != 0)
+        {
+            class sync auto_lock(*lock);
+            if (__refCount != 0)
+            {
                 __refCount[0]--;
 
-                if (__refCount[0] == 0) {
-                    if (__data != 0) {
+                if (__refCount[0] == 0)
+                {
+                    if (__data != 0)
+                    {
                         delete __data;
                     }
-                    if (lock != 0) {
+                    if (lock != 0)
+                    {
                         auto_lock.invalidateLock();
                         delete lock;
                     }
-                    if (__refCount != 0) {
+                    if (__refCount != 0)
+                    {
                         delete __refCount;
                     }
                 }

@@ -2,7 +2,7 @@
 *.raw
 *.img
 *.elf
-.vscode/**
+**/.vscode/**
 kernel.s
 bochsrc.txt
 objdump.txt

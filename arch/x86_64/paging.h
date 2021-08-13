@@ -25,9 +25,9 @@
 #include <vector>
 
 #define PG_LVL_IDX(vaddr, lvl) (((vaddr) >> ((9 * lvl) + 3)) & 0x1FF)
-#define PG_LVL_SZ(lvl) (1ull << ((9 * lvl) + 3))
-#define PG_LVL_ALIGN(vaddr, lvl) ((vaddr) & (0xFFFFFFFFFFFFFFFFull << ((9 * lvl) + 3)))
-#define PG_LVL_OFFSET(vaddr, lvl) ((vaddr) & ((1ull << ((9 * lvl) + 3)) - 1))
+#define PG_LVL_SZ(lvl) (1ul << ((9 * lvl) + 3))
+#define PG_LVL_ALIGN(vaddr, lvl) ((vaddr) & (0xFFFFFFFFFFFFFFFFul << ((9 * lvl) + 3)))
+#define PG_LVL_OFFSET(vaddr, lvl) ((vaddr) & ((1ul << ((9 * lvl) + 3)) - 1))
 #define PG_LVL_VADDR(l4, l3, l2, l1) (((l4 & 0x1FF) << 39) | ((l3 & 0x1FF) << 30) | ((l2 & 0x1FF) << 21) | ((l1 & 0x1FF) << 12))
 #define PG_GET_ADDRESS(pg) ((pg)->paddr << 12)
 
@@ -35,23 +35,25 @@
 union page_struct {
     struct
     {
-        uint8_t present : 1;
-        uint8_t rw : 1;
-        uint8_t us : 1;
-        uint8_t pwt : 1;
-        uint8_t pcd : 1;
-        uint8_t a : 1;
-        uint8_t d : 1;
-        uint8_t ps : 1;
-        uint8_t ign1 : 4;
-        uint64_t paddr : 51;
-        uint8_t xd : 1;
+        uint64_t present:1;
+        uint64_t rw:1;
+        uint64_t us:1;
+        uint64_t pwt:1;
+        uint64_t pcd:1;
+        uint64_t a:1;
+        uint64_t d:1;
+        uint64_t ps:1;
+        uint64_t ign1:4;
+        uint64_t paddr:51;
+        uint64_t xd:1;
     };
     uint64_t addr;
 };
 #pragma pack(pop)
+static_assert(sizeof(page_struct) == 8, "Size of page_struct is invalid");
 
-struct MemPage {
+struct MemPage
+{
     uint64_t vaddr, paddr, size;
     uint64_t vend() const
     {
@@ -63,17 +65,18 @@ struct MemPage {
     }
 };
 
-namespace PageManager {
-const uint64_t SMALLPAGESIZE = 0x1000;
-const uint64_t PAGESIZE = 0x200000;
-const uint64_t BIGPAGESIZE = 0x40000000;
-const uint64_t BIGBIGPAGESIZE = 0x8000000000;
+namespace PageManager
+{
+const uint64_t PAGESIZE = 0x1000;
+const uint64_t PAGEMASK = 0xFFF;
 
-enum Privilege {
+enum Privilege
+{
     Supervisor = 0,
     User = 1
 };
-enum PageType {
+enum PageType
+{
     Read_Only = 0,
     Read_Write = 1
 };
@@ -84,14 +87,13 @@ int set2MBPage(uint64_t vaddr, uint64_t paddr, Privilege privilege, PageType pag
 */
 void interruptHandler(retStack_t *stack, general_registers_t *regs);
 
-uint64_t roundToPageSize(uint64_t sz);
-uint64_t roundToPageBoundry(uint64_t addr);
+uint64_t round_up_to_pagesize(uint64_t sz);
+uint64_t round_down_to_pagesize(uint64_t addr);
 int setPageAllocation(uint64_t vaddr, uint64_t size, Privilege privilege, PageType pageType);
 int setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType);
 int getPhysicalAddress(uint64_t vaddr, uint64_t &paddr);
 int getVirtualAddress(uint64_t paddr, uint64_t length, uint64_t &vaddr);
 int freeVirtualMemory(uint64_t vaddr, uint64_t size);
-int IdentityMap2MBPages(uint64_t paddr);
 int IdentityMapPages(uint64_t paddr, uint64_t size);
 int initialize();
 int findVirtualMemory(uint64_t paddr, uint64_t &vaddr);
@@ -104,6 +106,5 @@ int add_early_kernel_mapping(uint64_t vaddr, uint64_t paddr, uint64_t size);
 
 typedef volatile struct paging_structure paging_structure_t;
 void new_paging_structure(paging_structure_t *ps);
-void init_paging(void);
 
 #endif /* PAGING_H */

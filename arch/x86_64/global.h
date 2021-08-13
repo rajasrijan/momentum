@@ -37,9 +37,7 @@ extern uint32_t memory_map_len;
 
 static inline void insl(uint16_t port, void *addr, uint32_t count)
 {
-    __asm__ __volatile__("rep ; insl"
-                         : "=D"(addr), "=c"(count)
-                         : "d"(port), "0"(addr), "1"(count));
+    __asm__ __volatile__("rep ; insl" : "=D"(addr), "=c"(count) : "d"(port), "0"(addr), "1"(count));
 }
 
 static inline uint8_t checksum(uint8_t *ptr, uint32_t len)
@@ -59,44 +57,36 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
 }
 static inline void rdmsr(uint32_t msr, uint32_t *lo, uint32_t *hi)
 {
-    asm volatile("rdmsr"
-                 : "=a"(*lo), "=d"(*hi)
-                 : "c"(msr));
+    asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
 }
 
 static inline void wrmsr(uint32_t msr, uint64_t val)
 {
-    asm volatile("wrmsr"
-                 :
-                 : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
+    asm volatile("wrmsr" : : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
 }
 
 extern "C" uint64_t kernel_start;
 extern "C" uint64_t kernel_end;
 
 /*Functions defined in asm*/
-extern "C" {
-uint64_t get_spin_lock(void *lock_ptr);
-uint32_t get_async_spin_lock(void *lock_ptr);
-uint32_t release_spin_lock(void *lock_ptr);
-
-void stage2(struct multiboot_information *mbi);
-void switch_context(uint64_t rsp, uint64_t ss);
-/*
+extern "C"
+{
+    void stage2();
+    void switch_context(uint64_t rsp, uint64_t ss);
+    /*
      * gets the current previlage leval.
      */
-uint32_t get_cpl(void);
-uint64_t *get_cr3(void);
-uint64_t *get_cr2(void);
-uint64_t get_rflags(void);
-void get_gdt(void *ptr);
-void load_interrupt_descriptor_table(void *ptr);
-void outb(unsigned short port, unsigned char val);
-void outw(unsigned short port, uint16_t val);
-void outl(unsigned short port, uint32_t val);
-uint8_t inb(uint16_t port);
-uint32_t inl(uint16_t port);
-uint16_t inw(uint16_t port);
+    uint32_t get_cpl(void);
+    uint64_t *get_cr3(void);
+    uint64_t *get_cr2(void);
+    uint64_t get_rflags(void);
+    void get_gdt(void *ptr);
+    void outb(unsigned short port, unsigned char val);
+    void outw(unsigned short port, uint16_t val);
+    void outl(unsigned short port, uint32_t val);
+    uint8_t inb(uint16_t port);
+    uint32_t inl(uint16_t port);
+    uint16_t inw(uint16_t port);
 }
 void state_c0(void);
 #define LOGHEX(x) printf("\n\"" #x "\" :[0x%x]", x);

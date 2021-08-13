@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "libc"
+		}
+	],
+	"settings": {
+		"C_Cpp.clang_format_path": "/usr/bin/clang-format",
+		"files.insertFinalNewline": true,
+		"files.trimFinalNewlines": true
+	}
+}

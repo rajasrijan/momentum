@@ -21,7 +21,8 @@
 #define NETDB_H
 #include <sys/socket.h>
 
-struct addrinfo {
+struct addrinfo
+{
     int ai_flags;
     int ai_family;
     int ai_socktype;

@@ -17,4 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "ddi.h"
-#include "../arch/x86_64/paging.h"
+#include <stdint.h>
+#include <map>
+#include <arch/paging.h>

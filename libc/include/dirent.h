@@ -26,12 +26,14 @@
 
 #define MAXNAMLEN NAME_MAX
 
-struct dirent {
+struct dirent
+{
     char d_name[NAME_MAX];
     unsigned char d_namlen;
 };
 
-typedef struct _dir {
+typedef struct _dir
+{
     int fd;
     struct dirent *dirent_list;
     size_t dirent_count;
@@ -45,8 +47,10 @@ void rewinddir(DIR *__dirp);
 void seekdir(DIR *__dirp, long int __pos);
 long int telldir(DIR *__dirp);
 int dirfd(DIR *__dirp);
-int scandir(const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *), int (*__cmp)(const struct dirent **, const struct dirent **));
-int scandirat(int __dfd, const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *), int (*__cmp)(const struct dirent **, const struct dirent **));
+int scandir(const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *),
+            int (*__cmp)(const struct dirent **, const struct dirent **));
+int scandirat(int __dfd, const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *),
+              int (*__cmp)(const struct dirent **, const struct dirent **));
 int alphasort(const struct dirent **__e1, const struct dirent **__e2);
 ssize_t getdirentries(int __fd, char *__buf, size_t __nbytes, off_t *__basep);
 int versionsort(const struct dirent **__e1, const struct dirent **__e2);

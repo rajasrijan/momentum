@@ -39,9 +39,12 @@ static void keyboard_handler(retStack_t *regs, general_registers_t *context)
     else
         key_grid[keyCode] = 1;
 
-    if (keyCode == SC_RSHIFT || keyCode == SC_LSHIFT) {
+    if (keyCode == SC_RSHIFT || keyCode == SC_LSHIFT)
+    {
         keyProcessed = true;
-    } else if (keyCode >= 0x1 && keyCode <= 0x39) {
+    }
+    else if (keyCode >= 0x1 && keyCode <= 0x39)
+    {
         const char rowDOWN[] = " 1234567890-=\b\tqwertyuiop[]\n asdfghjkl;'` \\zxcvbnm,./    ";
         const char rowUP[] = " !@#$%^&*()_+\b\tQWERTYUIOP{}\n ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
         if (key_grid[SC_RSHIFT] || key_grid[SC_LSHIFT])
@@ -51,9 +54,12 @@ static void keyboard_handler(retStack_t *regs, general_registers_t *context)
         keyProcessed = true;
     }
 
-    if (IsKeyUp && ch) {
+    if (IsKeyUp && ch)
+    {
         multitask::getInstance()->getActiveProcess()->key_buffer.write(ch);
-    } else if (!keyProcessed) {
+    }
+    else if (!keyProcessed)
+    {
         printf("^%x", keyCode);
     }
 }

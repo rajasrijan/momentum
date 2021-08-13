@@ -19,9 +19,10 @@
 
 #ifndef UN_H
 #define UN_H
-struct sockaddr_un {
+struct sockaddr_un
+{
 
     sa_family_t sun_family; //  Address family.
-    char sun_path[256];        //  Socket pathname.
+    char sun_path[256];     //  Socket pathname.
 };
 #endif //  UN_H

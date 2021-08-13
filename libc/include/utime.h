@@ -17,12 +17,12 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef UTIME_H
 #define UTIME_H
 #include <sys/time.h>
 
-struct utimbuf {
+struct utimbuf
+{
     time_t actime;  /* access time */
     time_t modtime; /* modification time */
 };

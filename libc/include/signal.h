@@ -94,7 +94,8 @@ union sigval {       /* Data passed with notification */
     void *sival_ptr; /* Pointer value */
 };
 
-typedef struct siginfo {
+typedef struct siginfo
+{
     int si_signo;          /* Signal number */
     int si_errno;          /* An errno value */
     int si_code;           /* Signal code */
@@ -132,7 +133,8 @@ typedef struct siginfo {
                                          (since Linux 3.5) */
 } siginfo_t;
 
-struct sigaction {
+struct sigaction
+{
     void (*sa_handler)(int);
     void (*sa_sigaction)(int, siginfo_t *, void *);
     sigset_t sa_mask;
@@ -182,13 +184,15 @@ struct sigaction {
 //	Default size in bytes for the alternate signal stack.
 #define SIGSTKSZ (1 << 0)
 
-typedef struct stack {
+typedef struct stack
+{
 
     void *ss_sp;    //       stack base or pointer
     size_t ss_size; //     stack size
     int ss_flags;   //    flags
 } stack_t;
-struct sigstack {
+struct sigstack
+{
 
     int ss_onstack; //  non-zero when signal stack is in use
     void *ss_sp;    //       signal stack pointer
@@ -217,8 +221,7 @@ int sigprocmask(int, const sigset_t *, sigset_t *);
 int sigqueue(pid_t, int, const union sigval);
 int sigrelse(int);
 void (*sigset(int, void (*)(int)))(int);
-int sigstack(struct sigstack *ss,
-             struct sigstack *oss);
+int sigstack(struct sigstack *ss, struct sigstack *oss);
 int sigsuspend(const sigset_t *);
 int sigtimedwait(const sigset_t *, siginfo_t *, const struct timespec *);
 int sigwait(const sigset_t *set, int *sig);

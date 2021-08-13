@@ -28,12 +28,15 @@ isr_t interrupt_handlers[256] = {0};
 
 void isr_handler(retStack_t *stack, general_registers_t *regs)
 {
-    if (stack->interruptNumber < 256 && interrupt_handlers[stack->interruptNumber] != 0) {
+    if (stack->interruptNumber < 256 && interrupt_handlers[stack->interruptNumber] != 0)
+    {
         isr_t handler = interrupt_handlers[stack->interruptNumber];
         handler(stack, regs);
         if (stack->interruptNumber >= 32)
             eoi();
-    } else {
+    }
+    else
+    {
 
         // uint64_t rsp[10], rbp[10], rip[10];
         // size_t history_index = 0;
@@ -45,17 +48,23 @@ void isr_handler(retStack_t *stack, general_registers_t *regs)
         //     rsp[history_index] = rbp[history_index - 1];
         //     rbp[history_index] = ((uint64_t *)rsp[history_index])[0];
         //     rip[history_index] = ((uint64_t *)rsp[history_index])[1];
-        //     if (!rip[history_index] || rip[history_index] == 0xDEADBEEFDEADBEEF || rbp[history_index] == 0xDEADBEEFDEADBEEF) {
+        //     if (!rip[history_index] || rip[history_index] == 0xDEADBEEFDEADBEEF || rbp[history_index] ==
+        //     0xDEADBEEFDEADBEEF) {
         //         break;
         //     }
         // }
         printf("RSP [%#llx]\n", stack);
         printf("Intr.No [%#llx], RSP [%#llx], RIP [%#llx]\n", stack->interruptNumber, regs->rsp, stack->rip);
-        if (stack->interruptNumber == 6) {
+        if (stack->interruptNumber == 6)
+        {
             printf("Invalid Opcode\n");
-        } else if (stack->interruptNumber == 14) {
+        }
+        else if (stack->interruptNumber == 14)
+        {
             printf("PF addr [0x%02x:%#llx], Error code [0x%llx]\n", stack->cs, get_cr2(), stack->err);
-        } else if (stack->interruptNumber == 13) {
+        }
+        else if (stack->interruptNumber == 13)
+        {
             printf("GP Error code [0x%llx]\n", stack->err);
         }
         //  print context

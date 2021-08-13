@@ -62,7 +62,8 @@
 
 #define S_ISDIR(mode) (((mode)&S_IFDIR) == S_IFDIR)
 
-struct stat {
+struct stat
+{
     uint64_t st_nlink;
     uint64_t st_uid;
     uint64_t st_gid;

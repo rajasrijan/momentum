@@ -89,21 +89,25 @@
 #define socklen_t unsigned long int
 #define sa_family_t unsigned long int
 
-struct sockaddr {
+struct sockaddr
+{
     sa_family_t sa_family; //  Address family.
     char sa_data[];        //  Socket address (variable-length data).
 };
 
-struct hostent {
+struct hostent
+{
 
     char *h_name;       // Official name of the host.
     char **h_aliases;   // A pointer to an array of pointers to alternative host names, terminated by a null pointer.
     int h_addrtype;     // Address type.
     int h_length;       // The length, in bytes, of the address.
-    char **h_addr_list; // A pointer to an array of pointers to network addresses (in network byte order) for the host, terminated by a null pointer.
+    char **h_addr_list; // A pointer to an array of pointers to network addresses (in network byte order) for the host,
+                        // terminated by a null pointer.
 };
 
-struct netent {
+struct netent
+{
 
     char *n_name;     // Official, fully-qualified (including the domain) name of the host.
     char **n_aliases; // A pointer to an array of pointers to alternative network names, terminated by a null pointer.
@@ -111,18 +115,21 @@ struct netent {
     uint32_t n_net;   // The network number, in host byte order.
 };
 
-struct protoent {
+struct protoent
+{
 
     char *p_name;     // Official name of the protocol.
     char **p_aliases; // A pointer to an array of pointers to alternative protocol names, terminated by a null pointer.
     int p_proto;      // The protocol number.
 };
 
-struct servent {
+struct servent
+{
 
     char *s_name;     // Official name of the service.
     char **s_aliases; // A pointer to an array of pointers to alternative service names, terminated by a null pointer.
-    int s_port;       // A value which, when converted to uint16_t, yields the port number in network byte order at which the service resides.
+    int s_port;       // A value which, when converted to uint16_t, yields the port number in network byte order at which the
+                      // service resides.
     char *s_proto;    // The name of the protocol to use when contacting the service.
 };
 

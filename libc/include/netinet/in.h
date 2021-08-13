@@ -26,11 +26,13 @@
 #define in_addr_t uint32_t
 #define in_port_t uint16_t
 
-struct in_addr {
+struct in_addr
+{
     in_addr_t s_addr;
 };
 
-struct sockaddr_in {
+struct sockaddr_in
+{
     sa_family_t sin_family;  // AF_INET.
     in_port_t sin_port;      // Port number.
     struct in_addr sin_addr; // IP address.
@@ -38,7 +40,7 @@ struct sockaddr_in {
 
 //  IPv4 local host address.
 #define INADDR_ANY (1 << 0)
-//IPv4 broadcast address.
+// IPv4 broadcast address.
 #define INADDR_BROADCAST (1 << 1)
 
 #endif

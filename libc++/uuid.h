@@ -1,18 +1,18 @@
 /*
  * Copyright 2009-2021 Srijan Kumar Sharma
- * 
+ *
  * This file is part of Momentum.
- * 
+ *
  * Momentum is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Momentum is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -36,33 +36,40 @@ inline bool operator==(const uuid_t &rhs, const uuid_t &lhs)
 {
     return (rhs.ui64[0] == lhs.ui64[0]) && (rhs.ui64[1] == lhs.ui64[1]);
 }
-namespace std {
+namespace std
+{
 
 inline uuid_t to_uuid(const char *str)
 {
     uuid_t result = {};
-    auto char_to_hex = [](char c) -> int { return (c >= '0' && c <= '9') ? (int)(c - '0') : (c >= 'a' && c <= 'f') ? (int)(c - 'a' + 10)
-                                                                                                                   : -1; };
+    auto char_to_hex = [](char c) -> int { return (c >= '0' && c <= '9') ? (int)(c - '0') : (c >= 'a' && c <= 'f') ? (int)(c - 'a' + 10) : -1; };
 
-    if (strlen(str) == 9) {
+    if (strlen(str) == 9)
+    {
         /* fat32 uuid format */
-        for (size_t i = 0; str[i] != 0; i++) {
+        for (size_t i = 0; str[i] != 0; i++)
+        {
             if (str[i] == '-')
                 continue;
             int hex = char_to_hex(tolower(str[i]));
-            if (hex == -1) {
+            if (hex == -1)
+            {
                 return {};
             }
             result.ui32[2] = (result.ui32[2] << 4) | hex;
         }
-    } else if (strlen(str) == 36) {
+    }
+    else if (strlen(str) == 36)
+    {
         /* standard uuid format */
         int idx = 0;
-        for (size_t i = 0; str[i] != 0; i++) {
+        for (size_t i = 0; str[i] != 0; i++)
+        {
             if (str[i] == '-')
                 continue;
             int hex = char_to_hex(tolower(str[i]));
-            if (hex == -1) {
+            if (hex == -1)
+            {
                 return {};
             }
             result.ui8[(idx / 2)] = (result.ui8[(idx / 2)] << 4) | hex;
@@ -84,4 +91,4 @@ inline string to_string(const uuid_t &uuid)
 }
 } // namespace std
 
-#endif //UUID_H
+#endif // UUID_H

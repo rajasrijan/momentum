@@ -34,7 +34,8 @@ using namespace std;
 #define BLKPBSZGET 1
 #define BLKGETSIZE64 2
 
-enum FS_TYPE_MAGIC {
+enum FS_TYPE_MAGIC
+{
     ADFS_SUPER_MAGIC = 0xadf5,
     AFFS_SUPER_MAGIC = 0xadff,
     AFS_SUPER_MAGIC = 0x5346414f,
@@ -120,7 +121,8 @@ enum FS_TYPE_MAGIC {
     _XIAFS_SUPER_MAGIC = 0x012fd16d
 };
 
-struct statfs_t {
+struct statfs_t
+{
     uint64_t type;    /* Type of filesystem (see below) */
     uint64_t bsize;   /* Optimal transfer block size */
     uint64_t blocks;  /* Total data blocks in filesystem */
@@ -168,14 +170,15 @@ class vfs
     virtual int vget(void) = 0;
 };
 
-struct fileSystem {
+struct fileSystem
+{
     function<vfs *(void)> new_vfs;
     function<void(vfs *)> delete_vfs;
     // fileSystem(const fileSystem &fs) : new_vfs(fs.new_vfs), delete_vfs(fs.delete_vfs) {}
     // fileSystem(const fileSystem &fs) = default;
 };
 
-void init_vfs(void);
+int init_vfs(void);
 void register_filesystem(fileSystem fs, string fsName);
 void unregister_filesystem(fileSystem fs);
 int mknod(const char *pathname, shared_ptr<class vnode> dev);
@@ -185,7 +188,8 @@ int mount_root(class vnode *vn);
 int add_blk_dev(shared_ptr<class vnode> blk_dev);
 class vnode *open_bdev(string dev_path);
 
-enum OpenAt_Flags {
+enum OpenAt_Flags
+{
     FDCWD = -100,             /* Indicates that openat should use the current working
                                  directory. */
     SYMLINK_NOFOLLOW = 0x100, /* Do not follow symbolic links.  */
@@ -195,7 +199,8 @@ enum OpenAt_Flags {
     EMPTY_PATH = 0x1000       /* Allow empty relative pathname */
 };
 
-enum Open_Flags {
+enum Open_Flags
+{
     O_RDONLY = 1 << 0,   //    Open for reading only.
     O_WRONLY = 1 << 1,   //    Open for writing only.
     O_RDWR = 1 << 2,     //    Open for reading and writing. The result is undefined
@@ -209,6 +214,18 @@ enum Open_Flags {
 };
 
 int lookup(const char *path, shared_ptr<class vnode> &node);
+
+/**
+ * @brief look for files that match pattern
+ *
+ * @param path the path to look under
+ * @param pattern return list of files matching pattern
+ * @param depth search depth (-1==infinite)
+ * @param nodes output list on nodes
+ * @return int
+ */
+int find(const char *path, const char *pattern, int depth, vector<shared_ptr<class vnode>> &nodes);
+
 int create(const string &path, shared_ptr<class vnode> &node);
 
 int open(const string &name, int oflag);

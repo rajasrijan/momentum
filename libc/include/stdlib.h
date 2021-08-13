@@ -23,21 +23,22 @@
 #include "stddef.h"
 #include <sys/types.h>
 
-
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-int atoi(const char *str);
-void *aligned_malloc(size_t size, int n);
-void *malloc(size_t size);
-void free(void *ptr);
-void *realloc(void *ptr, size_t size);
-void *calloc(size_t blocks, size_t size);
-void exit(int status);
-__attribute__((noreturn)) void abort(void);
+    int atoi(const char *str);
+    void *aligned_malloc(size_t size, int n);
+    void *malloc(size_t size);
+    void free(void *ptr);
+    void *realloc(void *ptr, size_t size);
+    void *calloc(size_t blocks, size_t size);
+    void exit(int status);
+    __attribute__((noreturn)) void abort(void);
+    int atexit(void (*function)(void));
 
 #ifndef __cplusplus
 #define min(a, b) ((a < b) ? a : b)

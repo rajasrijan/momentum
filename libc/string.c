@@ -25,7 +25,8 @@
 
 void *memset(void *ptr, int value, size_t num)
 {
-    for (size_t i = 0; i < num; i++) {
+    for (size_t i = 0; i < num; i++)
+    {
         ((char *)ptr)[i] = (char)(value);
     }
     return ptr;
@@ -33,7 +34,8 @@ void *memset(void *ptr, int value, size_t num)
 
 void *memcpy(void *dst, const void *src, size_t len)
 {
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++)
+    {
         ((char *)dst)[i] = ((char *)src)[i];
     }
     return dst;
@@ -58,7 +60,8 @@ char stricmp(const char *s1, const char *s2)
 {
     char diff = 0;
     size_t i = 0;
-    do {
+    do
+    {
         diff = tolower(s1[i]) - tolower(s2[i]);
         if (diff)
             break;
@@ -69,7 +72,8 @@ char stricmp(const char *s1, const char *s2)
 int strcmp(const char *s1, const char *s2)
 {
     size_t i = 0;
-    do {
+    do
+    {
         if ((s1[i] - s2[i]) != 0)
             return (char)(s1[i] - s2[i]);
     } while ((s1[i] != 0) && (s2[i] != 0) && ++i);
@@ -78,8 +82,10 @@ int strcmp(const char *s1, const char *s2)
 
 char *strstr(const char *str1, const char *str2)
 {
-    for (int i = 0; str1[i] != 0; i++) {
-        if (strcmp(&str1[i], str2) == 0) {
+    for (int i = 0; str1[i] != 0; i++)
+    {
+        if (strcmp(&str1[i], str2) == 0)
+        {
             return (char *)&str1[i];
         }
     }
@@ -89,9 +95,11 @@ char *strstr(const char *str1, const char *str2)
 int memcmp(const void *ptr1, const void *ptr2, size_t num)
 {
     int ret = 0;
-    for (size_t i = 0; i < num; i++) {
+    for (size_t i = 0; i < num; i++)
+    {
         ret = ((char *)ptr1)[i] != ((char *)ptr2)[i];
-        if (ret != 0) {
+        if (ret != 0)
+        {
             break;
         }
     }
@@ -106,7 +114,8 @@ void *mempcpy(void *dest, const void *src, size_t n)
 char *strcpy(char *dst, const char *src)
 {
     int i = 0;
-    for (i = 0; src[i] != 0; i++) {
+    for (i = 0; src[i] != 0; i++)
+    {
         dst[i] = src[i];
     }
     dst[i] = 0;
@@ -118,7 +127,8 @@ char *strcat(char *dst, const char *src)
     for (; dst[0] != 0; dst++)
         ;
     int i = 0;
-    for (i = 0; src[i] != 0; i++) {
+    for (i = 0; src[i] != 0; i++)
+    {
         dst[i] = src[i];
     }
     dst[i] = 0;
@@ -127,8 +137,10 @@ char *strcat(char *dst, const char *src)
 
 const char *strrchar(const char *s1, int character)
 {
-    for (int64_t len = strlen(s1); len >= 0; len--) {
-        if (s1[len] == character) {
+    for (int64_t len = strlen(s1); len >= 0; len--)
+    {
+        if (s1[len] == character)
+        {
             return &s1[len];
         }
     }
@@ -137,8 +149,10 @@ const char *strrchar(const char *s1, int character)
 
 const char *strchar(const char *s1, int character)
 {
-    for (size_t len = 0; s1[len]; len++) {
-        if (s1[len] == character) {
+    for (size_t len = 0; s1[len]; len++)
+    {
+        if (s1[len] == character)
+        {
             return &s1[len];
         }
     }
@@ -148,10 +162,14 @@ const char *strchar(const char *s1, int character)
 char *strncpy(char *dst, const char *src, size_t count)
 {
     int srcEnded = 0;
-    for (size_t i = 0; i < count; i++) {
-        if (srcEnded) {
+    for (size_t i = 0; i < count; i++)
+    {
+        if (srcEnded)
+        {
             *dst = 0;
-        } else {
+        }
+        else
+        {
             *dst = *src;
             if (*src == 0)
                 srcEnded = 1;
@@ -166,8 +184,10 @@ char *strncpy(char *dst, const char *src, size_t count)
 
 int strncmp(const char *str1, const char *str2, size_t num)
 {
-    for (size_t i = 0; i < num; i++) {
-        if ((str1[i] == 0) || (str2[i] == 0) || ((str1[i] - str2[i]) != 0)) {
+    for (size_t i = 0; i < num; i++)
+    {
+        if ((str1[i] == 0) || (str2[i] == 0) || ((str1[i] - str2[i]) != 0))
+        {
             return (str1[i] - str2[i]);
         }
     }
@@ -178,7 +198,8 @@ char *strncat(char *destination, const char *source, size_t num)
 {
     for (; *destination; destination++)
         ;
-    for (size_t i = 0; i < num && source[i] != 0; i++) {
+    for (size_t i = 0; i < num && source[i] != 0; i++)
+    {
         *destination++ = source[i];
     }
     *destination = 0;
@@ -188,17 +209,22 @@ char *strncat(char *destination, const char *source, size_t num)
 char *strtok(char *str, const char *delimiters)
 {
     static char *ptr = NULL;
-    if (str != NULL) {
+    if (str != NULL)
+    {
         ptr = str;
     }
-    if (!ptr || *ptr == 0) {
+    if (!ptr || *ptr == 0)
+    {
         return NULL;
     }
     char *result = ptr;
     int delimFound = 0;
-    while (*ptr != 0 && !delimFound) {
-        for (size_t i = 0; delimiters[i] != 0; i++) {
-            if (*ptr == delimiters[i]) {
+    while (*ptr != 0 && !delimFound)
+    {
+        for (size_t i = 0; delimiters[i] != 0; i++)
+        {
+            if (*ptr == delimiters[i])
+            {
                 *ptr = 0;
                 delimFound = 1;
                 break;
@@ -207,7 +233,8 @@ char *strtok(char *str, const char *delimiters)
         ++ptr;
     }
 
-    if (!delimFound && *ptr != 0) {
+    if (!delimFound && *ptr != 0)
+    {
         return NULL;
     }
 
@@ -217,7 +244,8 @@ char *strtok(char *str, const char *delimiters)
 char *strchrnul(const char *s, int c)
 {
     const char *tmp = s;
-    while (*tmp != 0) {
+    while (*tmp != 0)
+    {
         if (*tmp == c)
             return tmp;
     }
@@ -262,7 +290,8 @@ char *strpbrk(const char *s1, const char *s2)
 char *strrchr(const char *src, int c)
 {
     char *latest_found = NULL;
-    for (size_t i = 0; src[i] != 0; i++) {
+    for (size_t i = 0; src[i] != 0; i++)
+    {
         if (src[i] == c)
             latest_found = &src[i];
     }

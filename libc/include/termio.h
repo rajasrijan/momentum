@@ -91,7 +91,6 @@
 #define PENDIN 14
 #define IEXTEN 15
 
-
 struct termio
 {
     uint64_t c_lflag;
@@ -102,4 +101,4 @@ struct termio
 };
 
 int tcgetattr(int fd, struct termio *termios_p);
-#endif //TERMIOS_H
+#endif // TERMIOS_H

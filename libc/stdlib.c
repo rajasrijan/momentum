@@ -25,7 +25,7 @@
 #include <kernel/syscall.h>
 #include <sys/mman.h>
 #include <errno.h>
-#include <arch/x86_64/mm.h>
+#include <kernel/heap.h>
 
 heap_t *pHeap = NULL;
 
@@ -63,8 +63,10 @@ int create_heap()
 void check_heap_integrity()
 {
     heap_t *heap_ptr = pHeap;
-    do {
-        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
+    do
+    {
+        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0)
+        {
             printf("heap corruption\n");
             __asm__("cli;hlt;");
         }
@@ -81,8 +83,10 @@ void *_aligned_malloc(uint32_t len, int n)
     heap_t *heap_ptr = pHeap;
     volatile void *ptr = 0;
     uint32_t alignment = 1 << n;
-    while (heap_ptr) {
-        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
+    while (heap_ptr)
+    {
+        if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0)
+        {
             printf("\nheap corruption");
             __asm__("cli;hlt;");
             return (void *)ptr;
@@ -90,7 +94,8 @@ void *_aligned_malloc(uint32_t len, int n)
 
         //	allocations are in reverse order
         uint32_t length = (uint32_t)(((uint64_t)heap_ptr + heap_ptr->size) - (((uint64_t)heap_ptr + heap_ptr->size - len) & (~(alignment - 1))));
-        if ((heap_ptr->flags == HEAP_EMPTY) && (heap_ptr->size >= length + (2 * sizeof(heap_t)))) {
+        if ((heap_ptr->flags == HEAP_EMPTY) && (heap_ptr->size >= length + (2 * sizeof(heap_t))))
+        {
             uint32_t size = length + sizeof(heap_t);
             heap_ptr->size -= size;
             heap_t *next_node = heap_ptr->next;
@@ -106,7 +111,9 @@ void *_aligned_malloc(uint32_t len, int n)
             ptr = (void *)((char *)heap_ptr + sizeof(heap_t));
             check_heap_integrity();
             return (void *)ptr;
-        } else {
+        }
+        else
+        {
             heap_ptr = heap_ptr->next;
         }
     }
@@ -125,27 +132,32 @@ void _free(void *ptr)
     if (!ptr)
         return;
     heap_t *heap_ptr = (heap_t *)((uint64_t)ptr - sizeof(heap_t));
-    if (heap_ptr->flags == HEAP_EMPTY) {
+    if (heap_ptr->flags == HEAP_EMPTY)
+    {
         printf("Double free\n");
         __asm__("cli;hlt;");
     }
     memset(ptr, 0xcc, heap_ptr->size - sizeof(heap_t));
-    if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0) {
+
+    if (checksum((uint8_t *)heap_ptr, sizeof(heap_t)) != 0)
+    {
         printf("heap corruption\n");
         __asm__("cli;hlt;");
     }
+
     heap_ptr->flags = HEAP_EMPTY;
     heap_ptr->checksum = 0;
     heap_ptr->checksum = getsum((uint8_t *)heap_ptr, sizeof(heap_t));
+
     check_heap_integrity();
 }
 
 #if __STDC_HOSTED__ == 1
 __attribute__((noreturn)) void _exit(int status)
 {
-    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0)
-                     : "rcx", "r11");
-    while (1) {
+    __asm__ volatile("syscall" ::"D"(SYSCALL_EXIT), "S"(status), "d"(0) : "rcx", "r11");
+    while (1)
+    {
         __asm__("pause");
     }
 }
@@ -163,7 +175,8 @@ int atoi(const char *str)
     // skip till first digit
     for (index = 0; str[index] != 0 && !isdigit(str[index]); index++)
         ;
-    for (; str[index] != 0 && isdigit(str[index]); index++) {
+    for (; str[index] != 0 && isdigit(str[index]); index++)
+    {
         number = ((number * 10) + (str[index] - '0'));
     }
 
@@ -173,7 +186,8 @@ int atoi(const char *str)
 void *aligned_malloc(size_t size, int n)
 {
     volatile void *ptr = _aligned_malloc(size, n);
-    if (!ptr) {
+    if (!ptr)
+    {
         printf("\nmm error.");
         __asm__("cli;hlt");
         return NULL;
@@ -186,7 +200,8 @@ void *aligned_malloc(size_t size, int n)
 void *malloc(size_t size)
 {
     volatile void *ptr = _malloc(size);
-    if (!ptr) {
+    if (!ptr)
+    {
         printf("\nmm error.");
         __asm__("cli;hlt");
         return NULL;
@@ -210,7 +225,8 @@ void *realloc(void *ptr, size_t size)
 void *calloc(size_t blocks, size_t size)
 {
     void *ptr = _malloc(size * blocks);
-    if (!ptr) {
+    if (!ptr)
+    {
         printf("\nmm error.");
         __asm__("cli;hlt");
         return NULL;
@@ -218,4 +234,16 @@ void *calloc(size_t blocks, size_t size)
     memset(ptr, 0, size * blocks);
     mem_used += (size * blocks);
     return ptr;
+}
+
+const size_t atexit_fn_max_count = 10;
+size_t atexit_fn_count = 0;
+void (*atexit_fn_list[atexit_fn_max_count])(void);
+
+int atexit(void (*function)(void))
+{
+    if (atexit_fn_count >= atexit_fn_max_count)
+        return -ENOMEM;
+    atexit_fn_list[atexit_fn_count++] = function;
+    return 0;
 }

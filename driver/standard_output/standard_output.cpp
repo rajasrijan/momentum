@@ -27,7 +27,8 @@ void standard_io_init()
     printf("standard_io_init\n");
     char device_name[256] = {};
     //  try 'all' the id numbers
-    for (int tty_id = 0; tty_id < INT_MAX; tty_id++) {
+    for (int tty_id = 0; tty_id < INT_MAX; tty_id++)
+    {
         snprintf(device_name, sizeof(device_name), "tty%d", tty_id);
         shared_ptr<vnode> std_io = make_shared<standard_output>(device_name);
         if (!mknod("/dev/", std_io))
@@ -35,8 +36,7 @@ void standard_io_init()
     }
 }
 
-standard_output::standard_output(const std::string &_name)
-    : vnode(nullptr)
+standard_output::standard_output(const std::string &_name) : vnode(nullptr)
 {
     setName(_name.c_str());
     v_type = VCHR;
@@ -49,7 +49,8 @@ standard_output::~standard_output()
 int standard_output::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
 {
     int write_count = 0;
-    for (size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++)
+    {
         putchar(data[i]);
         write_count++;
     }

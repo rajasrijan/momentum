@@ -17,6 +17,7 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
 #include <DDI/driver.h>
 #include <DDI/filesystem.h>
 #include "ext_vfs.h"

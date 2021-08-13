@@ -21,7 +21,8 @@
 
 #include <stdint.h>
 
-struct Partition {
+struct Partition
+{
     uint8_t status;
     uint8_t legacy1[3];
     uint8_t partitiotype;
@@ -30,7 +31,8 @@ struct Partition {
     uint32_t count;
 } __attribute__((packed));
 
-struct PartitionTable {
+struct PartitionTable
+{
     char boot_code[446];
     Partition partition[4];
     uint16_t boot_signature; // 0x55AA

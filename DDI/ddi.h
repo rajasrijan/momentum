@@ -22,7 +22,8 @@
 
 #include <stdint.h>
 
-typedef struct _driver_info {
+typedef struct _driver_info
+{
     int (*drv_start)(void);
     void (*drv_end)(void);
     const char *drv_name;

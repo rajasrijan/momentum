@@ -20,9 +20,8 @@
 #ifndef CSTDDEF_H
 #define CSTDDEF_H
 
-namespace std
-{
-    typedef unsigned long size_t;
-    typedef long ssize_t;
+namespace std {
+typedef unsigned long long size_t;
+typedef long ssize_t;
 };     // namespace std
 #endif // CSTDDEF_H

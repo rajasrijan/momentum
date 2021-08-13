@@ -18,8 +18,8 @@
  */
 #if __STDC_HOSTED__ == 0
 #include "threads.h"
-#include <arch/x86_64/global.h>
-#include <arch/x86_64/timer.h>
+#include <arch/time.h>
+#include <arch/synchronization.h>
 
 int mtx_init(mtx_t *mutex, int type)
 {

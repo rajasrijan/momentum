@@ -23,8 +23,10 @@
 #include "native_sync.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-namespace std {
+namespace std
+{
 template <class T>
 class vector
 {
@@ -35,8 +37,7 @@ class vector
     const size_t element_size = sizeof(T);
 
   public:
-    vector()
-        : __data(nullptr), _size(0), _count(0), lock(0)
+    vector() : __data(nullptr), _size(0), _count(0), lock(0)
     {
         _size = 8;
         _count = 0;
@@ -44,31 +45,32 @@ class vector
         __data = (T *)calloc(_size, sizeof(T));
     }
 
-    vector(int n)
-        : __data(nullptr), _size(0), _count(0), lock(0)
+    vector(size_t n) : __data(nullptr), _size(0), _count(0), lock(0)
     {
-        _size = n + 8;
+        _size = n;
         _count = n;
         mtx_init(&lock, 0);
         __data = (T *)calloc(_size, sizeof(T));
     }
 
-    vector(const vector &v)
-        : __data(nullptr), _size(0), _count(0), lock(0)
+    vector(const vector &v) : __data(nullptr), _size(0), _count(0), lock(0)
     {
         _size = v._size;
         _count = 0;
         mtx_init(&lock, 0);
         __data = (T *)calloc(_size, sizeof(T));
-        for (const auto &var : v) {
+        for (const auto &var : v)
+        {
             push_back(var);
         }
     }
 
     ~vector()
     {
-        if (__data != nullptr) {
-            for (size_t index = 0; index < _count; index++) {
+        if (__data != nullptr)
+        {
+            for (size_t index = 0; index < _count; index++)
+            {
                 __data[index].~T();
             }
             free(__data);
@@ -80,10 +82,12 @@ class vector
 
     void resize(size_t count)
     {
-        for (; _count < count;) {
+        for (; _count < count;)
+        {
             emplace_back();
         }
-        for (; _count > count;) {
+        for (; _count > count;)
+        {
             pop_back();
         }
     }
@@ -100,8 +104,9 @@ class vector
 
     void push_back(const T &val)
     {
-        sync local_lock(lock);
-        if (_count >= _size) {
+        class sync local_lock(lock);
+        if (_count >= _size)
+        {
             _size += 8;
             T *temp = (T *)calloc(_size, sizeof(T));
             copy(__data, &__data[_count], temp);
@@ -117,8 +122,9 @@ class vector
     template <class... Args>
     void emplace_back(Args &&...args)
     {
-        sync local_lock(lock);
-        if (_count >= _size) {
+        class sync local_lock(lock);
+        if (_count >= _size)
+        {
             _size += 8;
             T *temp = (T *)calloc(_size, sizeof(T));
             copy(__data, &__data[_count], temp);
@@ -133,15 +139,17 @@ class vector
 
     void pop_back()
     {
-        sync local_lock(lock);
+        class sync local_lock(lock);
         _count--;
         __data[_count].~T();
     }
 
     T &operator[](uint32_t index)
     {
-
-        if (index >= _count) {
+        if (index >= _count)
+        {
+            printf("Index %d is greater than count %d\n", index, _count);
+            printf("%s:%d\n", __FILE__, __LINE__);
             asm("cli;hlt;");
         }
         void *tmp = (void *)((char *)__data + (element_size * index));
@@ -156,8 +164,9 @@ class vector
 
     vector &operator=(const vector &other)
     {
-        sync local_lock(lock);
-        if (__data != nullptr) {
+        class sync local_lock(lock);
+        if (__data != nullptr)
+        {
             free(__data);
             __data = nullptr;
         }
@@ -183,8 +192,10 @@ class vector
     }
     void clear()
     {
-        if (__data != nullptr) {
-            for (size_t index = 0; index < _count; index++) {
+        if (__data != nullptr)
+        {
+            for (size_t index = 0; index < _count; index++)
+            {
                 __data[index].~T();
             }
             free(__data);
@@ -196,8 +207,7 @@ class vector
     class iterator
     {
       public:
-        iterator()
-            : m_pdataStart(nullptr), m_count(0), m_index(0)
+        iterator() : m_pdataStart(nullptr), m_count(0), m_index(0)
         {
         }
 
@@ -205,6 +215,7 @@ class vector
         {
         }
         iterator(const iterator &it) = default;
+
         iterator &operator=(const iterator &it) = default;
 
         size_t operator-(const iterator &it)
@@ -262,8 +273,7 @@ class vector
 
       protected:
         friend vector;
-        iterator(vector<T> *dataPtr, ssize_t sz, ssize_t index)
-            : m_pdataStart(dataPtr), m_count(sz), m_index(index)
+        iterator(vector<T> *dataPtr, ssize_t sz, ssize_t index) : m_pdataStart(dataPtr), m_count(sz), m_index(index)
         {
         }
 
@@ -276,8 +286,7 @@ class vector
     {
       public:
         const_iterator(const const_iterator &) = default;
-        const_iterator()
-            : m_pdataStart(nullptr), m_count(0), m_index(0)
+        const_iterator() : m_pdataStart(nullptr), m_count(0), m_index(0)
         {
         }
 
@@ -285,6 +294,7 @@ class vector
         {
         }
         const_iterator &operator=(const const_iterator &) = default;
+
         bool operator!=(const const_iterator &it)
         {
             return m_index != it.m_index;
@@ -302,11 +312,14 @@ class vector
         {
             return &(*m_pdataStart)[m_index];
         }
+        bool operator==(const const_iterator &it) const
+        {
+            return m_index == it.m_index;
+        }
 
       protected:
         friend vector;
-        const_iterator(const vector<T> *dataPtr, uint32_t sz, uint32_t index)
-            : m_pdataStart(dataPtr), m_count(sz), m_index(index)
+        const_iterator(const vector<T> *dataPtr, uint32_t sz, uint32_t index) : m_pdataStart(dataPtr), m_count(sz), m_index(index)
         {
         }
 
@@ -333,9 +346,10 @@ class vector
     }
     iterator insert(iterator position, const T &val)
     {
-        sync local_lock(lock);
+        class sync local_lock(lock);
         _count++;
-        if (_count >= _size) {
+        if (_count >= _size)
+        {
             _size += 8;
             T *temp = (T *)calloc(_size, sizeof(T));
             copy(__data, &__data[_count], temp);
@@ -353,18 +367,21 @@ class vector
     template <class TargetIterator>
     void insert(iterator position, TargetIterator first, TargetIterator last)
     {
-        sync local_lock(lock);
+        class sync local_lock(lock);
         size_t element_count = last - first;
         size_t new_count = _count + element_count;
 
-        if (new_count >= _size) {
+        if (new_count >= _size)
+        {
             new_count = std::max(new_count, (size_t)_size * 2);
             auto temp = (T *)calloc(new_count, sizeof(T));
             copy(begin(), position, temp);
             copy(position, end(), temp + (position - begin()) + element_count);
             __data = temp;
             _size = new_count;
-        } else {
+        }
+        else
+        {
             copy(position, end(), position + element_count);
             _size = new_count;
         }
@@ -374,7 +391,7 @@ class vector
 
     iterator erase(iterator position)
     {
-        sync local_lock(lock);
+        class sync local_lock(lock);
         position->~T();
         copy(position + 1, end(), position);
         _count--;

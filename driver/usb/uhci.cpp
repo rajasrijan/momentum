@@ -25,7 +25,7 @@
 #include <kernel/vfs.h>
 #include <kernel/vnode.h>
 #include <arch/x86_64/timer.h>
-#include <arch/x86_64/paging.h>
+#include <arch/paging.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -56,31 +56,33 @@ static int controller_count = 0;
 #define CMD_HC_CFG (1 << 6)
 
 #pragma pack(push, 1)
-struct uhci_command_reg {
+struct uhci_command_reg
+{
 
-    uint8_t run : 1;
-    uint8_t host_controller_reset : 1;
-    uint8_t global_reset : 1;
-    uint8_t global_suspend : 1;
-    uint8_t global_resume : 1;
-    uint8_t software_debug : 1;
-    uint8_t config : 1;
-    uint8_t max_packet : 1;
+    uint8_t run:1;
+    uint8_t host_controller_reset:1;
+    uint8_t global_reset:1;
+    uint8_t global_suspend:1;
+    uint8_t global_resume:1;
+    uint8_t software_debug:1;
+    uint8_t config:1;
+    uint8_t max_packet:1;
     uint8_t reserved;
 };
 
-struct uhci_status_reg {
+struct uhci_status_reg
+{
     union {
         uint16_t value;
         struct
         {
-            uint8_t interrupt : 1;
-            uint8_t error_interrupt : 1;
-            uint8_t resume_detected : 1;
-            uint8_t system_error : 1;
-            uint8_t process_error : 1;
-            uint8_t halted : 1;
-            uint8_t resv0 : 2;
+            uint8_t interrupt:1;
+            uint8_t error_interrupt:1;
+            uint8_t resume_detected:1;
+            uint8_t system_error:1;
+            uint8_t process_error:1;
+            uint8_t halted:1;
+            uint8_t resv0:2;
             uint8_t reserved;
         };
     };
@@ -91,80 +93,86 @@ struct uhci_status_reg {
 #define INTR_COMPLETE (1 << 2)
 #define INTR_SHORTPKT (1 << 3)
 
-struct interrupt_enable_register {
+struct interrupt_enable_register
+{
     uint8_t resv0;
-    uint8_t resv1 : 4;
-    uint8_t short_packet : 1;
-    uint8_t complete : 1;
-    uint8_t resume : 1;
-    uint8_t timeout_crc : 1;
+    uint8_t resv1:4;
+    uint8_t short_packet:1;
+    uint8_t complete:1;
+    uint8_t resume:1;
+    uint8_t timeout_crc:1;
 };
 
 #define PORT_ENABLE (1 << 2)
 
-struct port_status_control_registers {
+struct port_status_control_registers
+{
     union {
         uint16_t value;
         struct
         {
-            uint8_t reserved0 : 3;
-            uint8_t suspend : 1;
-            uint8_t reserved1 : 2;
-            uint8_t reset : 1;
-            uint8_t low_speed : 1;
-            uint8_t reserved2 : 1; //    (Must be 1)
-            uint8_t resume_detected : 1;
-            uint8_t line_status : 2;
-            uint8_t port_enable_changed : 1;
-            uint8_t port_enabled : 1;
-            uint8_t connected_changed : 1;
-            uint8_t connected : 1;
+            uint8_t reserved0:3;
+            uint8_t suspend:1;
+            uint8_t reserved1:2;
+            uint8_t reset:1;
+            uint8_t low_speed:1;
+            uint8_t reserved2:1; //    (Must be 1)
+            uint8_t resume_detected:1;
+            uint8_t line_status:2;
+            uint8_t port_enable_changed:1;
+            uint8_t port_enabled:1;
+            uint8_t connected_changed:1;
+            uint8_t connected:1;
         };
     };
 };
 
 //  4K aligned
-struct frame_list_pointer {
-    uint8_t is_empty : 1;
-    uint8_t is_queue : 1;
-    uint8_t process_full_queue : 1;
-    uint8_t reserved : 1;
-    uint32_t descriptor_address : 28;
+struct frame_list_pointer
+{
+    uint8_t is_empty:1;
+    uint8_t is_queue:1;
+    uint8_t process_full_queue:1;
+    uint8_t reserved:1;
+    uint32_t descriptor_address:28;
 };
 
-struct transfer_descriptor_status {
-    uint16_t actual_length : 11;       //
-    uint8_t reserved1 : 6;             //
-    uint8_t bit_stuff_error : 1;       // Set by UHCI Controller
-    uint8_t timeout_crc : 1;           // Set by UHCI Controller
-    uint8_t non_acknowledged : 1;      // Set by UHCI Controller
-    uint8_t babble_detected : 1;       // Set by UHCI Controller
-    uint8_t data_buffer_error : 1;     // Set by UHCI Controller
-    uint8_t stalled : 1;               // Set by UHCI Controller
-    uint8_t active : 1;                // Set by UHCI Controller
-    uint8_t interrupt_on_complete : 1; //
-    uint8_t is_isochronous : 1;        //
-    uint8_t low_speed : 1;             //
-    uint8_t error_counter : 2;         //
-    uint8_t short_packet_detect : 1;   //
-    uint8_t reserved0 : 2;             //
+struct transfer_descriptor_status
+{
+    uint16_t actual_length:11;       //
+    uint8_t reserved1:6;             //
+    uint8_t bit_stuff_error:1;       // Set by UHCI Controller
+    uint8_t timeout_crc:1;           // Set by UHCI Controller
+    uint8_t non_acknowledged:1;      // Set by UHCI Controller
+    uint8_t babble_detected:1;       // Set by UHCI Controller
+    uint8_t data_buffer_error:1;     // Set by UHCI Controller
+    uint8_t stalled:1;               // Set by UHCI Controller
+    uint8_t active:1;                // Set by UHCI Controller
+    uint8_t interrupt_on_complete:1; //
+    uint8_t is_isochronous:1;        //
+    uint8_t low_speed:1;             //
+    uint8_t error_counter:2;         //
+    uint8_t short_packet_detect:1;   //
+    uint8_t reserved0:2;             //
 };
 
 #define PACKET_TYPE_IN 0x69
 #define PACKET_TYPE_OUT 0xE1
 #define PACKET_TYPE_SETUP 0x2D
 
-struct transfer_descriptor_packet_header {
+struct transfer_descriptor_packet_header
+{
     uint8_t packet_type; // 	0x69 = IN, 0xE1 = OUT, 0x2D = SETUP
-    uint8_t device : 7;
-    uint8_t endpoint : 4;
-    uint8_t data_toggle : 1;
-    uint8_t reserved : 1;
-    uint16_t maximum_length : 11; // 	(Length - 1)
+    uint8_t device:7;
+    uint8_t endpoint:4;
+    uint8_t data_toggle:1;
+    uint8_t reserved:1;
+    uint16_t maximum_length:11; // 	(Length - 1)
 };
 
 // 16 bytes aligned
-struct transfer_descriptor {
+struct transfer_descriptor
+{
     frame_list_pointer link_pointer;
     transfer_descriptor_status status;
     transfer_descriptor_packet_header packet_header;
@@ -192,21 +200,23 @@ struct transfer_descriptor {
 #define DESC_TYPE_OTHER_SPEED_CONFIGURATION 7
 #define DESC_TYPE_INTERFACE_POWER 8
 
-struct control_transfer {
+struct control_transfer
+{
     union {
         uint8_t bmRequestType;
         struct
         {
-            uint8_t data_transfer_direction : 1;
-            uint8_t type_of_request : 2;
-            uint8_t Recipient : 4;
+            uint8_t data_transfer_direction:1;
+            uint8_t type_of_request:2;
+            uint8_t Recipient:4;
         };
     };
     uint8_t bRequest;
     uint16_t wValue, wIndex, wLength;
 };
 
-struct DEVICE_desc {
+struct DEVICE_desc
+{
     uint8_t bLength, bDescriptorType;
     uint8_t bcdUSB[2];
     uint8_t bDeviceClass, bDeviceSubClass, bDeviceProtocol, bMaxPacketSize0;
@@ -255,14 +265,16 @@ class uhci_char_interface : public vnode
         outw(USBCMD(USBBASEPort), 0);
         frame_list = (frame_list_pointer *)aligned_malloc(1024 * sizeof(frame_list_pointer), 12);
         memset(frame_list, 0, 1024 * sizeof(frame_list_pointer));
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 1024; i++)
+        {
             frame_list[i].is_empty = 1;
             frame_list[i].is_queue = 0;
             frame_list[i].process_full_queue = 0;
             frame_list[i].reserved = 0;
         }
         uint64_t long_base_pointer = 0;
-        if (PageManager::getPhysicalAddress((uint64_t)frame_list, long_base_pointer)) {
+        if (PageManager::getPhysicalAddress((uint64_t)frame_list, long_base_pointer))
+        {
             printf("Failed to get physical address!");
             asm("cli;hlt");
         }
@@ -282,17 +294,20 @@ class uhci_char_interface : public vnode
         //  stop transfers
         outw(USBCMD(USBBASEPort), 0);
         sleep(50);
-        for (port_count = 0; port_count < 128; port_count++) {
+        for (port_count = 0; port_count < 128; port_count++)
+        {
             auto tmp = inw(PORTSCn(USBBASEPort, port_count));
             if ((tmp & (1 << 7)) == 0)
                 break;
             printf("USB Port %d %s\n", port_count, (tmp & 1) ? "connected" : "not connected");
-            if ((tmp & 1) && !(tmp & PORT_ENABLE)) {
+            if ((tmp & 1) && !(tmp & PORT_ENABLE))
+            {
                 printf("Enabling port %d\n", port_count);
                 outw(PORTSCn(USBBASEPort, port_count), PORT_ENABLE);
                 sleep(50);
                 tmp = inw(PORTSCn(USBBASEPort, port_count));
-                if (!(tmp & PORT_ENABLE)) {
+                if (!(tmp & PORT_ENABLE))
+                {
                     printf("Failed to enable port\n");
                 }
             }
@@ -333,7 +348,8 @@ class uhci_char_interface : public vnode
     void link_td(transfer_descriptor *src, transfer_descriptor *dst)
     {
         uint64_t long_base_pointer = 0;
-        if (PageManager::getPhysicalAddress((uint64_t)dst, long_base_pointer)) {
+        if (PageManager::getPhysicalAddress((uint64_t)dst, long_base_pointer))
+        {
             printf("Failed to get physical address!");
             asm("cli;hlt");
         }
@@ -346,7 +362,8 @@ class uhci_char_interface : public vnode
     uint32_t virtual_addr_to_phy(void *ptr)
     {
         uint64_t long_base_pointer = 0;
-        if (PageManager::getPhysicalAddress((uint64_t)ptr, long_base_pointer)) {
+        if (PageManager::getPhysicalAddress((uint64_t)ptr, long_base_pointer))
+        {
             printf("Failed to get physical address!");
             asm("cli;hlt");
         }
@@ -363,14 +380,16 @@ class uhci_char_interface : public vnode
         memset(pDataDesc.get(), 0, sizeof(transfer_descriptor));
         memset(pStatusDesc.get(), 0, sizeof(transfer_descriptor));
         uint64_t long_base_pointer = 0;
-        if (PageManager::getPhysicalAddress((uint64_t)pPayload, long_base_pointer)) {
+        if (PageManager::getPhysicalAddress((uint64_t)pPayload, long_base_pointer))
+        {
             printf("Failed to get physical address!");
             asm("cli;hlt");
         }
         uint32_t payload_phy_addr = (uint32_t)long_base_pointer;
         long_base_pointer = 0;
 
-        if (PageManager::getPhysicalAddress((uint64_t)pSetupDesc.get(), long_base_pointer)) {
+        if (PageManager::getPhysicalAddress((uint64_t)pSetupDesc.get(), long_base_pointer))
+        {
             printf("Failed to get physical address!");
             asm("cli;hlt");
         }
@@ -385,7 +404,8 @@ class uhci_char_interface : public vnode
         pSetupDesc->packet_header.data_toggle = 0;
         pSetupDesc->packet_header.maximum_length = sz - 1;
         pSetupDesc->buffer_address = payload_phy_addr;
-        if (pPayload->wLength > 0) {
+        if (pPayload->wLength > 0)
+        {
             pDataDesc->link_pointer.is_empty = 1;
             pDataDesc->status.active = 1;
             pDataDesc->status.interrupt_on_complete = 0;
@@ -397,7 +417,9 @@ class uhci_char_interface : public vnode
             pDataDesc->buffer_address = virtual_addr_to_phy(pData);
             link_td(pSetupDesc.get(), pDataDesc.get());
             link_td(pDataDesc.get(), pStatusDesc.get());
-        } else {
+        }
+        else
+        {
             link_td(pSetupDesc.get(), pStatusDesc.get());
         }
         // if (packet_type == PACKET_TYPE_SETUP)
@@ -422,7 +444,8 @@ class uhci_char_interface : public vnode
         outw(USBCMD(USBBASEPort), CMD_HC_RUN);
         sleep(50);
         auto status = inw(USBSTS(USBBASEPort));
-        for (int i = 0; i < 10 && status == 0; i++, status = inw(USBSTS(USBBASEPort))) {
+        for (int i = 0; i < 10 && status == 0; i++, status = inw(USBSTS(USBBASEPort)))
+        {
             printf("try %d, status 0x%x\n", i + 1, status);
             sleep(50);
         }
@@ -451,8 +474,9 @@ class uhci_char_interface : public vnode
                "\tactive: %d\n\tinterrupt_on_complete: %d"
                "\tis_isochronous: %d\n\tlow_speed: %d"
                "\terror_counter: %d\n\tshort_packet_detect: %d\n",
-               pDesc->status.actual_length, pDesc->status.bit_stuff_error, pDesc->status.timeout_crc, pDesc->status.non_acknowledged, pDesc->status.babble_detected, pDesc->status.data_buffer_error, pDesc->status.stalled,
-               pDesc->status.active, pDesc->status.interrupt_on_complete, pDesc->status.is_isochronous, pDesc->status.low_speed, pDesc->status.error_counter, pDesc->status.short_packet_detect);
+               pDesc->status.actual_length, pDesc->status.bit_stuff_error, pDesc->status.timeout_crc, pDesc->status.non_acknowledged,
+               pDesc->status.babble_detected, pDesc->status.data_buffer_error, pDesc->status.stalled, pDesc->status.active, pDesc->status.interrupt_on_complete,
+               pDesc->status.is_isochronous, pDesc->status.low_speed, pDesc->status.error_counter, pDesc->status.short_packet_detect);
     }
     int bread(ssize_t position, size_t size, char *data, int *bytesRead)
     {
@@ -489,8 +513,7 @@ class uhci_pci_driver : public pci_driver
   private:
     /* data */
   public:
-    uhci_pci_driver()
-        : pci_driver("UHCI Driver")
+    uhci_pci_driver() : pci_driver("UHCI Driver")
     {
     }
     ~uhci_pci_driver()
@@ -513,7 +536,8 @@ class uhci_pci_driver : public pci_driver
         controller_name[USB_HC_COUNTER_OFFSET] += controller_count++;
         auto pUhciCharInterface = new uhci_char_interface(USBBASE, "USB-HC");
         ret = mknod(controller_name, pUhciCharInterface);
-        if (ret) {
+        if (ret)
+        {
             printf("Failed to register block device\n");
             ret = 0; // non fatal.
         }
@@ -531,7 +555,8 @@ void destroy_uhci_instance(pci_driver *driver)
     delete driver;
 }
 
-static pci_device_id supportedDevices[] = {{(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_SERIAL, PCI_CLASS_SERIAL_USB, PCI_CLASS_SERIAL_USB_UHCI}};
+static pci_device_id supportedDevices[] = {{(uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, (uint16_t)PCI_ANY_ID, PCI_BASE_CLASS_SERIAL,
+                                            PCI_CLASS_SERIAL_USB, PCI_CLASS_SERIAL_USB_UHCI}};
 
 pci_driver_interface uhci_driver_interface = {supportedDevices, 1, create_uhci_instance, destroy_uhci_instance};
 

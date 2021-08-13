@@ -30,7 +30,8 @@ using namespace std;
 map<string, vnode *> dev_list; //	List of all dev in system.
 
 vnode::vnode(class vfs *vfsp)
-    : v_shlockc(0), v_exlockc(0), v_type(0), v_vfsmountedhere(nullptr), v_vfsp(vfsp), v_flag(0), v_name(), v_count(0), special_nodes(), dnode_cache(), ref_nodes()
+    : v_shlockc(0), v_exlockc(0), v_type(0), v_vfsmountedhere(nullptr), v_vfsp(vfsp), v_flag(0), v_name(), v_count(0), special_nodes(), dnode_cache(),
+      ref_nodes()
 {
 }
 
@@ -53,32 +54,37 @@ int vnode::dolookup(const char *const path, shared_ptr<vnode> &foundNode)
 {
     char sub_path[256] = {0};
     // copy till '/' or eos.
-    for (size_t i = 0; path[i] != 0 && path[i] != '/'; i++) {
+    for (size_t i = 0; path[i] != 0 && path[i] != '/'; i++)
+    {
         sub_path[i] = path[i];
     }
     //  look in dnode cache
-    auto found_itr = find_if(dnode_cache.begin(), dnode_cache.end(), [sub_path](const shared_ptr<vnode> &node) {
-        return !strcmp(node->v_name.c_str(), sub_path);
-    });
-    if (found_itr != dnode_cache.end()) {
+    auto found_itr = find_if(dnode_cache.begin(), dnode_cache.end(),
+                             [sub_path](const shared_ptr<vnode> &node) { return !strcmp(node->v_name.c_str(), sub_path); });
+    if (found_itr != dnode_cache.end())
+    {
         foundNode = *found_itr;
         return 0;
     }
     //  look in special files
-    found_itr = find_if(special_nodes.begin(), special_nodes.end(), [sub_path](const shared_ptr<vnode> &node) {
-        return !strcmp(node->v_name.c_str(), sub_path);
-    });
-    if (found_itr != special_nodes.end()) {
+    found_itr = find_if(special_nodes.begin(), special_nodes.end(),
+                        [sub_path](const shared_ptr<vnode> &node) { return !strcmp(node->v_name.c_str(), sub_path); });
+    if (found_itr != special_nodes.end())
+    {
         foundNode = *found_itr;
         return 0;
     }
     int ret = 0;
-    if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr) {
+    if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
+    {
         ret = v_vfsmountedhere->vfs_vnodecovered->dolookup(path, foundNode);
-    } else {
+    }
+    else
+    {
         ret = lookup(path, foundNode);
     }
-    if (!ret) {
+    if (!ret)
+    {
         dnode_cache.push_back(foundNode);
     }
     return ret;
@@ -94,28 +100,36 @@ int vnode::docreate(const string &path, shared_ptr<vnode> &node)
 int vnode::doreaddir(vector<shared_ptr<vnode>> &vnodes)
 {
     int ret = 0;
-    if (runOnce && !dnode_cache.empty()) {
+    if (runOnce && !dnode_cache.empty())
+    {
         vnodes = dnode_cache;
         goto exit;
     }
     if (v_vfsmountedhere && v_vfsmountedhere->vfs_vnodecovered != nullptr)
+    {
         ret = v_vfsmountedhere->vfs_vnodecovered->doreaddir(vnodes);
+    }
     else
+    {
         ret = readdir(vnodes);
-    if (ret) {
+    }
+    if (ret)
+    {
         return ret;
     }
     //	add to cache
-    for (auto &var : vnodes) {
-        if (dnode_cache.end() == find_if(dnode_cache.begin(), dnode_cache.end(), [&var](const shared_ptr<vnode> &node) {
-                return (node->v_name == var->getName());
-            })) {
+    for (auto &var : vnodes)
+    {
+        if (dnode_cache.end() ==
+            find_if(dnode_cache.begin(), dnode_cache.end(), [&var](const shared_ptr<vnode> &node) { return (node->v_name == var->getName()); }))
+        {
             dnode_cache.push_back(var);
         }
     }
     runOnce = true;
 exit:
-    for (auto &var : special_nodes) {
+    for (auto &var : special_nodes)
+    {
         vnodes.push_back(var);
     }
     return ret;
@@ -234,7 +248,8 @@ int vnode::mknod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 {
     auto result = find(special_nodes.begin(), special_nodes.end(), pNode);
-    if (result == special_nodes.end()) {
+    if (result == special_nodes.end())
+    {
         return ENOENT;
     }
     special_nodes.erase(result);
@@ -244,7 +259,8 @@ int vnode::rmnod(shared_ptr<vnode> &current_node, shared_ptr<vnode> &pNode)
 
 void vnode::setName(const char *name)
 {
-    if (strchar(name, '/') != nullptr) {
+    if (strchar(name, '/') != nullptr)
+    {
         log_error("Illegal character in filename\nHALT...");
         asm("cli;hlt;");
     }
@@ -260,7 +276,8 @@ vnode *open_bdev(string dev_path)
 {
     vnode *device = dev_list[dev_path];
     // printf("device %x,flag %x\n", device, device->v_type);
-    if ((device != 0) && (device->v_type == VBLK)) {
+    if ((device != 0) && (device->v_type == VBLK))
+    {
         return device;
     }
     return NULL;

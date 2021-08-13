@@ -18,11 +18,11 @@
  */
 #ifndef __NEW_H__
 #define __NEW_H__
-#include "cstddef"
+#include <stddef.h>
 
-void *operator new(std::size_t size);
-void *operator new[](std::size_t size);
-void *operator new(std::size_t size, void *t);
+void *operator new(size_t size);
+void *operator new[](size_t size);
+void *operator new(size_t size, void *t);
 void operator delete(void *p) noexcept;
 void operator delete[](void *p) noexcept;
 

@@ -22,17 +22,20 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-struct timeval {
+struct timeval
+{
     time_t tv_sec;
     time_t tv_usec;
 };
 
-struct timezone {
+struct timezone
+{
     int tz_minuteswest;
     int tz_dsttime;
 };
 
-struct tm {
+struct tm
+{
     int tm_sec;
     int tm_min;
     int tm_hour;

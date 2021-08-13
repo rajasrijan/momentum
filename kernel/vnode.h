@@ -23,7 +23,8 @@
 #include <string>
 #include <memory>
 
-enum vtype {
+enum vtype
+{
     VNON = 0,
     VREG = 1,
     VDIR = 2,
@@ -105,7 +106,8 @@ class vnode
     int removeRef(std::shared_ptr<vnode> &node)
     {
         auto result = find(ref_nodes.begin(), ref_nodes.end(), node);
-        if (result == ref_nodes.end()) {
+        if (result == ref_nodes.end())
+        {
             return ENOENT;
         }
         ref_nodes.erase(result);
@@ -139,4 +141,4 @@ class vnode
     virtual int create(const std::string &path, std::shared_ptr<vnode> &created_node);
 };
 
-#endif //NODE_H
+#endif // NODE_H

@@ -61,7 +61,8 @@
 //	Status is returned for any child that has stopped upon receipt of a signal.
 #define WSTOPPED (1 << 0)
 
-typedef enum idtype {
+typedef enum idtype
+{
     P_ALL,
     P_PGID,
     P_PID

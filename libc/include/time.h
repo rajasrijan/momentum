@@ -20,8 +20,9 @@
 #define TIME_T
 #include <sys/time.h>
 
-struct timespec {
+struct timespec
+{
     time_t tv_sec; //    Seconds.
     long tv_nsec;  //   Nanoseconds.
 };
-#endif  //  TIME_T
+#endif //  TIME_T

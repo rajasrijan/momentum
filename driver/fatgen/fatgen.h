@@ -19,7 +19,8 @@
 #ifndef FATGEN_H
 #define FATGEN_H
 
-struct bpb {
+struct bpb
+{
     uint8_t BS_jmpBoot[3];
     char BS_OEMName[8];
     uint16_t BPB_BytsPerSec;

@@ -36,9 +36,9 @@
 [GLOBAL inw]
 [GLOBAL inl]
 [GLOBAL atomic_increment]
-[GLOBAL load_interrupt_descriptor_table]
 [GLOBAL get_gdt]
 [GLOBAL system_call]
+[GLOBAL load_gdt]
 
 %macro ISR_NOERRCODE 1  ; define a macro, taking one parameter
 	[GLOBAL isr%1]        ; %1 accesses the first parameter.
@@ -319,18 +319,29 @@ atomic_increment:
 	lock xadd [rdi], rax
 	ret
 
-;rdi=pointer
-load_interrupt_descriptor_table:
-	PUSH RBX
-	MOV RBX, RDI
-	LIDT [RBX]
-	POP RBX
-	CLI
-	RET
-
 ;extern void inl(uint64_t pGdt);
 ;rdi=gdt pointer
 get_gdt:
 	mov RAX,RDI
 	sgdt [RAX]
 	ret
+
+;extern void load_gdt(uint64_t pGdt);
+;rdi=gdt pointer
+load_gdt:
+	lgdt [rdi]
+    mov ax,0x10
+    mov ds,ax
+    mov es,ax
+    mov fs,ax
+    mov gs,ax
+	mov ss,ax
+    push qword 0x10
+	push rsp
+	pushfq
+    push qword 0x08
+	call .reload_cs	;push .reload_cs
+	pop rax
+	ret
+.reload_cs:
+	iretq

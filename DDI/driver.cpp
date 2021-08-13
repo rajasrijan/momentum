@@ -16,20 +16,28 @@
  * You should have received a copy of the GNU General Public License
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "driver.h"
 #include <stdint.h>
 #include <stdio.h>
+#include "driver.h"
+#include <kernel/logging.h>
 
-extern "C" uint64_t __MOD_LIST__;
-extern "C" uint64_t __MOD_END__;
+extern pfn_module_init_fn_t pfn_ext_init;
 
-void init_drivers()
+int init_drivers()
 {
-    uint64_t noOfModules = (uint64_t)(&__MOD_END__ - &__MOD_LIST__);
-    printf("No of modules: %x\n", noOfModules);
-    for (uint64_t i = 0; i < noOfModules; i++) {
-        printf("calling...[%x]\n", (&__MOD_LIST__)[i]);
-        void (*constructor_fn)(void) = (void (*)(void))(&__MOD_LIST__)[i];
+    uint64_t noOfModules = 0;
+#ifdef _arch_x86_64_
+    noOfModules = (uint64_t)(&__MOD_END__ - &__MOD_LIST__);
+    log_info("No of modules: %x\n", noOfModules);
+    for (uint64_t i = 0; i < noOfModules; i++)
+    {
+        log_info("calling...[%x]\n", (&__MOD_LIST__)[i]);
+        pfn_module_init_fn_t constructor_fn = (void (*)(void))(&__MOD_LIST__)[i];
         constructor_fn();
     }
+#elif _arch_efi_
+    log_info("Initialize drivers\n");
+    pfn_ext_init();
+#endif
+    return 0;
 }

@@ -61,13 +61,13 @@ static void default_apic_mapping(void)
 {
     int ret = 0;
     uint64_t msr_apicbase = 0;
-    __asm("rdmsr"
-          : "=a"(msr_apicbase)
-          : "c"((uint64_t)IA32_APIC_BASE_MSR));
+    __asm("rdmsr" : "=a"(msr_apicbase) : "c"((uint64_t)IA32_APIC_BASE_MSR));
     sys_info.local_apic = (local_apic_structure *)(msr_apicbase & APICBASE_ADDRESS);
-    printf("local apic:[0x%x], enabled [%d], BSP [%d]\n", sys_info.local_apic, (msr_apicbase & APICBASE_ENABLED) == APICBASE_ENABLED, (msr_apicbase & APICBASE_BSP) == APICBASE_BSP);
-    ret = PageManager::IdentityMap2MBPages(((uint64_t)sys_info.local_apic) & 0xFFFFFFFFFFE00000);
-    if (ret < 0) {
+    printf("local apic:[0x%x], enabled [%d], BSP [%d]\n", sys_info.local_apic, (msr_apicbase & APICBASE_ENABLED) == APICBASE_ENABLED,
+           (msr_apicbase & APICBASE_BSP) == APICBASE_BSP);
+    ret = PageManager::IdentityMapPages(PageManager::round_down_to_pagesize((uint64_t)sys_info.local_apic), sizeof(sys_info.local_apic[0]));
+    if (ret < 0)
+    {
         printf("Failed to identity map pages");
         asm("cli;hlt");
     }
@@ -208,25 +208,27 @@ static void override_interrupt(uint8_t source, uint32_t pin, uint16_t flags)
     lo_pin = 0x10 + (pin * 2);
     hi_pin = 0x11 + (pin * 2);
     uint32_t flags_hi = 0, flags_lo = 0;
-    switch (flags & 0x3) {
-        case 0x01: {
-            flags_lo &= 0xFFFFDFFF;
-            break;
-        }
-        case 0x3: {
-            flags_lo |= 0x00002000;
-            break;
-        }
+    switch (flags & 0x3)
+    {
+    case 0x01: {
+        flags_lo &= 0xFFFFDFFF;
+        break;
     }
-    switch ((flags >> 2) & 0x3) {
-        case 0x01: {
-            flags_lo &= 0xFFFF7FFF;
-            break;
-        }
-        case 0x3: {
-            flags_lo |= 0x00008000;
-            break;
-        }
+    case 0x3: {
+        flags_lo |= 0x00002000;
+        break;
+    }
+    }
+    switch ((flags >> 2) & 0x3)
+    {
+    case 0x01: {
+        flags_lo &= 0xFFFF7FFF;
+        break;
+    }
+    case 0x3: {
+        flags_lo |= 0x00008000;
+        break;
+    }
     }
     write_ioapic(hi_pin, 0x00000000 | flags_hi);
     write_ioapic(lo_pin, 0x00010000 | source | flags_lo);
@@ -256,7 +258,8 @@ ACPI_STATUS InstallHandlers(void)
     /* Install global notify handler */
 
     Status = AcpiInstallNotifyHandler(ACPI_ROOT_OBJECT, ACPI_SYSTEM_NOTIFY, NotifyHandler, NULL);
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         printf("While installing Notify handler. Error [%x]\n", Status);
         return (Status);
     }
@@ -271,7 +274,8 @@ static ACPI_STATUS AcpiNsFindPrtMethods(ACPI_HANDLE ObjHandle, UINT32 NestingLev
     ACPI_NAMESPACE_NODE *Node;
     ACPI_NAMESPACE_NODE *ParentNode;
     Node = ACPI_CAST_PTR(ACPI_NAMESPACE_NODE, ObjHandle);
-    if (!ACPI_COMPARE_NAME(Node->Name.Ascii, METHOD_NAME__PRT)) {
+    if (!ACPI_COMPARE_NAME(Node->Name.Ascii, METHOD_NAME__PRT))
+    {
         return (AE_OK);
     }
     /*
@@ -279,14 +283,15 @@ static ACPI_STATUS AcpiNsFindPrtMethods(ACPI_HANDLE ObjHandle, UINT32 NestingLev
      * present under Device.
      */
     ParentNode = Node->Parent;
-    switch (ParentNode->Type) {
-        case ACPI_TYPE_DEVICE:
-            memcpy((void *)name, (void *)ParentNode->Name.Ascii, 4);
-            printf("ACPI %s\n", name);
-            device_list->push_back((ACPI_HANDLE)ParentNode);
-            break;
-        default:
-            break;
+    switch (ParentNode->Type)
+    {
+    case ACPI_TYPE_DEVICE:
+        memcpy((void *)name, (void *)ParentNode->Name.Ascii, 4);
+        printf("ACPI %s\n", name);
+        device_list->push_back((ACPI_HANDLE)ParentNode);
+        break;
+    default:
+        break;
     }
     return (AE_OK);
 }
@@ -298,7 +303,8 @@ int initialize_full_acpi(void)
     /* Initialize the ACPICA subsystem */
 
     Status = AcpiInitializeSubsystem();
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         log_error("While initializing ACPICA\n");
         return (Status);
     }
@@ -308,7 +314,8 @@ int initialize_full_acpi(void)
     printf("Loading ACPI tables\n");
 
     Status = AcpiInitializeTables(NULL, 16, FALSE);
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         log_error("While initializing Table Manager\n");
         return (Status);
     }
@@ -316,7 +323,8 @@ int initialize_full_acpi(void)
     /* Install local handlers */
 
     Status = InstallHandlers();
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         log_error("While installing handlers\n");
         return (Status);
     }
@@ -324,7 +332,8 @@ int initialize_full_acpi(void)
     /* Initialize the ACPI hardware */
 
     Status = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         log_error("While enabling ACPICA\n");
         return (Status);
     }
@@ -332,7 +341,8 @@ int initialize_full_acpi(void)
     /* Create the ACPI namespace from ACPI tables */
 
     Status = AcpiLoadTables();
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         log_error("While loading ACPI tables\n");
         return (Status);
     }
@@ -340,7 +350,8 @@ int initialize_full_acpi(void)
     /* Complete the ACPI namespace object initialization */
 
     Status = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         log_error("While initializing ACPICA objects\n");
         return (Status);
     }
@@ -361,7 +372,8 @@ int initialize_full_acpi(void)
 
     char pci_path[] = "\\_PIC";
     Status = AcpiEvaluateObject(nullptr, pci_path, &ArgList, &ReturnValue);
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         printf("Execute \\_PIC failed. Error [%x]\n", Status);
         //	assuming this is a soft error
         //	asm("cli;hlt;");
@@ -373,18 +385,22 @@ int initialize_full_acpi(void)
     /*	print all ACPI methods*/
     std::vector<ACPI_HANDLE> device_list;
     Status = AcpiNsWalkNamespace(ACPI_TYPE_METHOD, ACPI_ROOT_OBJECT, ACPI_UINT32_MAX, FALSE, AcpiNsFindPrtMethods, NULL, &device_list, NULL);
-    if (ACPI_FAILURE(Status)) {
+    if (ACPI_FAILURE(Status))
+    {
         return Status;
     }
     printf("There are %d devices with _PRT methods\n", device_list.size());
-    for (const auto acpi_device : device_list) {
+    for (const auto acpi_device : device_list)
+    {
         Status = AcpiGetIrqRoutingTable(acpi_device, &ReturnValue);
-        if (ACPI_FAILURE(Status)) {
+        if (ACPI_FAILURE(Status))
+        {
             printf("Execute ._PRT failed. Error [%x]\n", Status);
             return Status;
         }
         ACPI_PCI_ROUTING_TABLE *pci_routing = ((ACPI_PCI_ROUTING_TABLE *)ReturnValue.Pointer);
-        while (pci_routing->Length > 0 && (char *)pci_routing < (char *)ReturnValue.Pointer + ReturnValue.Length) {
+        while (pci_routing->Length > 0 && (char *)pci_routing < (char *)ReturnValue.Pointer + ReturnValue.Length)
+        {
             if (pci_routing->SourceIndex == 0) // its a referance
             {
                 ACPI_BUFFER ret = {};
@@ -392,43 +408,56 @@ int initialize_full_acpi(void)
                 ret.Length = ACPI_ALLOCATE_BUFFER;
                 ACPI_HANDLE device_handle = nullptr;
                 Status = AcpiNsGetNode(nullptr, pci_routing->Source, 0, (ACPI_NAMESPACE_NODE **)&device_handle);
-                if (ACPI_FAILURE(Status)) {
+                if (ACPI_FAILURE(Status))
+                {
                     printf("Failed to get device handle for [%s]. Error [%x]\n", pci_routing->Source, Status);
                     return Status;
                 }
                 Status = AcpiGetCurrentResources(device_handle, &ret);
-                if (ACPI_FAILURE(Status)) {
+                if (ACPI_FAILURE(Status))
+                {
                     printf("Failed to get resource for [%s]. Error [%x]\n", pci_routing->Source, Status);
                     return Status;
                 }
                 //  printf("PCI device [%x]  IRQ:", pci_routing->Address);
                 ACPI_RESOURCE *resource = (ACPI_RESOURCE *)ret.Pointer;
-                while (((uint64_t)resource < (uint64_t)ret.Pointer + ret.Length) && (resource->Length > 0)) {
-                    if (resource->Type == ACPI_RESOURCE_TYPE_EXTENDED_IRQ) {
+                while (((uint64_t)resource < (uint64_t)ret.Pointer + ret.Length) && (resource->Length > 0))
+                {
+                    if (resource->Type == ACPI_RESOURCE_TYPE_EXTENDED_IRQ)
+                    {
                         uint32_t interrupt_flags = 0;
-                        for (size_t i = 0; i < resource->Data.ExtendedIrq.InterruptCount; i++) {
-                            //printf(" %d,", resource->Data.ExtendedIrq.Interrupts[i]);
+                        for (size_t i = 0; i < resource->Data.ExtendedIrq.InterruptCount; i++)
+                        {
+                            // printf(" %d,", resource->Data.ExtendedIrq.Interrupts[i]);
                         }
-                        if (resource->Data.ExtendedIrq.Polarity == 0) {
+                        if (resource->Data.ExtendedIrq.Polarity == 0)
+                        {
                             interrupt_flags |= 0x1;
-                        } else {
+                        }
+                        else
+                        {
                             interrupt_flags |= 0x3;
                         }
-                        if (resource->Data.ExtendedIrq.Triggering == 0) {
+                        if (resource->Data.ExtendedIrq.Triggering == 0)
+                        {
                             interrupt_flags |= 0x4;
-                        } else {
+                        }
+                        else
+                        {
                             interrupt_flags |= 0xc;
                         }
 
                         routing_table.push_back({pci_routing->Address, pci_routing->Pin, resource->Data.ExtendedIrq.Interrupts[0], interrupt_flags});
-                        //printf("\n");
+                        // printf("\n");
                     }
                     resource = ACPI_NEXT_RESOURCE(resource);
                 }
                 AcpiOsFree(ret.Pointer);
                 ret.Pointer = 0;
                 ret.Length = ACPI_ALLOCATE_BUFFER;
-            } else {
+            }
+            else
+            {
                 routing_table.push_back({pci_routing->Address, pci_routing->Pin, pci_routing->SourceIndex, 0});
             }
             pci_routing = (ACPI_PCI_ROUTING_TABLE *)(((char *)pci_routing) + pci_routing->Length);
@@ -439,13 +468,16 @@ int initialize_full_acpi(void)
     }
     printf("Read %d routing entries from table.\n", routing_table.size());
     std::vector<uint32_t> irqs;
-    for (const auto &route : routing_table) {
+    for (const auto &route : routing_table)
+    {
         auto resultIt = std::find(irqs.begin(), irqs.end(), route.irq);
-        if (resultIt == irqs.end()) {
+        if (resultIt == irqs.end())
+        {
             irqs.push_back(route.irq);
         }
     }
-    for (uint32_t irq : irqs) {
+    for (uint32_t irq : irqs)
+    {
         printf("Enabling IOAPIC pin %d\n", irq);
         auto resultIt = std::find_if(routing_table.begin(), routing_table.end(), [irq](const pci_routing &route) { return route.irq == irq; });
         //	map ioapic pin to interrupt vector

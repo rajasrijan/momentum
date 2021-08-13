@@ -17,7 +17,6 @@
  * along with Momentum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 /*  
  *  GENERATED FILE. DO NOT MODIFY HERE
  *  MODIFY config.h.in
@@ -26,19 +25,27 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#ifndef KERNEL_BASE_PTR
-#define KERNEL_BASE_PTR (0x000000C000000000)
-#endif // KERNEL_BASE_PTR
+#ifndef KERNEL_BASE_PADDR_PTR
+#define KERNEL_BASE_PADDR_PTR (0x0000000000100000)
+#endif // KERNEL_BASE_PADDR_PTR
 
-#if KERNEL_BASE_PTR < 0x100000
+#ifndef KERNEL_BASE_VADDR_PTR
+#define KERNEL_BASE_VADDR_PTR (0x000000C000000000)
+#endif // KERNEL_BASE_VADDR_PTR
+
+#ifndef KERNEL_PAGE_DIRECTORY_VADDR_PTR
+#define KERNEL_PAGE_DIRECTORY_VADDR_PTR (0x000000D000000000)
+#endif // KERNEL_PAGE_DIRECTORY_VADDR_PTR
+
+#if KERNEL_BASE_VADDR_PTR < 0x100000
 #error Kernel has to be above 1MB in RAM.
 #endif
 
-#if (KERNEL_BASE_PTR & 0xFFFF000000000000) != 0
-#error kernel base pointer cannot be beyond mappable region. Change the value of KERNEL_BASE_PTR.
+#if (KERNEL_BASE_VADDR_PTR & 0xFFFF000000000000) != 0
+#error kernel base pointer cannot be beyond mappable region. Change the value of KERNEL_BASE_VADDR_PTR.
 #endif
 
-#if KERNEL_BASE_PTR < 0x100000000
+#if KERNEL_BASE_VADDR_PTR < 0x100000000
 #warning placing kernel lower than 4GB mark can lead to collision with memory mapped IO.
 #endif
 
@@ -47,8 +54,8 @@
 #endif // KERNEL_HEAP_PTR
 
 #ifndef KERNEL_MAXIMUM_PHYSICAL_RAM
-//  256GB
-#define KERNEL_MAXIMUM_PHYSICAL_RAM (0x0000004000000000)
+//  64GB
+#define KERNEL_MAXIMUM_PHYSICAL_RAM (0x0000001000000000)
 #endif // KERNEL_MAXIMUM_PHYSICAL_RAM
 
 #ifndef KERNEL_MINIMUM_PHYSICAL_RAM
@@ -61,6 +68,20 @@
 //  Bug: collision risk with memory mapped io.
 #define KERNEL_TEMP_PAGE_TABLE_LOCATION (0x0000000004000000)
 #endif // KERNEL_TEMP_PAGE_TABLE_LOCATION
+
+#ifndef KERNEL_ENABLE_MULTITASKING
+#ifdef _arch_x86_64_
+#define KERNEL_ENABLE_MULTITASKING 1
+#elif _arch_efi_
+#define KERNEL_ENABLE_MULTITASKING 0
+#else
+#error Unknown architexture
+#endif
+#endif // KERNEL_ENABLE_MULTITASKING
+
+#ifndef KERNEL_GRUB_VIDEO
+#define KERNEL_GRUB_VIDEO (1)
+#endif
 
 #ifndef KERNEL_GRUB_VIDEO
 #define KERNEL_GRUB_VIDEO (1)

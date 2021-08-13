@@ -24,9 +24,9 @@
 
 enum
 {
-  mtx_plain     = 0,
-  mtx_recursive = 1,
-  mtx_timed     = 2
+    mtx_plain = 0,
+    mtx_recursive = 1,
+    mtx_timed = 2
 };
 
 typedef int once_flag;

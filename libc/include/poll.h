@@ -20,7 +20,8 @@
 #ifndef POLL_H
 #define POLL_H
 typedef unsigned long int nfds_t;
-struct pollfd {
+struct pollfd
+{
     int fd;        //       The following descriptor being polled.
     short events;  //   The input event flags (see below).
     short revents; //  The output event flags (see below).

@@ -21,7 +21,7 @@
 #include "acpi.h"
 #include "interrupts.h"
 #include "timer.h"
-#include <arch/x86_64/paging.h>
+#include <arch/paging.h>
 #include <kernel/sys_info.h>
 ioapic_t volatile *ioapic;
 
@@ -35,8 +35,9 @@ void init_ioapic()
      */
     int ret = 0;
     ioapic = (ioapic_t *)0xFEC00000;
-    ret = PageManager::IdentityMap2MBPages(0xFEC00000);
-    if (ret < 0) {
+    ret = PageManager::IdentityMapPages(0xFEC00000, PageManager::PAGESIZE);
+    if (ret < 0)
+    {
         printf("Failed to identity map pages\n");
         asm("cli;hlt");
     }
@@ -98,30 +99,39 @@ void send_eoi()
 
 void apic_interrupt_command_init(bool isShorthand, uint64_t dest)
 {
-    if (isShorthand) {
+    if (isShorthand)
+    {
         sys_info.local_apic->icr_hi = 0;
         sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_INIT | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | dest;
-    } else {
+    }
+    else
+    {
         sys_info.local_apic->icr_hi = dest & 0xFF000000;
         sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_INIT | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | APIC_ICR_DEST_NONE;
     }
     //  wait for it to complete
-    while (sys_info.local_apic->icr_lo & APIC_ICR_DELIVERY_STATUS) {
+    while (sys_info.local_apic->icr_lo & APIC_ICR_DELIVERY_STATUS)
+    {
         asm("pause");
     }
 }
 
 void apic_interrupt_command_sipi(bool isShorthand, uint64_t dest, uint8_t vector)
 {
-    if (isShorthand) {
+    if (isShorthand)
+    {
         sys_info.local_apic->icr_hi = 0;
         sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_STARTUP | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | dest | vector;
-    } else {
+    }
+    else
+    {
         sys_info.local_apic->icr_hi = dest & 0xFF000000;
-        sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_STARTUP | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE | APIC_ICR_DEST_NONE | vector;
+        sys_info.local_apic->icr_lo = APIC_ICR_DELIVERY_STARTUP | APIC_ICR_DESTMODE_PHYSICAL | APIC_ICR_LEVEL_ASSERT | APIC_ICR_TRIGGER_EDGE |
+                                      APIC_ICR_DEST_NONE | vector;
     }
     //  wait for it to complete
-    while (sys_info.local_apic->icr_lo & APIC_ICR_DELIVERY_STATUS) {
+    while (sys_info.local_apic->icr_lo & APIC_ICR_DELIVERY_STATUS)
+    {
         asm("pause");
     }
 }
@@ -132,7 +142,8 @@ int init_symmetric_multi_processor()
     extern unsigned char trampolin[];
     extern unsigned int trampolin_len;
 
-    if ((ret = PageManager::IdentityMapPages(0x8000, trampolin_len)) < 0) {
+    if ((ret = PageManager::IdentityMapPages(0x8000, trampolin_len)) < 0)
+    {
         printf("Failed to map pages\n");
         return ret;
     }
@@ -145,13 +156,15 @@ int init_symmetric_multi_processor()
     //  start at 0x8000
     apic_interrupt_command_sipi(true, APIC_ICR_DEST_ALL_NOSELF, 0x8);
 
-    while (tramp->proc_count == 0) {
+    while (tramp->proc_count == 0)
+    {
         printf("Waiting for processor...\n");
     }
     printf("Processor found\n");
 
     //  unmap memory
-    if ((ret = PageManager::freeVirtualMemory(0x8000, trampolin_len)) < 0) {
+    if ((ret = PageManager::freeVirtualMemory(0x8000, trampolin_len)) < 0)
+    {
         printf("Failed to freeVirtualMemory()\n");
         return ret;
     }

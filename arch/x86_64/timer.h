@@ -24,7 +24,6 @@
 
 void apic_timer_callback(retStack_t *stack, general_registers_t *regs);
 void sleep(uint64_t delay);
-uint64_t getSystemTime(void);
 void disableThreadSwitching(void);
 void enableThreadSwitching(void);
 void print_thread_list(void);

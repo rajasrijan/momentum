@@ -47,6 +47,28 @@ void idt_set_gate(idt_entry_t *idt_entries, uint8_t num, uint64_t base, uint16_t
     idt_entries[num].flags = flags /* | 0x60 */;
 }
 
+int init_gdt(void)
+{
+    sys_info.gdt.gp.limit = sizeof(gdt_t::ge);
+    sys_info.gdt.gp.base = (uint64_t)sys_info.gdt.ge;
+    //  null descriptor
+    set_gdt_gate(&(sys_info.gdt.ge[0]), 0, 0, 0, 0);
+    //  code ring 0 descriptor
+    set_gdt_gate(&(sys_info.gdt.ge[1]), 0, 0, 0b10011010, 0b00100000);
+    //  data ring 0 descriptor
+    set_gdt_gate(&(sys_info.gdt.ge[2]), 0, 0, 0b10010010, 0b00000000);
+    //  data ring 3 descriptor
+    set_gdt_gate(&(sys_info.gdt.ge[3]), 0, 0, 0b11110010, 0b00000000);
+    //  code ring 3 descriptor
+    set_gdt_gate(&(sys_info.gdt.ge[4]), 0, 0, 0b11111010, 0b00100000);
+    //  task descriptor
+    set_gdt_gate(&(sys_info.gdt.ge[5]), 0, 0, 0b10001001, 0b00100000);
+    //  load gdt and reload all segment descriptors.
+
+    load_gdt((uint64_t) & (sys_info.gdt.gp));
+    return 0;
+}
+
 int init_idt(void)
 {
     sys_info.idt.ip.limit = (sizeof(idt_entry_t) * 256) - 1;
@@ -116,9 +138,11 @@ int init_idt(void)
     idt_set_gate(sys_info.idt.ie, 62, (uint64_t)isr62, 0x08, 0x8E | 0x60);
     idt_set_gate(sys_info.idt.ie, 63, (uint64_t)isr63, 0x08, 0x8E | 0x60);
     idt_set_gate(sys_info.idt.ie, 64, (uint64_t)isr64, 0x08, 0x8E | 0x60);
-    for (uint64_t i = 65; i < 256; i++) {
+    for (uint64_t i = 65; i < 256; i++)
+    {
         idt_set_gate(sys_info.idt.ie, (uint8_t)i, (uint64_t)isr65, 0x08, 0x8E);
     }
-    load_interrupt_descriptor_table(&(sys_info.idt.ip));
+    asm volatile(".intel_syntax noprefix;"
+                 "lidt [rbx]" ::"b"(&(sys_info.idt.ip)));
     return 0;
 }

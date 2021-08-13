@@ -45,13 +45,17 @@ REPLACE:    //\t$2\n#define\t$1\t(\t)\n
 
 // _POSIX_VERSION is defined in the ISO POSIX-1 standard. It changes with each new version of the ISO POSIX-1 standard.
 
-// _POSIX2_VERSION is defined to have the value of the ISO POSIX-2 standard's POSIX2_VERSION limit. It changes with each new version of the ISO POSIX-2 standard.
+// _POSIX2_VERSION is defined to have the value of the ISO POSIX-2 standard's POSIX2_VERSION limit. It changes with each new version of the ISO POSIX-2
+// standard.
 
-// _POSIX2_C_VERSION is defined in the ISO POSIX-2 standard. It changes with each new version of the ISO POSIX-2 standard. When the C language binding option of the ISO POSIX-2 standard and therefore the X/Open POSIX2 C-language Binding Feature Group is not supported, _POSIX2_C_VERSION will be set to -1.
+// _POSIX2_C_VERSION is defined in the ISO POSIX-2 standard. It changes with each new version of the ISO POSIX-2 standard. When the C language binding option of
+// the ISO POSIX-2 standard and therefore the X/Open POSIX2 C-language Binding Feature Group is not supported, _POSIX2_C_VERSION will be set to -1.
 
 // _XOPEN_VERSION is defined as an integer value equal to 500.
 
-// _XOPEN_XCU_VERSION is defined as an integer value indicating the version of the XCU specification to which the implementation conforms. If the value is -1, no commands and utilities are provided on the implementation. If the value is greater than or equal to 4, the functionality associated with the following symbols is also supported (see Mandatory Symbolic Constants and Constants for Options and Feature Groups ):
+// _XOPEN_XCU_VERSION is defined as an integer value indicating the version of the XCU specification to which the implementation conforms. If the value is -1,
+// no commands and utilities are provided on the implementation. If the value is greater than or equal to 4, the functionality associated with the following
+// symbols is also supported (see Mandatory Symbolic Constants and Constants for Options and Feature Groups ):
 
 // _POSIX2_C_BIND
 // _POSIX2_C_VERSION
@@ -67,7 +71,8 @@ REPLACE:    //\t$2\n#define\t$1\t(\t)\n
 //	X/Open Portability Guide, Volume 2, January 1987, XVS System Calls and Libraries (ISBN: 0-444-70175-3).
 #define _XOPEN_XPG2 ()
 
-//	X/Open Specification, February 1992, System Interfaces and Headers, Issue 3 (ISBN: 1-872630-37-5, C212); this specification was formerly X/Open Portability Guide, Issue 3, Volume 2, January 1989, XSI System Interface and Headers (ISBN: 0-13-685843-0, XO/XPG/89/003).
+//	X/Open Specification, February 1992, System Interfaces and Headers, Issue 3 (ISBN: 1-872630-37-5, C212); this specification was formerly X/Open Portability
+//Guide, Issue 3, Volume 2, January 1989, XSI System Interface and Headers (ISBN: 0-13-685843-0, XO/XPG/89/003).
 #define _XOPEN_XPG3 ()
 
 //	X/Open CAE Specification, July 1992, System Interfaces and Headers, Issue 4 (ISBN: 1-872630-47-2, C202).
@@ -76,7 +81,8 @@ REPLACE:    //\t$2\n#define\t$1\t(\t)\n
 //	X/Open CAE Specification, January 1997, System Interfaces and Headers, Issue 5 (ISBN: 1-85912-181-0, C606).
 #define _XOPEN_UNIX ()
 
-//	The use of chown() is restricted to a process with appropriate privileges, and to changing the group ID of a file only to the effective group ID of the process or to one of its supplementary group IDs.
+//	The use of chown() is restricted to a process with appropriate privileges, and to changing the group ID of a file only to the effective group ID of the
+//process or to one of its supplementary group IDs.
 #define _POSIX_CHOWN_RESTRICTED ()
 
 //	Pathname components longer than {NAME_MAX} generate an error.
@@ -157,7 +163,8 @@ REPLACE:    //\t$2\n#define\t$1\t(\t)\n
 //	Implementation provides a C-language compilation environment with 32-bit int and 64-bit long, pointer and off_t types.
 #define _XBS5_LP64_OFF64 ()
 
-//	Implementation provides a C-language compilation environment with an int type using at least 32 bits and long, pointer and off_t types using at least 64 bits.
+//	Implementation provides a C-language compilation environment with an int type using at least 32 bits and long, pointer and off_t types using at least 64
+//bits.
 #define _XBS5_LPBIG_OFFBIG ()
 
 //	Implementation supports the Asynchronous Input and Output option.
@@ -236,55 +243,76 @@ REPLACE:    //\t$2\n#define\t$1\t(\t)\n
 #define F_OK (3)
 #endif //  FCNTL_H
 
-//	If the ISO POSIX-2 standard is supported, this is the value for the environment variable that finds all standard utilities. Otherwise the meaning of this value is unspecified.
+//	If the ISO POSIX-2 standard is supported, this is the value for the environment variable that finds all standard utilities. Otherwise the meaning of this
+//value is unspecified.
 #define _CS_PATH ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to the cc and c89 utilities to build an application using a programming model with 32-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to
+//the cc and c89 utilities to build an application using a programming model with 32-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_ILP32_OFF32_CFLAGS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the cc and c89 utilities to build an application using a programming model with 32-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the
+//cc and c89 utilities to build an application using a programming model with 32-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_ILP32_OFF32_LDFLAGS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc and c89 utilities to build an application using a programming model with 32-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc
+//and c89 utilities to build an application using a programming model with 32-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_ILP32_OFF32_LIBS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint utility to check application source using a programming model with 32-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_ILP32_OFF32) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint
+//utility to check application source using a programming model with 32-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_ILP32_OFF32_LINTFLAGS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to the cc and c89 utilities to build an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
+//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to
+//the cc and c89 utilities to build an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
 #define _CS_XBS5_ILP32_OFFBIG_CFLAGS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the cc and c89 utilities to build an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
+//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the
+//cc and c89 utilities to build an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
 #define _CS_XBS5_ILP32_OFFBIG_LDFLAGS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc and c89 utilities to build an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
+//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc
+//and c89 utilities to build an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
 #define _CS_XBS5_ILP32_OFFBIG_LIBS ()
 
-//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint utility to check an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
+//	If sysconf(_SC_XBS5_ILP32_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint
+//utility to check an application using a programming model with 32-bit int, long, and pointer types, and an off_t type using at least 64 bits.
 #define _CS_XBS5_ILP32_OFFBIG_LINTFLAGS ()
 
-//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to the cc and c89 utilities to build an application using a programming model with 64-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to the
+//cc and c89 utilities to build an application using a programming model with 64-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_LP64_OFF64_CFLAGS ()
 
-//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the cc and c89 utilities to build an application using a programming model with 64-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the
+//cc and c89 utilities to build an application using a programming model with 64-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_LP64_OFF64_LDFLAGS ()
 
-//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc and c89 utilities to build an application using a programming model with 64-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc
+//and c89 utilities to build an application using a programming model with 64-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_LP64_OFF64_LIBS ()
 
-//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint utility to check application source using a programming model with 64-bit int, long, pointer, and off_t types.
+//	If sysconf(_SC_XBS5_LP64_OFF64) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint
+//utility to check application source using a programming model with 64-bit int, long, pointer, and off_t types.
 #define _CS_XBS5_LP64_OFF64_LINTFLAGS ()
 
-//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to the cc and c89 utilities to build an application using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at least 64 bits.
+//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of initial options to be given to
+//the cc and c89 utilities to build an application using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at
+//least 64 bits.
 #define _CS_XBS5_LPBIG_OFFBIG_CFLAGS ()
 
-//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the cc and c89 utilities to build an application using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at least 64 bits.
+//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of final options to be given to the
+//cc and c89 utilities to build an application using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at
+//least 64 bits.
 #define _CS_XBS5_LPBIG_OFFBIG_LDFLAGS ()
 
-//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc and c89 utilities to build an application using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at least 64 bits.
+//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of libraries to be given to the cc
+//and c89 utilities to build an application using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at least
+//64 bits.
 #define _CS_XBS5_LPBIG_OFFBIG_LIBS ()
 
-//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint utility to check application source using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at least 64 bits.
+//	If sysconf(_SC_XBS5_LPBIG_OFFBIG) returns -1, the meaning of this value is unspecified. Otherwise, this value is the set of options to be given to the lint
+//utility to check application source using a programming model with an int type using at least 32 bits and long, pointer, and off_t types using at least 64
+//bits.
 #define _CS_XBS5_LPBIG_OFFBIG_LINTFLAGS ()
 
 #ifndef STDIO_H
@@ -400,8 +428,7 @@ long int pathconf(const char *, int);
 int pause(void);
 int pipe(int[2]);
 ssize_t pread(int, void *, size_t, off_t);
-int pthread_atfork(void (*)(void), void (*)(void),
-                   void (*)(void));
+int pthread_atfork(void (*)(void), void (*)(void), void (*)(void));
 ssize_t pwrite(int, const void *, size_t, off_t);
 ssize_t read(int, void *, size_t);
 int readlink(const char *, char *, size_t);
@@ -414,7 +441,7 @@ int setregid(gid_t, gid_t);
 int setreuid(uid_t, uid_t);
 pid_t setsid(void);
 int setuid(uid_t);
-//unsigned int sleep(unsigned int);
+// unsigned int sleep(unsigned int);
 void swab(const void *, void *, ssize_t);
 int symlink(const char *, const char *);
 void sync(void);
