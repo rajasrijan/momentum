@@ -117,6 +117,7 @@ if(MOMENTUM_KERNEL_ARCH STREQUAL "x86_64")
         ${SRC_FILES}
         DDI/pci_driver.cpp
         kernel/acpica_glue.cpp
+        kernel/kernel_shell.cpp
     )
     add_executable(momentum ${SRC_FILES})
     install(TARGETS momentum
