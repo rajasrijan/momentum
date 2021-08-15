@@ -274,7 +274,7 @@ static ACPI_STATUS AcpiNsFindPrtMethods(ACPI_HANDLE ObjHandle, UINT32 NestingLev
     ACPI_NAMESPACE_NODE *Node;
     ACPI_NAMESPACE_NODE *ParentNode;
     Node = ACPI_CAST_PTR(ACPI_NAMESPACE_NODE, ObjHandle);
-    if (!ACPI_COMPARE_NAME(Node->Name.Ascii, METHOD_NAME__PRT))
+    if (!ACPI_COMPARE_NAMESEG(Node->Name.Ascii, METHOD_NAME__PRT))
     {
         return (AE_OK);
     }

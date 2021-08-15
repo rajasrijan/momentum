@@ -113,7 +113,7 @@ acpica/source/components/resources/rsaddr.c
 acpica/source/components/resources/rsmisc.c
 acpica/source/components/resources/rslist.c
 acpica/source/components/resources/rsirq.c
-acpica/source/components/resources/rsdump.c
+# acpica/source/components/resources/rsdump.c
 acpica/source/components/resources/rsdumpinfo.c
 acpica/source/components/dispatcher/dsutils.c
 acpica/source/components/dispatcher/dsinit.c

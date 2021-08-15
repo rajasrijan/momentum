@@ -58,6 +58,8 @@ int initilize_memorymanager()
                (PageManager::round_up_to_pagesize((uint64_t)&kernel_end) - PageManager::round_down_to_pagesize((uint64_t)&kernel_start)) /
                    PageManager::PAGESIZE);
 
+    bitmap_set(mem_available_heap, 0, 1);
+
     return 0;
 }
 

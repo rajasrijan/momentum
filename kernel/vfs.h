@@ -140,7 +140,7 @@ class vfile
 {
   public:
     shared_ptr<class vnode> _parent;
-    [[maybe_unused]] ssize_t posP, posG;
+    [[maybe_unused]] size_t posP, posG;
     [[maybe_unused]] mtx_t fileIOLock;
 
   public:

@@ -478,11 +478,11 @@ class uhci_char_interface : public vnode
                pDesc->status.babble_detected, pDesc->status.data_buffer_error, pDesc->status.stalled, pDesc->status.active, pDesc->status.interrupt_on_complete,
                pDesc->status.is_isochronous, pDesc->status.low_speed, pDesc->status.error_counter, pDesc->status.short_packet_detect);
     }
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead)
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead)
     {
         return ENOSYS;
     }
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesRead)
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesRead)
     {
         return ENOSYS;
     }

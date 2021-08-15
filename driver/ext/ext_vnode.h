@@ -53,8 +53,8 @@ class ext_vnode : public vnode
     ext_vnode(ext_vfs *vfsp, size_t _inode_id);
     ~ext_vnode();
     int mkdir(std::string name, std::shared_ptr<vnode> &pDir);
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead);
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten);
     int readdir(vector<shared_ptr<vnode>> &vnodes);
     int open(uint64_t flags);
     int lookup(char const *, shared_ptr<vnode> &);

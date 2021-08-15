@@ -45,6 +45,8 @@ map<int64_t, shared_ptr<vnode>> handles;
 vector<shared_ptr<vnode>> path_history;
 #endif
 
+uuid_t root_partition_uuid = {};
+
 class root_vnode : public vnode
 {
     vector<shared_ptr<vnode>> children;
@@ -85,12 +87,12 @@ class root_vnode : public vnode
         children.push_back(pDir);
         return 0;
     }
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead)
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead)
     {
         return -ENOSYS;
     }
 
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten)
     {
         return -ENOSYS;
     }
@@ -128,7 +130,7 @@ class partition_vnode : public vnode
     ~partition_vnode()
     {
     }
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead)
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead)
     {
         int errorcode = 0;
         if (size >= v_size_blk)
@@ -138,7 +140,7 @@ class partition_vnode : public vnode
         errorcode = v_parent->bread(v_start_blk + position, size, data, bytesRead);
         return errorcode;
     }
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesRead)
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesRead)
     {
         int errorcode = 0;
         if (size >= v_size_blk)
@@ -337,7 +339,7 @@ int auto_mount_partition(shared_ptr<vnode> blk_dev)
             goto error_exit;
         }
         printf("Partition UUID [%s]\n", to_string(statfs.fsid).c_str());
-        if (statfs.fsid == sys_info.root_drive_uuid)
+        if (statfs.fsid == root_partition_uuid)
         {
             // root is mounted at '/'
             ret = clone_path(fs_root_vnode, rnode);
@@ -424,11 +426,6 @@ int create_partition_dev(shared_ptr<vnode> blk_dev)
                     continue;
                 }
                 mknod("/dev/", partition_node);
-                if (auto_mount_partition(partition_node))
-                {
-                    log_error("No matching file system found\n");
-                    continue;
-                }
             }
         }
         if (no_of_partitions != 0)
@@ -469,9 +466,9 @@ vfile::~vfile()
 
 int vfile::read(char *data, size_t sz)
 {
-    ssize_t position = posG;
+    size_t position = posG;
     int errCode = 0;
-    int bytesRead = 0;
+    size_t bytesRead = 0;
     errCode = _parent->bread(position, sz, data, &bytesRead);
     if (errCode)
         return -1;
@@ -481,9 +478,9 @@ int vfile::read(char *data, size_t sz)
 
 int vfile::write(const char *data, size_t sz)
 {
-    ssize_t position = posG;
+    size_t position = posG;
     int errCode = 0;
-    int bytesWritten = 0;
+    size_t bytesWritten = 0;
     errCode = _parent->bwrite(position, sz, data, &bytesWritten);
     if (errCode)
         return -1;

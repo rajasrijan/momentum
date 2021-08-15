@@ -128,7 +128,7 @@ if(MOMENTUM_KERNEL_ARCH STREQUAL "x86_64")
         PRIVATE "."
         PRIVATE "libc/include"
         PRIVATE "libc++"
-        PRIVATE "acpica/include"
+        PRIVATE "acpica/acpica/source/include"
     )
     
     target_compile_options(momentum PRIVATE
@@ -152,7 +152,7 @@ elseif(MOMENTUM_KERNEL_ARCH STREQUAL "efi")
         PRIVATE "."
         PRIVATE "libc/include"
         PRIVATE "libc++"
-        PRIVATE "acpica/include"
+        PRIVATE "acpica/acpica/source/include"
     )
     
     target_compile_options(BOOTX64 PRIVATE
@@ -281,6 +281,8 @@ if(MOMENTUM_KERNEL_ARCH STREQUAL "x86_64")
         COMMAND fuseext2 -o rw+ "${TMP_DISKFS}/part1" "${TMP_ROOTFS}"
         COMMAND ${CMAKE_COMMAND} -E echo "Installing Momentum to OS partition"
         COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${TMP_ROOTFS} -P cmake_install.cmake
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_ROOTFS}/dev
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_ROOTFS}/mnt
         COMMAND ${CMAKE_COMMAND} -E echo "Installing EFI bootloader to EFI partition"
         COMMAND rm -f ${TMP_EFIFS}/EFI/BOOT/BOOTX64.efi
         COMMAND ${CMAKE_COMMAND} -E make_directory ${TMP_EFIFS}/EFI/BOOT/

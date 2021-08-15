@@ -225,7 +225,7 @@ sata_blk_vnode::~sata_blk_vnode()
     fis_list = nullptr;
 }
 
-int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
+int sata_blk_vnode::bread(size_t position, size_t size, char *data, size_t *bytesRead)
 {
     uint64_t physical_address = 0;
 
@@ -307,7 +307,7 @@ int sata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesR
     return 0;
 }
 
-int sata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWrite)
+int sata_blk_vnode::bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten)
 {
     uint64_t physical_address = 0;
 

@@ -98,7 +98,7 @@ class efi_interface_vnode : public vnode
         return ret;
     }
 
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead)
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead)
     {
         size *= interface->Media->BlockSize;
         auto status = interface->ReadBlocks(interface, interface->Media->MediaId, position, size, data);
@@ -124,7 +124,7 @@ template <int lvl = 4>
 int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t size)
 {
     int ret = 0;
-    log_debug("lvl=%d, vaddr=[%llx], paddr=[%llx], size=[%llx]\n", lvl, vaddr, paddr, size);
+    // log_debug("lvl=%d, vaddr=[%llx], paddr=[%llx], size=[%llx]\n", lvl, vaddr, paddr, size);
     auto vaddr_end = vaddr + size, vaddr_it = vaddr;
     // log_info("%s:%d %s()\n", __FILE__, __LINE__, __FUNCTION__);
     while (vaddr_it < vaddr_end)
@@ -219,6 +219,7 @@ int find_kernel_and_boot(EFI_HANDLE handle)
     auto mem_reserved_count = binary_loader::get_symbol_by_name<uint64_t>("mem_reserved_count", symbol_table, memory_map);
     auto fb = binary_loader::get_symbol_by_name<framebuffer>("fb", symbol_table, memory_map);
     auto rsdp_table = binary_loader::get_symbol_by_name<void>("rsdp_table", symbol_table, memory_map);
+    auto root_uuid = binary_loader::get_symbol_by_name<uuid_t>("root_partition_uuid", symbol_table, memory_map);
 
     page_struct *pg = nullptr;
 
@@ -425,6 +426,22 @@ int find_kernel_and_boot(EFI_HANDLE handle)
             break;
         }
     }
+
+    if (!root_uuid.ptr)
+    {
+        log_error("failed to get symbol root_partition_uuid\n");
+        asm("cli;hlt");
+        return -EUNK;
+    }
+    statfs_t statfs = {};
+    ret = file_list[0]->v_vfsp->statfs(file_list[0]->v_vfsp->vfs_vnodecovered, statfs);
+    if (ret)
+    {
+        log_error("failed to get statfs. error %d\n", ret);
+        asm("cli;hlt");
+        return ret;
+    }
+    *(root_uuid.ptr) = statfs.fsid;
 
     entry_point -= KERNEL_BASE_VADDR_PTR;
     entry_point += KERNEL_BASE_PADDR_PTR;

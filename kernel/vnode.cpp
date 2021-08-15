@@ -221,11 +221,11 @@ int vnode::brelse(void)
 {
     return -ENOSYS;
 }
-int vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
+int vnode::bread(size_t position, size_t size, char *data, size_t *bytesRead)
 {
     return -ENOSYS;
 }
-int vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
+int vnode::bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten)
 {
     return -ENOSYS;
 }

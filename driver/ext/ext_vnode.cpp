@@ -100,7 +100,7 @@ ext_vnode::~ext_vnode()
 {
 }
 
-int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
+int ext_vnode::bread(size_t position, size_t size, char *data, size_t *bytesRead)
 {
     int ret = 0;
     ext_vfs *v_ext_vfs = (ext_vfs *)v_vfsp;
@@ -126,7 +126,7 @@ int ext_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
     return ret;
 }
 
-int ext_vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
+int ext_vnode::bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten)
 {
     return -ENOSYS;
 }

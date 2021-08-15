@@ -90,20 +90,6 @@ int decode_commandline_args(const char *cmdline, [[maybe_unused]] map<string, st
     return 0;
 }
 
-void decode_cmdline(char *cmdLine)
-{
-    auto arg = strtok(cmdLine, "= ");
-    while (arg != nullptr)
-    {
-        if (!stricmp("uuid", arg))
-        {
-            arg = strtok(nullptr, "= ");
-            sys_info.root_drive_uuid = std::to_uuid(arg);
-        }
-        arg = strtok(nullptr, "= ");
-    }
-}
-
 int initilize_kernel_cmdline()
 {
     return 0;
@@ -171,12 +157,6 @@ void stage2()
         constructor_fn();
     }
     init_multitask();
-
-    // if (init_symmetric_multi_processor())
-    // {
-    //     printf("SMP init failed\n");
-    //     __asm__("cli;hlt;");
-    // }
 
     auto kthread = multitask::getInstance()->getKernelThread();
     change_thread(kthread, true);
@@ -271,6 +251,12 @@ void state_c0()
         __asm__("cli;hlt;");
     }
 
+    if (init_symmetric_multi_processor())
+    {
+        printf("SMP init failed\n");
+        __asm__("cli;hlt;");
+    }
+
     pci_init_devices();
     init_vfs();
     init_drivers();
@@ -285,7 +271,7 @@ void state_c0()
     }
     thread_t pnp_hotplug_thread = nullptr;
     multitask::getInstance()->createKernelThread(pnp_hotplug_thread, "pnp_hotplug_thread", &t1, (void *)0);
-    
+
     sleep(10);
     printf(copyright);
     kernel_shell();

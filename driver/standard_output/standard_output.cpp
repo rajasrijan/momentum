@@ -46,7 +46,7 @@ standard_output::~standard_output()
 {
     log_debug("~standard_output()\n");
 }
-int standard_output::bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten)
+int standard_output::bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten)
 {
     int write_count = 0;
     for (size_t i = 0; i < size; i++)

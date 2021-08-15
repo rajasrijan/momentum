@@ -65,14 +65,14 @@ void ata_remove(pci_device_t *dev);
 int ata_suspend(pci_device_t *dev, uint32_t state);
 int ata_resume(pci_device_t *dev);
 
-int ata_blk_vnode::bread(ssize_t position, size_t size, char *data, int *bytesRead)
+int ata_blk_vnode::bread(size_t position, size_t size, char *data, size_t *bytesRead)
 {
     if (bytesRead)
         *bytesRead = (size * 512);
     return ataReadSectors_pio(data_port, IsMaster, position, size, data);
 }
 
-int ata_blk_vnode::bwrite(ssize_t position, size_t size, const char *data, int *bytesRead)
+int ata_blk_vnode::bwrite(size_t position, size_t size, const char *data, size_t *bytesRead)
 {
     return -ENOSYS;
 }

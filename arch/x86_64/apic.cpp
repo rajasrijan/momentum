@@ -21,8 +21,16 @@
 #include "acpi.h"
 #include "interrupts.h"
 #include "timer.h"
+#include <errno.h>
 #include <arch/paging.h>
 #include <kernel/sys_info.h>
+#include <kernel/logging.h>
+#include <arch/mm.h>
+
+extern "C"
+{
+#include <actables.h>
+}
 ioapic_t volatile *ioapic;
 
 /*
@@ -139,37 +147,140 @@ void apic_interrupt_command_sipi(bool isShorthand, uint64_t dest, uint8_t vector
 int init_symmetric_multi_processor()
 {
     int ret = 0;
-    extern unsigned char trampolin[];
-    extern unsigned int trampolin_len;
-
-    if ((ret = PageManager::IdentityMapPages(0x8000, trampolin_len)) < 0)
+    uint32_t tableIndex = 0;
+    ACPI_TABLE_MADT *madt_table = nullptr;
+    ret = AcpiTbFindTable("APIC", "", "", &tableIndex);
+    if (ACPI_FAILURE(ret))
     {
-        printf("Failed to map pages\n");
-        return ret;
-    }
-    trampolin_t *tramp = (trampolin_t *)0x8000;
-
-    //  copy trampolin code to 0x8000
-    memcpy((void *)0x8000, trampolin, trampolin_len);
-
-    apic_interrupt_command_init(true, APIC_ICR_DEST_ALL_NOSELF);
-    //  start at 0x8000
-    apic_interrupt_command_sipi(true, APIC_ICR_DEST_ALL_NOSELF, 0x8);
-
-    while (tramp->proc_count == 0)
-    {
-        printf("Waiting for processor...\n");
-    }
-    printf("Processor found\n");
-
-    //  unmap memory
-    if ((ret = PageManager::freeVirtualMemory(0x8000, trampolin_len)) < 0)
-    {
-        printf("Failed to freeVirtualMemory()\n");
-        return ret;
+        if (ret == AE_NOT_FOUND)
+        {
+            log_error("ACPI Table not found in RSDT/XSDT");
+        }
     }
 
-    asm("cli;hlt");
+    ret = AcpiGetTableByIndex(tableIndex, (ACPI_TABLE_HEADER **)&madt_table);
+    if (ACPI_FAILURE(ret))
+    {
+        log_error("Failed to ret table");
+        return -EUNK;
+    }
+    log_info("MADT table length [%llx], MADT entry length [%llx]\n", madt_table->Header.Length, sizeof(ACPI_TABLE_MADT));
+    log_info("APIC Address [%x], Flags [%x]\n", madt_table->Address, madt_table->Flags);
 
+    for (ACPI_SUBTABLE_HEADER *subtable = ACPI_ADD_PTR(ACPI_SUBTABLE_HEADER, madt_table, sizeof(ACPI_TABLE_MADT));
+         (uint64_t)subtable < ((uint64_t)madt_table + madt_table->Header.Length); subtable = (ACPI_SUBTABLE_HEADER *)ACPI_NEXT_RESOURCE(subtable))
+    {
+        switch (subtable->Type)
+        {
+        case ACPI_MADT_TYPE_LOCAL_APIC: {
+            ACPI_MADT_LOCAL_APIC *lapic = (ACPI_MADT_LOCAL_APIC *)subtable;
+            log_info("ProcessorId [%x], Id [%x], LapicFlags [%x]\n", lapic->ProcessorId, lapic->Id, lapic->LapicFlags);
+            break;
+        }
+        case ACPI_MADT_TYPE_IO_APIC: {
+            log_error("ACPI_MADT_TYPE_IO_APIC not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_INTERRUPT_OVERRIDE: {
+            log_error("ACPI_MADT_TYPE_INTERRUPT_OVERRIDE not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_NMI_SOURCE: {
+            log_error("ACPI_MADT_TYPE_NMI_SOURCE not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_LOCAL_APIC_NMI: {
+            log_error("ACPI_MADT_TYPE_LOCAL_APIC_NMI not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE: {
+            log_error("ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_IO_SAPIC: {
+            log_error("ACPI_MADT_TYPE_IO_SAPIC not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_LOCAL_SAPIC: {
+            log_error("ACPI_MADT_TYPE_LOCAL_SAPIC not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_INTERRUPT_SOURCE: {
+            log_error("ACPI_MADT_TYPE_INTERRUPT_SOURCE not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_LOCAL_X2APIC: {
+            log_error("ACPI_MADT_TYPE_LOCAL_X2APIC not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_LOCAL_X2APIC_NMI: {
+            log_error("ACPI_MADT_TYPE_LOCAL_X2APIC_NMI not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_GENERIC_INTERRUPT: {
+            log_error("ACPI_MADT_TYPE_GENERIC_INTERRUPT not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_GENERIC_DISTRIBUTOR: {
+            log_error("ACPI_MADT_TYPE_GENERIC_DISTRIBUTOR not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_GENERIC_MSI_FRAME: {
+            log_error("ACPI_MADT_TYPE_GENERIC_MSI_FRAME not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_GENERIC_REDISTRIBUTOR: {
+            log_error("ACPI_MADT_TYPE_GENERIC_REDISTRIBUTOR not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_GENERIC_TRANSLATOR: {
+            log_error("ACPI_MADT_TYPE_GENERIC_TRANSLATOR not inplemented!\n");
+            break;
+        }
+        case ACPI_MADT_TYPE_MULTIPROC_WAKEUP: {
+            log_error("ACPI_MADT_TYPE_MULTIPROC_WAKEUP not inplemented!\n");
+            break;
+        }
+        default:
+            log_error("ACPI_MADT_TYPE_UNKNOWN\n");
+            break;
+        }
+    }
+
+    // extern unsigned char trampolin[];
+    // extern unsigned int trampolin_len;
+
+    // uint64_t addr = 0;
+    // ret = allocate_physical_pages(addr, 1);
+    // log_info("allocated physical address [%llx] for trampolin code.\n", addr);
+
+    // if ((ret = PageManager::setVirtualToPhysicalMemory(0x8000, addr, PageManager::round_up_to_pagesize(trampolin_len), PageManager::Privilege::Supervisor,
+    //                                                    PageManager::PageType::Read_Write)) < 0)
+    // {
+    //     printf("Failed to map pages\n");
+    //     return ret;
+    // }
+
+    // //  copy trampolin code to 0x8000
+    // memcpy((void *)0x8000, trampolin, trampolin_len);
+
+    // volatile trampolin_t *tramp = (trampolin_t *)0x8000;
+
+    // apic_interrupt_command_init(true, APIC_ICR_DEST_ALL_NOSELF);
+    // //  start at physical address
+    // apic_interrupt_command_sipi(true, APIC_ICR_DEST_ALL_NOSELF, addr >> 12);
+
+    // while (tramp->proc_count == 0)
+    // {
+    //     printf("Waiting for processor...\n");
+    // }
+    // printf("Processor found\n");
+
+    // //  unmap memory
+    // if ((ret = PageManager::freeVirtualMemory(0x8000, trampolin_len)) < 0)
+    // {
+    //     printf("Failed to freeVirtualMemory()\n");
+    //     return ret;
+    // }
     return 0;
 }

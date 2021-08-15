@@ -52,7 +52,7 @@ target_include_directories(arch_x86_64
     PRIVATE ${CMAKE_SOURCE_DIR}
     PRIVATE "${CMAKE_SOURCE_DIR}/libc/include"
     PRIVATE "${CMAKE_SOURCE_DIR}/libc++"
-    PRIVATE "${CMAKE_SOURCE_DIR}/acpica/include"
+    PRIVATE "${CMAKE_SOURCE_DIR}/acpica/acpica/source/include"
 )
 
 target_compile_options(arch_x86_64 PRIVATE

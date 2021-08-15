@@ -68,8 +68,8 @@ class vnode
     virtual ~vnode();
     virtual int access(void);
     virtual int bmap(void);
-    virtual int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    virtual int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
+    virtual int bread(size_t position, size_t size, char *data, size_t *bytesRead);
+    virtual int bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten);
     virtual int brelse(void);
     virtual int close(void);
     int docreate(const std::string &path, std::shared_ptr<vnode> &created_node);

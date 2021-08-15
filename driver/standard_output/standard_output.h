@@ -25,5 +25,5 @@ class standard_output : public vnode
   public:
     standard_output(const std::string &_name);
     ~standard_output();
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten);
 };

@@ -50,8 +50,8 @@ class ata_blk_vnode : public vnode
   public:
     ata_blk_vnode(uint16_t dataPort, bool isMaster, const string &name);
     ~ata_blk_vnode();
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead);
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten);
     int write(size_t offset, size_t count, void *data);
     int readdir(vector<shared_ptr<vnode>> &vnodes);
     int ioctl(uint32_t command, void *data, int fflag);

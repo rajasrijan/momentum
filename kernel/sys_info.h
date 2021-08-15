@@ -32,7 +32,6 @@ typedef struct system_info
     uint32_t kernel_end;
     struct local_apic_structure *local_apic;
     struct acpi_rsdp *rsdp;
-    uuid_t root_drive_uuid;
 } system_info_t;
 #pragma pack(pop)
 

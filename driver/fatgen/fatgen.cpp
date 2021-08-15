@@ -132,9 +132,9 @@ class fat_vnode : public vnode
 
     int open(uint64_t flags);
 
-    int bread(ssize_t position, size_t size, char *sector_data, int *bytesRead);
+    int bread(size_t position, size_t size, char *sector_data, size_t *bytesRead);
 
-    int bwrite(ssize_t position, size_t size, const char *sector_data, int *bytesWritten);
+    int bwrite(size_t position, size_t size, const char *sector_data, size_t *bytesWritten);
 
     int ioctl(uint32_t command, void *sector_data, int fflag);
 
@@ -344,7 +344,7 @@ int fat_vnode::open(uint64_t flags)
     return -ENOSYS;
 }
 
-int fat_vnode::bread(ssize_t position, size_t size, char *sector_data, int *bytesRead)
+int fat_vnode::bread(size_t position, size_t size, char *sector_data, size_t *bytesRead)
 {
     auto vfat_vfs = reinterpret_cast<fat *>(v_vfsp);
     const size_t cluster_size = bfat.BPB_BytsPerSec * bfat.BPB_SecPerClus;
@@ -386,7 +386,7 @@ int fat_vnode::bread(ssize_t position, size_t size, char *sector_data, int *byte
     return 0;
 }
 
-int fat_vnode::bwrite(ssize_t position, size_t size, const char *sector_data, int *bytesWritten)
+int fat_vnode::bwrite(size_t position, size_t size, const char *sector_data, size_t *bytesWritten)
 {
     return -ENOSYS;
 }

@@ -34,8 +34,8 @@ class sata_blk_vnode : public vnode
 
     sata_blk_vnode(HBA_MEM volatile *_abar, size_t _portId, const string &_name);
     ~sata_blk_vnode();
-    int bread(ssize_t position, size_t size, char *data, int *bytesRead);
-    int bwrite(ssize_t position, size_t size, const char *data, int *bytesWritten);
+    int bread(size_t position, size_t size, char *data, size_t *bytesRead);
+    int bwrite(size_t position, size_t size, const char *data, size_t *bytesWritten);
     int readdir(vector<shared_ptr<vnode>> &vnodes);
     int open(uint64_t flags);
     int ioctl(uint32_t command, void *data, int fflag);
