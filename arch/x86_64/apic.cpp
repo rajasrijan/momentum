@@ -31,8 +31,10 @@ extern "C"
 {
 #include <actables.h>
 }
-ioapic_t volatile *ioapic;
 
+ioapic_t volatile *ioapic;
+static uint64_t tick = 0;
+static uint64_t lapic_timer_freq;
 /*
  * Initilize IO-APIC.
  */
@@ -77,7 +79,6 @@ void apic_pin_enable(uint32_t pin)
     write_ioapic(0x10 + (2 * pin), (read_ioapic(0x10 + (2 * pin)) & 0xFFFEFFFF));
 }
 
-static uint64_t tick = 0;
 void simple_tick_counter(retStack_t *stack, general_registers_t *regs)
 {
     tick++;

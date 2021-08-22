@@ -46,7 +46,7 @@ enum WidthFlags
     WidthFlags_L
 };
 
-int decode_format(const char *buffer, enum FormatFlag *flags, int *width, int *precision, enum WidthFlags *length, int *specifier)
+int decode_format(const char *buffer, enum FormatFlag *flags, int *width, int *precision, enum WidthFlags *length, int *specifier, va_list arg)
 {
     //%[flags][width][.precision][length]specifier
     int buffer_index = 1;
@@ -79,10 +79,19 @@ int decode_format(const char *buffer, enum FormatFlag *flags, int *width, int *p
         *flags = FormatFlag_PadZeros;
         buffer_index++;
     }
-    while (isdigit(buffer[buffer_index]))
+    //  calculate width
+    if (buffer[buffer_index] == '*')
     {
-        width[0] = (width[0] * 10) + (buffer[buffer_index] - '0');
+        width[0] = va_arg(arg, int);
         buffer_index++;
+    }
+    else
+    {
+        while (isdigit(buffer[buffer_index]))
+        {
+            width[0] = (width[0] * 10) + (buffer[buffer_index] - '0');
+            buffer_index++;
+        }
     }
     if (buffer[buffer_index] == '.')
     {
@@ -307,7 +316,7 @@ int vsnprintf(char *buffer, size_t n, const char *format, va_list arg)
     {
         if (format[format_index] == '%')
         {
-            format_index += decode_format(&format[format_index], &flags, &width, &precision, &length, &specifier);
+            format_index += decode_format(&format[format_index], &flags, &width, &precision, &length, &specifier, arg);
             if (specifier == 'd' || specifier == 'i')
             {
                 if (length == WidthFlags_None)
@@ -376,7 +385,7 @@ int vsnprintf(char *buffer, size_t n, const char *format, va_list arg)
                 else
                     for (; ch_len < precision && str[ch_len] != 0; ch_len++)
                         ;
-                for (int i = 0; i < width - ch_len; i++)
+                for (int i = ch_len; i < width; i++)
                 {
                     buffer[buffer_index++] = ' ';
                 }

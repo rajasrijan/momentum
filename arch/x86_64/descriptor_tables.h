@@ -23,7 +23,7 @@
 // This structure contains the value of one GDT entry.
 // We use the attribute 'packed' to tell GCC not to change
 // any of the alignment in the structure.
-#define GDT_COUNT (6)
+#define GDT_COUNT (5)
 
 struct gdt_entry_struct
 {
@@ -35,16 +35,41 @@ struct gdt_entry_struct
     uint8_t base_high; // The last 8 bits of the base.
 } __attribute__((packed));
 
+struct tss_entry_struct
+{
+    uint16_t limit_low;  // The lower 16 bits of the limit.
+    uint16_t base_low;   // The lower 16 bits of the base.
+    uint8_t base_middle; // The next 8 bits of the base.
+    uint8_t access;      // Access flags, determine what ring this segment can be used in.
+    uint8_t granularity;
+    uint8_t base_high;       // The last 8 bits of the base.
+    uint32_t base_high_high; // The last 32 bits of the base.
+    uint32_t reserved;       // reserved
+} __attribute__((packed));
+
 struct gdt_ptr_struct
 {
     uint16_t limit; // The upper 16 bits of all selector limits.
     uint64_t base;  // The address of the first gdt_entry_t struct.
 } __attribute__((packed));
 
+struct task_state_segment_struct
+{
+    uint32_t resv0;
+    uint64_t rsp[3];
+    uint64_t resv1;
+    uint64_t ist[7];
+    uint64_t resv2;
+    uint16_t resv3, iobasemap;
+} __attribute__((packed));
+
+static_assert(sizeof(task_state_segment_struct) == 0x68, "Invalid task state segment structure!");
+
 struct gdt_struct
 {
-    struct gdt_ptr_struct gp;              // The upper 16 bits of all selector limits.
-    struct gdt_entry_struct ge[GDT_COUNT]; // The address of the first gdt_entry_t struct.
+    gdt_ptr_struct gp;              // The upper 16 bits of all selector limits.
+    gdt_entry_struct ge[GDT_COUNT]; // The address of the first gdt_entry_t struct.
+    tss_entry_struct tss;           // The TSS structure.
 } __attribute__((packed));
 
 typedef volatile struct gdt_ptr_struct gdt_ptr_t;
@@ -53,17 +78,22 @@ typedef struct gdt_struct gdt_t;
 
 // A struct describing an interrupt gate.
 
-struct idt_entry_struct
+struct idt_entry
 {
-    uint16_t base_lo_lo; // The lower 16 bits of the address to jump to when this interrupt fires.
-    uint16_t sel;        // Kernel segment selector.
-    uint8_t ist;         // bits 0..2 holds Interrupt Stack Table offset, rest of bits zero.
-    uint8_t flags;       // More flags. See documentation.
-    uint16_t base_lo_hi; // The upper 16 bits of the address to jump to.
-    uint32_t base_hi;    // offset bits 32..63
-    uint32_t zero;       // reserved
+    uint16_t offset_lo;
+    uint16_t segment;
+    uint16_t ist:3;
+    uint16_t zero:5;
+    uint16_t type:4;
+    uint16_t zero1:1;
+    uint16_t dpl:2;
+    uint16_t present:1;
+    uint16_t offset_mid;
+    uint32_t offset_hi;
+    uint32_t resv;
 } __attribute__((packed));
-typedef volatile struct idt_entry_struct idt_entry_t;
+
+static_assert(sizeof(idt_entry) == 16, "Invalid idt structure!");
 
 // A struct describing a pointer to an array of interrupt handlers.
 // This is in a format suitable for giving to 'lidt'.
@@ -71,14 +101,14 @@ typedef volatile struct idt_entry_struct idt_entry_t;
 struct idt_ptr_struct
 {
     uint16_t limit;
-    uint64_t base; // The address of the first element in our idt_entry_t array.
+    uint64_t base; // The address of the first element in our idt_entry array.
 } __attribute__((packed));
 typedef volatile struct idt_ptr_struct idt_ptr_t;
 
 struct idt_struct
 {
     struct idt_ptr_struct ip;
-    struct idt_entry_struct ie[256]; // The address of the first gdt_entry_t struct.
+    struct idt_entry ie[256]; // The address of the first gdt_entry_t struct.
 } __attribute__((packed));
 typedef struct idt_struct idt_t;
 
@@ -86,8 +116,11 @@ typedef struct idt_struct idt_t;
 
 int init_idt(void);
 int init_gdt(void);
+int init_tss(void);
 
-void idt_set_gate(idt_entry_t *idt_entries, uint8_t num, uint64_t base, uint16_t sel, uint8_t flags);
+extern task_state_segment_struct tss;
+
+void idt_set_gate(idt_entry *idt_entries, uint8_t num, uint64_t offset, uint16_t sel, uint8_t type);
 
 // These extern directives let us access the addresses of our ASM ISR handlers.
 /*

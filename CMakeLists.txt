@@ -49,6 +49,7 @@ set(MOMENTUM_KERNEL_BASE_VADDR "0x000000C000000000" CACHE STRING "Base virtual a
 set(MOMENTUM_KERNEL_BASE_PADDR "0x0000000000100000" CACHE STRING "Base physical address where kernel will be loaded.")
 set(MOMENTUM_KERNEL_VGA True CACHE BOOL "Enable VGA kernel mode.")
 set(MOMENTUM_KERNEL_COVERAGE True CACHE BOOL "Enable code coverage.")
+set(MOMENTUM_BUILD_TOOLS True CACHE BOOL "Build Tools.")
 set(DEBUG_DUMP_ALL_CMAKE_VARIABLES False CACHE BOOL "Dump all cmake variables while configuration.")
 
 if(MOMENTUM_KERNEL_VGA)
@@ -258,7 +259,9 @@ if(MOMENTUM_KERNEL_ARCH STREQUAL "x86_64")
     set(efi_BINARY_DIR ${BINARY_DIR})
 
     #   various tools
-    # add_subdirectory(${CMAKE_SOURCE_DIR}/tools)
+    if(MOMENTUM_BUILD_TOOLS)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/tools)
+    endif()
 
     add_custom_target(install_to_disk_image
         #   remove old directory

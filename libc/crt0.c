@@ -37,8 +37,10 @@ void _start()
     ret = _syscall(SYSCALL_GETCMDLINE, tmp, sizeof(tmp));
     char *ptr = tmp;
     argv[argc++] = ptr;
-    for (size_t i = 0; (ptr[i] != 0) && (i < 4096); i++) {
-        if (ptr[i] == ' ') {
+    for (size_t i = 0; (ptr[i] != 0) && (i < 4096); i++)
+    {
+        if (ptr[i] == ' ')
+        {
             ptr[i] = 0;
             argv[argc++] = &ptr[i + 1];
         }

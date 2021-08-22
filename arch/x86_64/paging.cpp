@@ -157,7 +157,7 @@ int PageManager::setPageAllocation(uint64_t vaddr, uint64_t size, Privilege priv
 }
 
 template <int lvl = 4>
-int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t size)
+int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t size, PageManager::Privilege privilege, PageManager::PageType pageType)
 {
     int ret = 0;
     auto vaddr_end = vaddr + size, vaddr_it = vaddr;
@@ -170,10 +170,14 @@ int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t siz
         {
             pg[pg_idx].addr = paddr;
             pg[pg_idx].present = 1;
-            pg[pg_idx].rw = 1;
+            pg[pg_idx].rw = (pageType == PageManager::PageType::Read_Write) ? 1 : 0;
+            pg[pg_idx].us = (privilege == PageManager::Privilege::User) ? 1 : 0;
 
             if (lvl > 1)
                 pg[pg_idx].ps = 1;
+
+            asm volatile("invlpg (%0)" ::"r"(vaddr_it));
+
             vaddr_it += PG_LVL_SZ(lvl);
             paddr += PG_LVL_SZ(lvl);
         }
@@ -190,7 +194,8 @@ int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t siz
                 }
                 pg[pg_idx].addr = addr;
                 pg[pg_idx].present = 1;
-                pg[pg_idx].rw = 1;
+                pg[pg_idx].rw = (pageType == PageManager::PageType::Read_Write) ? 1 : 0;
+                pg[pg_idx].us = (privilege == PageManager::Privilege::User) ? 1 : 0;
 
                 bitmap_get_vaddr(default_pagemem_allocator, addr, addr);
                 memset((void *)addr, 0, PageManager::PAGESIZE);
@@ -198,12 +203,13 @@ int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t siz
             auto size_for_lower_lvl = std::min(vaddr_end, PG_LVL_ALIGN(vaddr_it + PG_LVL_SZ(lvl), lvl)) - vaddr_it;
 
             bitmap_get_vaddr(default_pagemem_allocator, PG_GET_ADDRESS(&pg[pg_idx]), addr);
-            ret = allocate_vaddr < (lvl > 1) ? lvl - 1 : lvl > ((page_struct *)addr, vaddr_it, paddr, size_for_lower_lvl);
+            ret = allocate_vaddr < (lvl > 1) ? lvl - 1 : lvl > ((page_struct *)addr, vaddr_it, paddr, size_for_lower_lvl, privilege, pageType);
             if (ret)
             {
                 log_error("Failed to allocate_vaddr\n");
                 return ret;
             }
+            pg[pg_idx].us = (privilege == PageManager::Privilege::User) ? 1 : 0;
             vaddr_it += size_for_lower_lvl;
             paddr += size_for_lower_lvl;
         }
@@ -214,7 +220,7 @@ int allocate_vaddr(page_struct *pg, uint64_t vaddr, uint64_t paddr, uint64_t siz
 int PageManager::setVirtualToPhysicalMemory(uint64_t vaddr, uint64_t paddr, uint64_t size, Privilege privilege, PageType pageType)
 {
     int ret = 0;
-    ret = allocate_vaddr((page_struct *)cpu_local_pml4t, vaddr, paddr, size);
+    ret = allocate_vaddr((page_struct *)cpu_local_pml4t, vaddr, paddr, size, privilege, pageType);
     return ret;
 }
 
@@ -294,7 +300,7 @@ int PageManager::IdentityMapPages(uint64_t paddr, uint64_t size)
 {
     int ret = 0;
     uint64_t sz_alloc = 0;
-    ret = allocate_vaddr((page_struct *)cpu_local_pml4t, paddr, paddr, size);
+    ret = allocate_vaddr((page_struct *)cpu_local_pml4t, paddr, paddr, size, PageManager::Privilege::Supervisor, PageManager::PageType::Read_Write);
     return ret;
 }
 

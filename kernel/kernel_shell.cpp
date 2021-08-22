@@ -44,6 +44,9 @@ static int gui(char *args)
 
 static int cat(char *filename)
 {
+
+    if (!filename)
+        return -EINVAL;
     int ret = 0;
     vfile *file = nullptr;
     ret = open(filename, O_RDONLY, &file);
@@ -61,6 +64,9 @@ static int cat(char *filename)
 
 static int exec(char *cmd_line)
 {
+    if (!cmd_line)
+        return -EINVAL;
+
     int errorCode = 0;
     char filename[256] = {};
     process_t process = nullptr;
@@ -193,11 +199,11 @@ int help([[maybe_unused]] char *args)
 int kernel_shell()
 {
     char input[4096];
-    log_info("\nKernel Shell:\n");
+    printf("\nKernel Shell:\n");
     while (true)
     {
         std::string curDir = getCurrentPath();
-        log_info("(KS)%s", curDir.c_str());
+        printf("(KS)%s", curDir.c_str());
         gets_s(input, sizeof(input) / sizeof(input[0]));
         char *cmd = input;
         char *subCmd = nullptr;

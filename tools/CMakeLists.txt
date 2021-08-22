@@ -52,7 +52,7 @@ ExternalProject_Add(gcc
 )
 
 ExternalProject_Add(busybox
-    GIT_REPOSITORY "git://git.busybox.net/busybox"
+    GIT_REPOSITORY "https://github.com/mirror/busybox.git"
     GIT_TAG 1_33_stable
     GIT_SHALLOW TRUE
     GIT_PROGRESS TRUE

@@ -20,12 +20,26 @@
 #ifndef CPU_H
 #define CPU_H
 
+#define MSR_IA32_EFER 0xC0000080
+#define MSR_IA32_STAR 0xC0000081
+#define MSR_IA32_LSTAR 0xC0000082
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
 #define cpuid(in, a, b, c, d) __asm__ volatile("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
+
+    static inline void rdmsr(uint32_t msr, uint64_t *val)
+    {
+        asm volatile("rdmsr" : "=a"(((uint32_t *)val)[0]), "=d"(((uint32_t *)val)[1]) : "c"(msr));
+    }
+
+    static inline void wrmsr(uint32_t msr, uint64_t val)
+    {
+        asm volatile("wrmsr" : : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
+    }
 
 #ifdef __cplusplus
 }

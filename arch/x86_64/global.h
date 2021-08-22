@@ -55,15 +55,6 @@ static inline uint8_t getsum(uint8_t *ptr, uint32_t len)
         res = (uint8_t)(res + ptr[i]);
     return (uint8_t)(-res);
 }
-static inline void rdmsr(uint32_t msr, uint32_t *lo, uint32_t *hi)
-{
-    asm volatile("rdmsr" : "=a"(*lo), "=d"(*hi) : "c"(msr));
-}
-
-static inline void wrmsr(uint32_t msr, uint64_t val)
-{
-    asm volatile("wrmsr" : : "a"(val & 0xFFFFFFFF), "d"((val >> 32) & 0xFFFFFFFF), "c"(msr));
-}
 
 extern "C" uint64_t kernel_start;
 extern "C" uint64_t kernel_end;

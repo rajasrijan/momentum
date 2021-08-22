@@ -734,7 +734,7 @@ int openat(int dirfd, const char *pathname, int flags, mode_t mode)
     return descriptor;
 }
 
-int lookup(const char *path, shared_ptr<vnode> &node)
+int lookup(const char *path, shared_ptr<vnode> &node, bool follow_link)
 {
     if (!path)
         return -EINVAL;
@@ -934,7 +934,37 @@ int vfile::readdir(struct dirent *buf, size_t *buf_size)
     int ret = 0;
     vector<shared_ptr<vnode>> vnode_list;
     ret = _parent->doreaddir(vnode_list);
+    if (!buf_size)
+        return -EINVAL;
+    //  asking for size only
+    if (!buf && *buf_size == 0)
+    {
+        *buf_size = sizeof(struct dirent) * vnode_list.size();
+        return -ENOMEM;
+    }
+    //  invalid buffer pointer
+    if (!buf)
+        return -EINVAL;
 
+    size_t buf_filled = 0;
+    auto vnode_it = vnode_list.begin();
+    auto vnode_end = vnode_list.end();
+
+    while ((buf_filled < *buf_size) && (vnode_it != vnode_end))
+    {
+        auto dir = ((struct dirent *)((char *)buf + buf_filled));
+        strncpy(dir->d_name, vnode_it->get()->getName().c_str(), NAME_MAX - 1);
+        dir->d_namlen = min((size_t)NAME_MAX - 1, vnode_it->get()->getName().size());
+        buf_filled += sizeof(struct dirent);
+        vnode_it++;
+    }
+
+    if (vnode_it != vnode_end)
+    {
+        *buf_size = sizeof(struct dirent) * vnode_list.size();
+        return -ENOMEM;
+    }
+    *buf_size = buf_filled;
     return ret;
 }
 
@@ -947,6 +977,7 @@ int readdir(int fd, struct dirent *buf, size_t *buf_size)
     ret = readdir(file, buf, buf_size);
     return ret;
 }
+
 int readdir(vfile *file, struct dirent *buf, size_t *buf_size)
 {
     int ret = 0;

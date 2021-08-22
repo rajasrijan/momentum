@@ -213,7 +213,7 @@ enum Open_Flags
     O_CLOEXEC = 1 << 5,
 };
 
-int lookup(const char *path, shared_ptr<class vnode> &node);
+int lookup(const char *path, shared_ptr<class vnode> &node, bool follow_link = false);
 
 /**
  * @brief look for files that match pattern

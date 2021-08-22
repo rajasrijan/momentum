@@ -29,7 +29,8 @@ DIR *opendir(const char *dir_name)
 {
     int fd = 0;
     fd = open(dir_name, O_DIRECTORY);
-    if (fd == -1) {
+    if (fd == -1)
+    {
         return NULL;
     }
     DIR *dir = fdopendir(fd);
@@ -45,7 +46,8 @@ DIR *fdopendir(int fd)
 
 int closedir(DIR *dirp)
 {
-    if (!dirp) {
+    if (!dirp)
+    {
         return -EINVAL;
     }
     return close(dirp->fd);
@@ -54,12 +56,23 @@ int closedir(DIR *dirp)
 struct dirent *readdir(DIR *dirp)
 {
     int ret = 0;
-    struct readdir_args args = {};
-    args.fd = dirp->fd;
-    args.buf = NULL;
-    args.buf_size = &(dirp->dirent_count);
-    ret = _syscall(SYSCALL_READDIR, &args, 0);
-    return NULL;
+    if (!(dirp->dirent_list))
+    {
+        struct readdir_args args = {};
+        args.fd = dirp->fd;
+        args.buf = NULL;
+        args.buf_size = &(dirp->dirent_count);
+        ret = _syscall(SYSCALL_READDIR, &args, 0);
+        args.buf = (struct dirent *)malloc(dirp->dirent_count);
+        ret = _syscall(SYSCALL_READDIR, &args, 0);
+        dirp->dirent_list = args.buf;
+        dirp->dirent_count = dirp->dirent_count / sizeof(struct dirent);
+        dirp->dirent_index = 0;
+    }
+    if (dirp->dirent_index < dirp->dirent_count)
+        return &(dirp->dirent_list[dirp->dirent_index++]);
+    else
+        return NULL;
 }
 
 void rewinddir(DIR *__dirp)
@@ -83,12 +96,14 @@ int dirfd(DIR *__dirp)
     asm("cli;hlt");
     return -ENOSYS;
 }
-int scandir(const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *), int (*__cmp)(const struct dirent **, const struct dirent **))
+int scandir(const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *),
+            int (*__cmp)(const struct dirent **, const struct dirent **))
 {
     asm("cli;hlt");
     return -ENOSYS;
 }
-int scandirat(int __dfd, const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *), int (*__cmp)(const struct dirent **, const struct dirent **))
+int scandirat(int __dfd, const char *__dir, struct dirent ***__namelist, int (*__selector)(const struct dirent *),
+              int (*__cmp)(const struct dirent **, const struct dirent **))
 {
     asm("cli;hlt");
     return -ENOSYS;

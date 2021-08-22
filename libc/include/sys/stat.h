@@ -79,6 +79,6 @@ struct stat
 };
 
 int fstat(int fd, struct stat *buf);
-int lstat(const char *, struct stat *);
+int lstat(const char *path, struct stat *buf);
 int stat(const char *path, struct stat *buf);
 #endif

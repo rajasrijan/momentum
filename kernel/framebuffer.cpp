@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <kernel/font.h>
 #include <kernel/framebuffer.h>
 
@@ -41,25 +42,37 @@ int blit(const void *src_ptr, const size_t src_pitch, const size_t src_x0, const
 
     return 0;
 }
-
+#define canprint(c) ((c >= 0x20) && (c <= 0x7E))
 void print_string_fb(const char *ch)
 {
     uint32_t pix[8 * 16];
     for (size_t i = 0; ch[i]; i++)
     {
-        switch (ch[i])
+        if (canprint(ch[i]))
         {
-        case '\n':
-            x = 0;
-            y++;
-            break;
-
-        default:
             get_font(ch[i], color, pix);
             blit((void *)pix, 4 * 8, 0, 0, 8, 16, fb.framebuffer_base, fb.pitch, x * 8, y * 16, 4);
             x++;
-            break;
         }
+        else if (ch[i] == '\n')
+        {
+            x = 0;
+            y++;
+        }
+        else if (ch[i] == '\b')
+        {
+            if (x > 0)
+            {
+                x--;
+                memset(pix, 0, sizeof(pix));
+                blit((void *)pix, 4 * 8, 0, 0, 8, 16, fb.framebuffer_base, fb.pitch, x * 8, y * 16, 4);
+            }
+        }
+        else
+        {
+            asm("cli;hlt");
+        }
+
         if (x >= console_width)
         {
             x = 0;

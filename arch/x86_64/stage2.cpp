@@ -97,10 +97,15 @@ int initilize_kernel_cmdline()
 
 void stage2()
 {
-    //	GDT, IDT and Paging initialized before anything else
+    //	GDT, TSS, IDT and Paging initialized before anything else
     if (init_gdt())
     {
         printf("global descriptor initialize failed\n");
+        __asm__("cli;hlt;");
+    }
+    if (init_tss())
+    {
+        printf("task state segment initialize failed\n");
         __asm__("cli;hlt;");
     }
 

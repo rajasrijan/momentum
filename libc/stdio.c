@@ -29,6 +29,7 @@
 #include <arch/video.h>
 #else
 #include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #if __STDC_HOSTED__ == 0
@@ -47,8 +48,14 @@ char getchar()
 }
 #endif
 #else
-FILE *stdin = NULL, *stdout = NULL, *stderr = NULL;
+struct FILE_IO __stds[3] = {{STDIN_FILENO, NULL, NULL}, {STDOUT_FILENO, NULL, NULL}, {STDERR_FILENO, NULL, NULL}};
+FILE *stdin = &__stds[STDIN_FILENO], *stdout = &__stds[STDOUT_FILENO], *stderr = &__stds[STDERR_FILENO];
 int putchar(int c)
+{
+    __asm__ volatile("syscall" ::"D"(SYSCALL_PUTCHAR), "S"(c), "d"(0) : "rcx", "r11");
+    return c;
+}
+int putchar_unlocked(int c)
 {
     __asm__ volatile("syscall" ::"D"(SYSCALL_PUTCHAR), "S"(c), "d"(0) : "rcx", "r11");
     return c;
@@ -59,7 +66,13 @@ char getchar()
     __asm__ volatile("syscall" : "=a"(ch) : "D"(SYSCALL_GETCHAR), "S"(NULL), "d"(0) : "rcx", "r11");
     return ch;
 }
-
+void printString(const char *ch)
+{
+    while (*ch++)
+    {
+        putchar(*ch);
+    }
+}
 struct file_descriptor
 {
     int fd;
@@ -108,6 +121,27 @@ int vfprintf(FILE *stream, const char *format, va_list arg)
     asm("cli;hlt");
     return -ENOSYS;
 }
+
+size_t fwrite(const void *ptr, size_t size, size_t count, FILE *stream)
+{
+    int ret = 0;
+    ret = write(stream->_fileno, ptr, size * count);
+    return ret;
+}
+int fputs_unlocked(const char *str, FILE *stream)
+{
+    return fwrite(str, 1, strlen(str), stream);
+}
+
+int fputs(const char *str, FILE *stream)
+{
+    return fwrite(str, 1, strlen(str), stream);
+}
+int puts(const char *str)
+{
+    printString(str);
+    return 0;
+}
 #endif
 
 #if __STDC_HOSTED__ == 0
@@ -143,6 +177,19 @@ int vprintf(const char *format, va_list arg)
     ret = vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), format, arg);
     buffer[ret] = 0;
     printString(buffer);
+#if __STDC_HOSTED__ == 0
+    mtx_unlock(&printf_lock);
+#endif
+    return 0;
+}
+int vasprintf(char **s, const char *format, va_list arg)
+{
+#if __STDC_HOSTED__ == 0
+    mtx_lock(&printf_lock);
+#endif
+    int ret = 0;
+    *s = (char *)malloc(1024);
+    ret = vsnprintf(*s, 1024, format, arg);
 #if __STDC_HOSTED__ == 0
     mtx_unlock(&printf_lock);
 #endif

@@ -27,7 +27,7 @@ extern "C"
 
 #define isalnum(c) (isalpha(c) || isdigit(c))
 #define isalpha(c) (islower(c) || isupper(c))
-#define iscntrl(c) ((c) >= 0x0 && (c) <= 0x8)
+#define iscntrl(c) (((c) >= 0x0 && (c) <= 0x1F) || (c == 0x7F))
 #define isdigit(c) ((c) >= '0' && (c) <= '9')
 #define isgraph(c) (ispunct(c) || isalnum(c))
 #define islower(c) ((c) >= 'a' && (c) <= 'z')

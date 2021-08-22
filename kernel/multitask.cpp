@@ -18,7 +18,6 @@
  */
 
 #include <sys/types.h>
-#include <arch/x86_64/global.h>
 #include <arch/mm.h>
 #include <kernel/syscall.h>
 #include <kernel/vfs.h>
@@ -31,7 +30,11 @@
 #include <sys/mman.h>
 #include <kernel/logging.h>
 #include "multitask.h"
-
+#ifdef _arch_x86_64_
+#include <arch/x86_64/cpu.h>
+#include <arch/x86_64/global.h>
+#include <arch/x86_64/descriptor_tables.h>
+#endif
 using namespace std;
 
 uint64_t thread_id_counter = 0;
@@ -78,6 +81,7 @@ int init_multitask()
 {
     retStack_t context = thread->context;
     uint64_t rsp = ((context.rsp) / 0x10) * 0x10;
+
     // set maskable interrupt flag.
     if (enable_interrupts)
     {
@@ -173,23 +177,50 @@ int multitask::initilize()
     kernel_thread->context.ss = kernel_process->get_ss();
     kernel_thread->stackSize = KERNEL_STACK_SZ;
     errCode = allocateStack(kernel_thread->stackSize, kernel_thread->context.rsp, PageManager::Supervisor);
-    kernel_thread->context.rsp -= 8;
-    kernel_thread->regs.rbp = kernel_thread->context.rsp;
     if (errCode)
     {
         log_error("Error allocating stack for kernel thread\n");
         return errCode;
     }
+    kernel_thread->context.rsp -= 8;
+    kernel_thread->regs.rbp = kernel_thread->context.rsp;
     kernel_thread->context.rip = (uint64_t)state_c0;
     kernel_thread->context.rflags = get_rflags();
     kernel_thread->context.cs = kernel_process->get_cs();
 
-    extern void (*system_call)();
+    //  stack for interrupts.
+    uint64_t stack_size = KERNEL_STACK_SZ;
+    errCode = allocateStack(stack_size, tss.ist[0], PageManager::User);
+    if (errCode)
+    {
+        log_error("Error allocating stack for interrupts\n");
+        return errCode;
+    }
+    for (size_t i = 1; i < 7; i++)
+        tss.ist[i] = tss.ist[0];
+
+    //  stack for previlage level shift.
+    stack_size = KERNEL_STACK_SZ;
+    errCode = allocateStack(stack_size, tss.rsp[0], PageManager::User);
+    if (errCode)
+    {
+        log_error("Error allocating stack for previlage level change\n");
+        return errCode;
+    }
+    for (size_t i = 1; i < 3; i++)
+        tss.rsp[i] = tss.rsp[0];
+
+    //  enable syscall
+    uint64_t msr = 0;
+    rdmsr(MSR_IA32_EFER, &msr);
+    msr |= 1;
+    wrmsr(MSR_IA32_EFER, msr);
     //	set system call function pointer
-    wrmsr(0xC0000082, (uint64_t)&system_call);
+    extern void (*system_call)();
+    wrmsr(MSR_IA32_LSTAR, (uint64_t)&system_call);
     // wrmsr(0xC0000084, 0x00);
     //	set cs
-    wrmsr(0xC0000081, (0x08l << 32) | (0x10l << 48));
+    wrmsr(MSR_IA32_STAR, (0x08l << 32) | (0x10l << 48));
 #endif
 
     processList.push_back(kernel_process);
@@ -291,10 +322,11 @@ int multitask::createThread(process_t prs, thread_t &thd, const char *threadName
         log_error("Error allocating stack for thread\n");
         return ret;
     }
+    log_debug("Thread RSP [%#x]\n", thd->context.rsp);
     thd->context.rsp -= 8;
     *((uint64_t *)thd->context.rsp) = 0xDEADBEEFDEADBEEF;
-    thd->context.rsp -= 8;
-    *((uint64_t *)thd->context.rsp) = 0xDEADBEEFDEADBEEF;
+    // thd->context.rsp -= 8;
+    // *((uint64_t *)thd->context.rsp) = 0xDEADBEEFDEADBEEF;
     thd->regs.rbp = thd->context.rsp;
     switch (thd->context.cs & 3)
     {
@@ -364,30 +396,27 @@ thread_t multitask::getNextThread(retStack_t *stack, general_registers_t *regs)
 int multitask::allocate_virtual_memory(uint64_t &vaddr, size_t len, PageManager::PageType pageType)
 {
     int ret = 0;
-
-    auto process = getCurrentProcess();
-
-    ret = PageManager::findFreeVirtualMemory(vaddr, len);
-    if (ret != 0)
-        return ret;
-
-    PageManager::Privilege privilege = (process->ring > 0) ? PageManager::Privilege::User : PageManager::Privilege::Supervisor;
-
-    vector<MemPage> mem_pages;
-    for (uint64_t i = 0; i < len; i += PageManager::PAGESIZE)
-    {
-        MemPage mem_page;
-        ret = allocate_physical_pages(mem_page.paddr, 1);
-        if (ret)
-            break;
-
-        mem_page.vaddr = vaddr + i;
-        mem_page.size = PageManager::PAGESIZE;
-        mem_pages.push_back(mem_page);
-    }
-
     {
         class sync lock(multitaskMutex);
+        auto process = getCurrentProcess();
+
+        len = PageManager::round_up_to_pagesize(len);
+
+        ret = PageManager::findFreeVirtualMemory(vaddr, len);
+        if (ret != 0)
+            return ret;
+
+        PageManager::Privilege privilege = (process->ring > 0) ? PageManager::Privilege::User : PageManager::Privilege::Supervisor;
+
+        vector<MemPage> mem_pages;
+        MemPage mem_page;
+        ret = allocate_physical_pages(mem_page.paddr, len / PageManager::PAGESIZE);
+        if (ret)
+            return ret;
+        mem_page.vaddr = vaddr;
+        mem_page.size = len;
+        mem_pages.push_back(mem_page);
+
         process->memory_map.insert(process->memory_map.end(), mem_pages.begin(), mem_pages.end());
         PageManager::applyMemoryMap(process->memory_map, privilege, pageType);
     }

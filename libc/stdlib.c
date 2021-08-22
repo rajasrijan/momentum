@@ -167,6 +167,18 @@ __attribute__((noreturn)) void exit(int status)
 }
 #endif
 size_t mem_used = 0;
+long long int strtoll(const char *str, char **endptr, int base)
+{
+    asm("cli;hlt");
+    endptr[0] = str;
+    return 0;
+}
+long int strtol(const char *str, char **endptr, int base)
+{
+    asm("cli;hlt");
+    endptr[0] = str;
+    return 0;
+}
 
 int atoi(const char *str)
 {

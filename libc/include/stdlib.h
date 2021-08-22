@@ -29,7 +29,8 @@
 extern "C"
 {
 #endif
-
+    long long int strtoll(const char *str, char **endptr, int base);
+    long int strtol(const char *str, char **endptr, int base);
     int atoi(const char *str);
     void *aligned_malloc(size_t size, int n);
     void *malloc(size_t size);

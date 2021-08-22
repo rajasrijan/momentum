@@ -46,22 +46,13 @@ fcntl()
     asm("int3");
     return -ENOSYS;
 }
-fputs_unlocked()
-{
-    asm("int3");
-    return -ENOSYS;
-}
+
 bsearch()
 {
     asm("int3");
     return -ENOSYS;
 }
 umask()
-{
-    asm("int3");
-    return -ENOSYS;
-}
-int puts(const char *str)
 {
     asm("int3");
     return -ENOSYS;
@@ -211,23 +202,7 @@ strcasecmp()
     asm("int3");
     return -ENOSYS;
 }
-vasprintf()
-{
-    asm("int3");
-    return -ENOSYS;
-}
-lstat()
-{
-    asm("int3");
-    return -ENOSYS;
-}
 
-
-putchar_unlocked()
-{
-    asm("int3");
-    return -ENOSYS;
-}
 S_ISLNK()
 {
     asm("int3");
@@ -258,4 +233,131 @@ getenv()
 {
     asm("int3");
     return -ENOSYS;
+}
+
+int sigemptyset(sigset_t *)
+{
+    asm("int3");
+    return 0;
+}
+
+void sscanf()
+{
+    asm("int3");
+}
+void localtime()
+{
+    asm("int3");
+}
+void mktime()
+{
+    asm("int3");
+}
+void time()
+{
+    asm("int3");
+}
+void strndup()
+{
+    asm("int3");
+}
+void unlink()
+{
+    asm("int3");
+}
+void rename()
+{
+    asm("int3");
+}
+void lseek()
+{
+    asm("int3");
+}
+void mkstemp()
+{
+    asm("int3");
+}
+void fileno_unlocked()
+{
+    asm("int3");
+}
+void setenv()
+{
+    asm("int3");
+}
+void setgid()
+{
+    asm("int3");
+}
+void setuid()
+{
+    asm("int3");
+}
+void setegid()
+{
+    asm("int3");
+}
+void seteuid()
+{
+    asm("int3");
+}
+void fchdir()
+{
+    asm("int3");
+}
+void chroot()
+{
+    asm("int3");
+}
+void socket()
+{
+    asm("int3");
+}
+void bind()
+{
+    asm("int3");
+}
+void listen()
+{
+    asm("int3");
+}
+void sendto()
+{
+    asm("int3");
+}
+void ttyname_r()
+{
+    asm("int3");
+}
+void srand()
+{
+    asm("int3");
+}
+void vfork()
+{
+    asm("int3");
+}
+void realpath()
+{
+    asm("int3");
+}
+
+int sigaddset(sigset_t *, int)
+{
+    asm("int3");
+}
+
+void strftime()
+{
+    asm("int3");
+}
+
+void unsetenv()
+{
+    asm("int3");
+}
+
+void rand()
+{
+    asm("int3");
 }

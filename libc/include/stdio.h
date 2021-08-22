@@ -46,6 +46,7 @@ extern "C"
     char getchar(void);
     int printf(const char *format, ...);
     int vprintf(const char *format, va_list arg);
+    int vasprintf(char **s, const char *format, va_list arg);
     int vsnprintf(char *buffer, size_t n, const char *format, va_list arg);
     int snprintf(char *str, size_t n, const char *format, ...);
 
@@ -53,10 +54,10 @@ extern "C"
     int putchar(int c);
     int puts(const char *str);
     void clrscr(void);
-
 #if __STDC_HOSTED__ == 1
     struct FILE_IO
     {
+        int _fileno;
         char *_IO_write_ptr;
         char *_IO_write_base;
     };
@@ -78,6 +79,8 @@ extern "C"
     size_t __freadahead(FILE *fp);
     const char *__freadptr(FILE *fp, size_t *sizep);
     void __fseterr(FILE *fp);
+    int fputs_unlocked(const char *str, FILE *stream);
+    int fputs(const char *str, FILE *stream);
 #endif
 #ifdef __cplusplus
 }

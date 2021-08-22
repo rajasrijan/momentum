@@ -68,35 +68,47 @@ int getopt(int argc, char *const argv[], const char *optstring)
     if (optind == 0)
         optind = 1;
     //  all the arguments have been processed.
-    if (optind >= argc) {
+    if (optind >= argc)
+    {
         ret = -1;
         goto error_exit;
     }
-    if ((argv[optind] == NULL) || (argv[optind][0] != '-') || (!strcmp(argv[optind], "-"))) {
+    if ((argv[optind] == NULL) || (argv[optind][0] != '-') || (!strcmp(argv[optind], "-")))
+    {
         ret = -1;
         goto error_exit;
     }
-    if (!strcmp(argv[optind], "--")) {
+    if (!strcmp(argv[optind], "--"))
+    {
         optind++;
         ret = -1;
         goto error_exit;
     }
     char *arg = (optarg) ? optarg : &argv[optind][1];
-    for (size_t i = 0; arg[i] != 0; i++) {
-        for (optstrind = 0; optstring[optstrind] != 0; optstrind++) {
-            if (optstring[optstrind] == arg[i]) {
+    for (size_t i = 0; arg[i] != 0; i++)
+    {
+        for (optstrind = 0; optstring[optstrind] != 0; optstrind++)
+        {
+            if (optstring[optstrind] == arg[i])
+            {
                 optarg = NULL;
                 ret = optstring[optstrind];
-                if (arg[i + 1] == 0) {
+                if (arg[i + 1] == 0)
+                {
                     optind++;
-                    if (optstring[optstrind + 1] == ':') {
+                    if (optstring[optstrind + 1] == ':')
+                    {
                         optarg = argv[optind];
                         optind++;
-                    } else
+                    }
+                    else
                         optarg = NULL;
-                } else {
+                }
+                else
+                {
                     optarg = &arg[i + 1];
-                    if (optstring[optstrind + 1] == ':') {
+                    if (optstring[optstrind + 1] == ':')
+                    {
                         optind++;
                     }
                 }
